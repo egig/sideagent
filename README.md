@@ -6,6 +6,8 @@ Embed a chat agent in your app. You give it an OpenAPI spec and an OpenAI-compat
 npm i sideagent
 ```
 
+Docs: https://egig.github.io/sideagent/
+
 ## Server (`sideagent/server`)
 
 ```ts
