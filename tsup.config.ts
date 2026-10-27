@@ -6,6 +6,7 @@ export default defineConfig({
     protocol: "src/protocol.ts",
     "server/index": "src/server/index.ts",
     "server/browser": "src/server/browser.ts",
+    "workers-ai/index": "src/workers-ai/index.ts",
     "testing/mock-llm": "src/testing/mock-llm.ts",
   },
   format: ["esm"],

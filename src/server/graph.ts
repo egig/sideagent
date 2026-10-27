@@ -1,5 +1,5 @@
 import { AIMessage, SystemMessage, ToolMessage } from "@langchain/core/messages";
-import { ChatOpenAI } from "@langchain/openai";
+import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import {
   Command,
   END,
@@ -30,6 +30,10 @@ export interface GraphDeps {
   checkpointer?: BaseCheckpointSaver;
   onAudit?: (e: AuditEvent) => void | Promise<void>;
   knowledge?: KnowledgeBase;
+  /** Unbound chat model; the graph binds the tools. */
+  model: BaseChatModel;
+  /** Extra bindTools options, for models that understand them (OpenAI). */
+  bindOptions?: Record<string, unknown>;
 }
 
 export interface PendingApproval {
@@ -44,7 +48,7 @@ export interface PendingApproval {
 
 const APPROVAL_TTL_MS = 10 * 60_000;
 
-export function buildGraph({ config, ops, secret, checkpointer, onAudit, knowledge }: GraphDeps) {
+export function buildGraph({ config, ops, secret, checkpointer, onAudit, knowledge, model: baseModel, bindOptions }: GraphDeps) {
   const byName = new Map(ops.map((o) => [o.operationId, o]));
   const toolDefs = ops.map((o) => ({
     type: "function" as const,
@@ -63,13 +67,8 @@ export function buildGraph({ config, ops, secret, checkpointer, onAudit, knowled
     });
   }
 
-  const model = new ChatOpenAI({
-    model: config.llm.model,
-    apiKey: config.llm.apiKey,
-    temperature: config.llm.temperature,
-    streaming: true,
-    configuration: { baseURL: config.llm.baseUrl },
-  }).bindTools(toolDefs, { parallel_tool_calls: false });
+  if (!baseModel.bindTools) throw new Error("The chat model does not support bindTools(), which sideagent needs for tool calling.");
+  const model = baseModel.bindTools(toolDefs, bindOptions);
 
   const audit = (e: AuditEvent) => {
     try {

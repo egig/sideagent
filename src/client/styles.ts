@@ -56,6 +56,18 @@ export const CSS = `
 .sa-msg{max-width:90%;white-space:pre-wrap;word-break:break-word}
 .sa-user{align-self:flex-end;background:var(--sa-surface);padding:7px 12px;border-radius:calc(var(--sa-radius) + 4px)}
 .sa-assistant{align-self:flex-start}
+.sa-md{white-space:normal;min-width:0}
+.sa-md>:first-child{margin-top:0}.sa-md>:last-child{margin-bottom:0}
+.sa-md :is(p,ul,ol,pre,table,blockquote){margin:0 0 .6em}
+.sa-md :is(ul,ol){padding-left:1.4em}
+.sa-md :is(h1,h2,h3,h4){font-size:1em;font-weight:600;margin:.8em 0 .3em}
+.sa-md a{color:inherit;text-decoration:underline}
+.sa-md code{font-family:ui-monospace,monospace;font-size:.9em;background:var(--sa-surface);padding:1px 4px;border-radius:4px}
+.sa-md pre{background:var(--sa-surface);padding:8px 10px;border-radius:calc(var(--sa-radius) - 2px);overflow-x:auto}
+.sa-md pre code{background:none;padding:0}
+.sa-md blockquote{border-left:3px solid var(--sa-border);padding-left:10px;color:var(--sa-muted);margin-left:0}
+.sa-md table{border-collapse:collapse;display:block;overflow-x:auto}
+.sa-md :is(th,td){border:1px solid var(--sa-border);padding:3px 8px;text-align:left}
 .sa-icon-btn{display:inline-grid;place-items:center;min-width:28px;padding:4px}
 .sa-icon-btn svg{width:15px;height:15px}
 .sa-tool{align-self:stretch;border:1px solid var(--sa-border);border-radius:var(--sa-radius);padding:8px 10px;font-size:13px;min-width:0}

@@ -1,12 +1,14 @@
 import { HumanMessage } from "@langchain/core/messages";
 import { Command, type BaseCheckpointSaver } from "@langchain/langgraph";
-import { OpenAIEmbeddings } from "@langchain/openai";
+import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
+import { ChatOpenAI, OpenAIEmbeddings } from "@langchain/openai";
 import { z } from "zod";
 import type { AgentEvent } from "../protocol.js";
 import { verifyApproval } from "./approval.js";
 import { parseConfig, type AgentConfigInput } from "./config.js";
 import { buildGraph, type PendingApproval } from "./graph.js";
 import { KnowledgeBase, SEARCH_TOOL, type VectorStore } from "./knowledge.js";
+import { ensureAsyncLocalStorage } from "./als.js";
 import { loadOperations } from "./openapi.js";
 import { toHistory } from "./history.js";
 import type { AuditEvent } from "./policy.js";
@@ -19,7 +21,17 @@ export interface AuthResult {
   headers?: Record<string, string>;
 }
 
+/** Same shape as LangChain's Embeddings, minimal so any adapter fits. */
+export interface EmbeddingsLike {
+  embedDocuments(texts: string[]): Promise<number[][]>;
+  embedQuery(text: string): Promise<number[]>;
+}
+
 export interface CreateAgentOptions extends AgentConfigInput {
+  /** Your own chat model (e.g. workersAiChatModel from sideagent/workers-ai). Use instead of `llm`, never with it. It must support bindTools(). */
+  model?: BaseChatModel;
+  /** Your own embeddings, used instead of knowledge.embeddings. */
+  embeddings?: EmbeddingsLike;
   getAuth?: (request: Request) => AuthResult | Promise<AuthResult>;
   /** Throw to reject a turn (rate limiting, quota). */
   beforeTurn?: (ctx: { request: Request; userId: string }) => void | Promise<void>;
@@ -42,6 +54,7 @@ const chatBody = z.union([
 ]);
 
 const enc = encodeURIComponent;
+const PING_TOOL = { type: "function" as const, function: { name: "ping", description: "ping", parameters: { type: "object", properties: {} } } };
 const MAX_BODY = 256 * 1024;
 
 function json(status: number, body: unknown, extra: Record<string, string> = {}): Response {
@@ -56,8 +69,9 @@ export interface DoctorReport {
 }
 
 export async function createAgent(options: CreateAgentOptions) {
-  const { getAuth, beforeTurn, onAudit, checkpointer, threadStore: givenStore, vectorStore, ...data } = options;
-  const config = parseConfig(data, !!getAuth);
+  const { getAuth, beforeTurn, onAudit, checkpointer, threadStore: givenStore, vectorStore, model: givenModel, embeddings: givenEmbeddings, ...data } = options;
+  await ensureAsyncLocalStorage();
+  const config = parseConfig(data, !!getAuth, { model: !!givenModel, embeddings: !!givenEmbeddings });
   const ops = await loadOperations(config.spec, config.allow, config.limits.maxTools);
 
   const secret: string = config.approvalSecret ?? crypto.randomUUID() + crypto.randomUUID();
@@ -78,11 +92,14 @@ export async function createAgent(options: CreateAgentOptions) {
       throw new Error(`An allowlisted operation is named "${SEARCH_TOOL}", which is reserved for knowledge search`);
     }
     const k = config.knowledge;
-    const embedder = new OpenAIEmbeddings({
-      model: k.embeddings.model,
-      apiKey: k.embeddings.apiKey ?? config.llm.apiKey,
-      configuration: { baseURL: k.embeddings.baseUrl ?? config.llm.baseUrl },
-    });
+    // parseConfig guarantees exactly one of the two sources
+    const embedder: EmbeddingsLike =
+      givenEmbeddings ??
+      new OpenAIEmbeddings({
+        model: k.embeddings!.model,
+        apiKey: k.embeddings!.apiKey ?? config.llm!.apiKey,
+        configuration: { baseURL: k.embeddings!.baseUrl ?? config.llm!.baseUrl },
+      });
     knowledge = new KnowledgeBase(k, {
       embedDocuments: (t) => embedder.embedDocuments(t),
       embedQuery: (t) => embedder.embedQuery(t),
@@ -95,7 +112,11 @@ export async function createAgent(options: CreateAgentOptions) {
     if (timedOut) console.warn("[sideagent] knowledge is still loading after 60s; search results may be incomplete until it finishes.");
   }
 
-  const graph = buildGraph({ config, ops, secret, checkpointer, onAudit, knowledge });
+  const llm = config.llm;
+  const model: BaseChatModel =
+    givenModel ??
+    new ChatOpenAI({ model: llm!.model, apiKey: llm!.apiKey, temperature: llm!.temperature, streaming: true, configuration: { baseURL: llm!.baseUrl } });
+  const graph = buildGraph({ config, ops, secret, checkpointer, onAudit, knowledge, model, bindOptions: givenModel ? undefined : { parallel_tool_calls: false } });
   const active = new Map<string, number>();
 
   async function handler(request: Request): Promise<Response> {
@@ -247,31 +268,44 @@ export async function createAgent(options: CreateAgentOptions) {
     });
   }
 
+  async function checkInjectedModel(m: BaseChatModel): Promise<DoctorReport["checks"][number]> {
+    try {
+      if (!m.bindTools) return { name: "llm tool calling", ok: false, detail: "model has no bindTools()" };
+      const reply = await m.bindTools([PING_TOOL]).invoke("Call the ping tool.");
+      const called = ((reply as { tool_calls?: unknown[] }).tool_calls?.length ?? 0) > 0;
+      return { name: "llm tool calling", ok: called, detail: called ? "supported" : "model did not return a tool call" };
+    } catch (e) {
+      return { name: "llm", ok: false, detail: (e as Error).message };
+    }
+  }
+
+  async function checkHttpLlm(cfg: NonNullable<typeof config.llm>): Promise<DoctorReport["checks"][number]> {
+    try {
+      const res = await fetch(`${cfg.baseUrl.replace(/\/$/, "")}/chat/completions`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${cfg.apiKey}` },
+        body: JSON.stringify({
+          model: cfg.model,
+          messages: [{ role: "user", content: "Call the ping tool." }],
+          tools: [PING_TOOL],
+          tool_choice: { type: "function", function: { name: "ping" } },
+        }),
+      });
+      if (!res.ok) return { name: "llm", ok: false, detail: `HTTP ${res.status}` };
+      const j: any = await res.json();
+      const called = j?.choices?.[0]?.message?.tool_calls?.length > 0;
+      return { name: "llm tool calling", ok: called, detail: called ? "supported" : "model did not return a tool call" };
+    } catch (e) {
+      return { name: "llm", ok: false, detail: (e as Error).message };
+    }
+  }
+
   async function doctor(): Promise<DoctorReport> {
     const checks: DoctorReport["checks"] = [];
     checks.push({ name: "spec", ok: true, detail: `${ops.length} operation(s) exposed` });
     if (secret === config.approvalSecret) checks.push({ name: "approvalSecret", ok: true, detail: "set" });
     else checks.push({ name: "approvalSecret", ok: false, detail: "not set; random per instance" });
-    try {
-      const res = await fetch(`${config.llm.baseUrl.replace(/\/$/, "")}/chat/completions`, {
-        method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${config.llm.apiKey}` },
-        body: JSON.stringify({
-          model: config.llm.model,
-          messages: [{ role: "user", content: "Call the ping tool." }],
-          tools: [{ type: "function", function: { name: "ping", description: "ping", parameters: { type: "object", properties: {} } } }],
-          tool_choice: { type: "function", function: { name: "ping" } },
-        }),
-      });
-      if (!res.ok) checks.push({ name: "llm", ok: false, detail: `HTTP ${res.status}` });
-      else {
-        const j: any = await res.json();
-        const called = j?.choices?.[0]?.message?.tool_calls?.length > 0;
-        checks.push({ name: "llm tool calling", ok: called, detail: called ? "supported" : "model did not return a tool call" });
-      }
-    } catch (e) {
-      checks.push({ name: "llm", ok: false, detail: (e as Error).message });
-    }
+    checks.push(await (givenModel ? checkInjectedModel(givenModel) : checkHttpLlm(config.llm!)));
     if (knowledge) {
       const st = knowledge.status();
       const bad = st.filter((x) => x.error);

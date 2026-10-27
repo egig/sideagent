@@ -4,7 +4,9 @@
   "scripts": {
     "start": "docusaurus start",
     "build": "docusaurus build",
-    "serve": "docusaurus serve"
+    "serve": "docusaurus serve",
+    "prebuild": "node scripts/llms.mjs",
+    "prestart": "node scripts/llms.mjs"
   },
   "dependencies": {
     "@docusaurus/core": "3.10.2",

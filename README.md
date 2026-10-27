@@ -98,7 +98,7 @@ Neutral by default (grayscale, host font, 10px radius). `theme="auto"` follows t
 
 ## Results and icons
 
-Tool results render as readable views: arrays of objects become tables (up to 50 rows and 8 columns, numbers right-aligned, dates and booleans formatted), objects become labelled fields, errors and rejections get their own state. Raw JSON stays under "Details". Everything is plain text, never HTML. Override per operation:
+Tool results render as readable views: arrays of objects become tables (up to 50 rows and 8 columns, numbers right-aligned, dates and booleans formatted), objects become labelled fields, errors and rejections get their own state. Raw JSON stays under "Details". Tool results are plain text, never HTML. Assistant replies render as Markdown (GFM); raw HTML is dropped. Override per operation:
 
 ```tsx
 <AgentChat resultRenderers={{ listInvoices: ({ result }) => <MyInvoiceTable rows={result as any[]} /> }} />
@@ -132,3 +132,45 @@ createAgent({
 The agent gets a `search_knowledge` tool; answers show a "Sources" card (links only for your configured URLs). Passages reach the model as labelled untrusted data and never reach the browser. URLs come only from config, must be public http(s) (private ranges need `allowPrivateNetworks`, metadata addresses never), follow only same-host redirects, and are capped by `maxSourceBytes`. URL sources refresh in the background after `ttlMs` (default 1h) or on `agent.knowledge.refresh()`. A source that fails to load is skipped with a warning and shown in `doctor()`.
 
 With the default in-memory store, every start re-embeds all sources (embedding cost). Use a persistent `vectorStore` for large knowledge.
+
+## Cloudflare Workers
+
+`sideagent/server` runs on Workers. Use `nodejs_compat` (or just `nodejs_als`) in `wrangler.jsonc`. LangGraph's approval pause (`interrupt()`) needs `AsyncLocalStorage`, and the Workers build of LangGraph does not register it. sideagent registers it for you when the runtime has it. Without the flag, reads work and the first approval fails (startup logs a warning).
+
+```jsonc
+{ "compatibility_date": "2025-09-01", "compatibility_flags": ["nodejs_compat"] }
+```
+
+**Export conditions.** `sideagent/server` resolves to the real build under `workerd` and `worker`, listed before `browser` (which stays a throwing stub for real browser bundles). Wrangler (esbuild) and `@cloudflare/vite-plugin` need no alias. Both also set `browser`, so the order in `exports` matters.
+
+**Workers AI as the LLM.** `env.AI` is a binding, not an HTTP endpoint, so use the adapter from `sideagent/workers-ai` instead of `llm`:
+
+```ts
+import { createAgent } from "sideagent/server";
+import { workersAiChatModel, workersAiEmbeddings } from "sideagent/workers-ai";
+
+export default {
+  async fetch(request: Request, env: Env) {
+    agent ??= await createAgent({
+      spec, baseUrl: env.API_URL, allow: ["listInvoices", "createInvoice"],
+      allowedOrigins: ["https://app.example.com"], approvalSecret: env.APPROVAL_SECRET,
+      getAuth,
+      model: workersAiChatModel(env.AI, "@cf/openai/gpt-oss-120b"),
+      knowledge: { sources }, // optional
+      embeddings: workersAiEmbeddings(env.AI, "@cf/baai/bge-m3"), // replaces knowledge.embeddings
+    });
+    return agent.handler(request);
+  },
+};
+let agent: Awaited<ReturnType<typeof createAgent>> | undefined;
+```
+
+`model` and `llm` are mutually exclusive; so are the `embeddings` option and `knowledge.embeddings`. `model` can be any LangChain chat model that supports `bindTools()`. `doctor()` checks an injected model with one `invoke`, not an HTTP call. The adapter takes the binding structurally (no `@cloudflare/workers-types` needed) and reads gpt-oss Responses-style output, chat-style `choices[0].message` and `{ response }`.
+
+A custom `checkpointer` (D1, Durable Object storage) is a `BaseCheckpointSaver` with four methods: `getTuple`, `list`, `put`, `putWrites`. sideagent also calls `deleteThread` when a user deletes a thread.
+
+## For AI agents
+
+- Skill: `npx skills add egig/sideagent`, then ask your coding agent to "add an AI assistant to this app". See [Quickstart](https://egig.github.io/sideagent/quickstart).
+- [`AGENTS.md`](AGENTS.md): commands, layout and rules for coding agents working on this repo.
+- [`llms.txt`](https://egig.github.io/sideagent/llms.txt) and [`llms-full.txt`](https://egig.github.io/sideagent/llms-full.txt): the docs in LLM-friendly form.

@@ -94,5 +94,5 @@ Responses are server-sent events. Reverse proxies and CDNs must not buffer them,
 
 - The model gets `instructions` as part of its system prompt. Use it for tone and domain rules, not for security. Access control belongs in `allow`, approvals and your API.
 - `context` comes from the browser, so a user can forge it. It is cut to 4000 characters and given to the model as page context. Never use it for access control, and do not put secrets in it.
-- Model output is shown as plain text, never HTML.
+- Assistant replies render as Markdown (GFM) with raw HTML dropped; links open in a new tab with `noopener noreferrer`. Tool results are plain text, never HTML.
 - The model must support tool calling. `doctor()` checks this.

@@ -1,0 +1,10 @@
+{ "openapi": "3.0.3", "info": { "title": "Acme", "version": "1" },
+  "paths": {
+    "/api/invoices": {
+      "get": { "operationId": "listInvoices", "summary": "List invoices", "responses": { "200": { "description": "ok" } } },
+      "post": { "operationId": "createInvoice", "summary": "Create invoice", "responses": { "200": { "description": "ok" } } }
+    },
+    "/api/invoices/{id}": {
+      "delete": { "operationId": "deleteInvoice", "summary": "Delete invoice", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "ok" } } }
+    }
+  } }

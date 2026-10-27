@@ -12,6 +12,7 @@ const agent = await createAgent({
   spec: "https://api.example.com/openapi.json", // or an object / JSON string
   baseUrl: "https://api.example.com",           // pinned; the spec's `servers` is ignored
   llm: { baseUrl: "https://api.openai.com/v1", apiKey: process.env.LLM_API_KEY!, model: "gpt-4o-mini" },
+  // Or pass `model: yourLangChainChatModel` instead of `llm` (see Cloudflare Workers).
   allow: ["listInvoices", "createInvoice", "tag:reports"], // default-deny allowlist
   allowedOrigins: ["https://app.example.com"],
   approvalSecret: process.env.APPROVAL_SECRET,   // set on serverless / multi-instance
