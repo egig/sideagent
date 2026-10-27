@@ -41,3 +41,11 @@ export class MemoryThreadStore implements ThreadStore {
 }
 
 export const titleFrom = (message: string) => message.replace(/\s+/g, " ").trim().slice(0, 60) || "New chat";
+
+/** Thread ids are `<encoded userId>:<uuid>`. */
+export const threadPrefix = (userId: string) => `${encodeURIComponent(userId)}:`;
+
+/** A thread belongs to a user only if it carries their prefix and is in their own index. */
+export async function ownsThread(store: ThreadStore, userId: string, threadId: string): Promise<boolean> {
+  return threadId.startsWith(threadPrefix(userId)) && (await store.has(userId, threadId));
+}

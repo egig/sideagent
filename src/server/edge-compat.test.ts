@@ -2,7 +2,13 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const sources = (dir: string) => readdirSync(dir).filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts")).map((f) => join(dir, f));
+// Recursive, so code moved into subfolders stays covered.
+const sources = (dir: string): string[] =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const path = join(dir, e.name);
+    if (e.isDirectory()) return sources(path);
+    return e.name.endsWith(".ts") && !e.name.endsWith(".test.ts") ? [path] : [];
+  });
 const noNode = (src: string) => {
   expect(src).not.toMatch(/from\s+["']node:/);
   expect(src).not.toMatch(/\bBuffer\b|\bprocess\./);

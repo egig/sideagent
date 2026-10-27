@@ -227,4 +227,11 @@ export function buildGraph({ config, ops, secret, checkpointer, onAudit, knowled
     .compile({ checkpointer: checkpointer ?? new MemorySaver() });
 }
 
+export type AgentGraph = ReturnType<typeof buildGraph>;
+
+/** The approval a thread is paused on, if any. */
+export function pendingApprovalOf(snapshot: { tasks: readonly { interrupts: readonly { value?: unknown }[] }[] }): PendingApproval | undefined {
+  return snapshot.tasks.flatMap((t) => t.interrupts)[0]?.value as PendingApproval | undefined;
+}
+
 export { Command };

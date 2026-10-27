@@ -4,10 +4,12 @@ import { describe, expect, it } from "vitest";
 
 // Frontend entry must never pull in server code (LLM key, credentials, LangGraph).
 describe("client/server isolation", () => {
-  const files = [
-    "index.ts",
-    ...readdirSync(join(__dirname, "client")).map((f) => `client/${f}`),
-  ].filter((f) => /\.tsx?$/.test(f));
+  // Recursive, so components moved into subfolders stay covered.
+  const walk = (dir: string): string[] =>
+    readdirSync(join(__dirname, dir), { withFileTypes: true }).flatMap((e) =>
+      e.isDirectory() ? walk(`${dir}/${e.name}`) : [`${dir}/${e.name}`],
+    );
+  const files = ["index.ts", ...walk("client")].filter((f) => /\.tsx?$/.test(f));
   for (const f of files) {
     it(`${f} does not import server code`, () => {
       const src = readFileSync(join(__dirname, f), "utf8");
