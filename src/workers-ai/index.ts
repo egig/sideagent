@@ -5,6 +5,7 @@ import { AIMessage, AIMessageChunk, type BaseMessage } from "@langchain/core/mes
 import { ChatGenerationChunk, type ChatResult } from "@langchain/core/outputs";
 import type { Runnable } from "@langchain/core/runnables";
 import { convertToOpenAITool } from "@langchain/core/utils/function_calling";
+import { messageText } from "../server/message-text.js";
 
 /**
  * The part of the Workers AI binding (`env.AI`) used here. Structural on purpose:
@@ -38,15 +39,10 @@ interface Parsed {
 
 const isObj = (v: unknown): v is Record<string, any> => !!v && typeof v === "object" && !Array.isArray(v);
 
-function textOf(content: BaseMessage["content"]): string {
-  if (typeof content === "string") return content;
-  return content.map((p) => (p.type === "text" && typeof (p as { text?: unknown }).text === "string" ? (p as { text: string }).text : "")).join("");
-}
-
 function toWire(messages: BaseMessage[]): unknown[] {
   return messages.map((m) => {
     const type = m.getType();
-    const content = textOf(m.content);
+    const content = messageText(m.content);
     if (type === "system") return { role: "system", content };
     if (type === "human") return { role: "user", content };
     if (type === "tool") return { role: "tool", tool_call_id: (m as unknown as { tool_call_id: string }).tool_call_id, content };

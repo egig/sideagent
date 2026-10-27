@@ -1,6 +1,6 @@
 import { AIMessage, SystemMessage, ToolMessage } from "@langchain/core/messages";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
-import { END, MemorySaver, MessagesAnnotation, START, StateGraph, type BaseCheckpointSaver } from "@langchain/langgraph";
+import { END, MemorySaver, MessagesAnnotation, START, StateGraph, type BaseCheckpointSaver, type LangGraphRunnableConfig } from "@langchain/langgraph";
 import type { AgentConfig } from "../config.js";
 import { SEARCH_TOOL, type KnowledgeBase } from "../knowledge/index.js";
 import type { Operation } from "../openapi.js";
@@ -26,6 +26,9 @@ export interface GraphDeps {
   bindOptions?: Record<string, unknown>;
 }
 
+/** Per-turn fields that http/turn.ts puts under `configurable`. LangGraph types them as Record<string, any>. */
+const turnOf = (cfg: LangGraphRunnableConfig) => cfg.configurable as { thread_id: string; run: RunContext };
+
 export function buildGraph({ config, ops, secret, checkpointer, onAudit, knowledge, model: baseModel, bindOptions }: GraphDeps) {
   const byName = new Map(ops.map((o) => [o.operationId, o]));
   const toolDefs = ops.map((o) => ({
@@ -45,14 +48,14 @@ export function buildGraph({ config, ops, secret, checkpointer, onAudit, knowled
     }
   };
 
-  async function agentNode(state: typeof MessagesAnnotation.State, cfg: any) {
-    const run = cfg.configurable.run as RunContext;
+  async function agentNode(state: typeof MessagesAnnotation.State, cfg: LangGraphRunnableConfig) {
+    const { run } = turnOf(cfg);
     const system = new SystemMessage(buildSystemPrompt(config.instructions, run.context, !!knowledge));
     const reply = await model.invoke([system, ...state.messages], { signal: cfg.signal });
     return { messages: [reply] };
   }
 
-  async function toolsNode(state: typeof MessagesAnnotation.State, cfg: any) {
+  async function toolsNode(state: typeof MessagesAnnotation.State, cfg: LangGraphRunnableConfig) {
     const last = state.messages[state.messages.length - 1] as AIMessage;
     const calls = last.tool_calls ?? [];
 
@@ -62,8 +65,7 @@ export function buildGraph({ config, ops, secret, checkpointer, onAudit, knowled
     const call = calls[0];
     if (!call) return { messages: skipped };
 
-    const run = cfg.configurable.run as RunContext;
-    const threadId = cfg.configurable.thread_id as string;
+    const { run, thread_id: threadId } = turnOf(cfg);
     const callId = call.id!;
     const ctx: ToolContext = {
       callId,
