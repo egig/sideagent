@@ -1,5 +1,5 @@
 import { toHistory } from "../history.js";
-import { pendingApprovalOf, type AgentGraph } from "../graph.js";
+import { pendingApprovalOf, type AgentGraph } from "../graph/index.js";
 import { ownsThread, type ThreadStore } from "../threads.js";
 import { json } from "./cors.js";
 import type { ThreadAction } from "./request.js";

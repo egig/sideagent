@@ -3,7 +3,7 @@ import type { BaseCheckpointSaver } from "@langchain/langgraph";
 import { ensureAsyncLocalStorage } from "./als.js";
 import { parseConfig, type AgentConfig, type AgentConfigInput } from "./config.js";
 import { runDoctor } from "./doctor.js";
-import { buildGraph } from "./graph.js";
+import { buildGraph } from "./graph/index.js";
 import { createHandler, type AuthResult } from "./http/handler.js";
 import { KnowledgeBase, SEARCH_TOOL, type VectorStore } from "./knowledge.js";
 import { createChatModel, createEmbeddings, type EmbeddingsLike } from "./model.js";

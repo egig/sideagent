@@ -1,5 +1,5 @@
 import type { AgentConfig } from "../config.js";
-import type { AgentGraph } from "../graph.js";
+import type { AgentGraph } from "../graph/index.js";
 import { ownsThread, type ThreadStore } from "../threads.js";
 import { checkOrigin, json, preflight } from "./cors.js";
 import { readChatBody } from "./request.js";

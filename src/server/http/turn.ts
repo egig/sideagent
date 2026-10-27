@@ -3,7 +3,7 @@ import { Command } from "@langchain/langgraph";
 import type { AgentEvent } from "../../protocol.js";
 import { verifyApproval } from "../approval.js";
 import type { AgentConfig } from "../config.js";
-import { pendingApprovalOf, type AgentGraph } from "../graph.js";
+import { pendingApprovalOf, type AgentGraph } from "../graph/index.js";
 import { threadPrefix, titleFrom, type ThreadStore } from "../threads.js";
 import { json } from "./cors.js";
 import type { TurnBody } from "./request.js";
