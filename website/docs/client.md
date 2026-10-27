@@ -29,6 +29,12 @@ import { AgentProvider } from "sideagent";
 
 Anything under `AgentProvider` can call `useAgent()` to get `{ open, setOpen }`, e.g. an "Ask assistant" button in your toolbar.
 
+## Small screens
+
+At 640px wide or less, the panel opens full screen in every mode (floating, sidebar and docked) and the layout switcher and resize handle are hidden. It respects the safe-area insets when your page sets `viewport-fit=cover`. On touch devices the buttons are larger and the keyboard hint is hidden.
+
+The page needs a responsive viewport tag: `<meta name="viewport" content="width=device-width, initial-scale=1">`.
+
 ## Limits
 
 - Without `AgentProvider`, `mode="sidebar"` overlays the page instead of docking.

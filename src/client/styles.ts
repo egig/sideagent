@@ -41,7 +41,7 @@ export const CSS = `
 .sa-resizer:hover::after,.sa-resizer:focus-visible::after,.sa-resizing .sa-resizer::after{background:var(--sa-muted)}
 .sa-resizer:focus-visible{outline:none}
 .sa-resizing{user-select:none;cursor:col-resize}
-.sa-fab{position:fixed;right:16px;bottom:16px;width:48px;height:48px;border-radius:50%;border:0;background:var(--sa-accent);color:var(--sa-accent-fg);cursor:pointer;display:grid;place-items:center;box-shadow:0 4px 14px rgba(0,0,0,.2);z-index:2147483000}
+.sa-fab{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));width:48px;height:48px;border-radius:50%;border:0;background:var(--sa-accent);color:var(--sa-accent-fg);cursor:pointer;display:grid;place-items:center;box-shadow:0 4px 14px rgba(0,0,0,.2);z-index:2147483000}
 .sa-header{display:flex;align-items:center;gap:6px;padding:10px 12px;border-bottom:1px solid var(--sa-border)}
 .sa-title{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sa-btn{border:1px solid var(--sa-border);background:transparent;color:var(--sa-fg);border-radius:calc(var(--sa-radius) - 2px);padding:4px 9px;min-height:28px;font:inherit;font-size:12px;cursor:pointer}
@@ -51,7 +51,7 @@ export const CSS = `
 .sa-btn-primary:hover{background:var(--sa-accent);opacity:.88}
 .sa-btn:disabled{opacity:.5;cursor:not-allowed}
 .sa-root :is(button,textarea):focus-visible{outline:2px solid var(--sa-fg);outline-offset:2px}
-.sa-viewport{flex:1;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:10px}
+.sa-viewport{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:14px 12px;display:flex;flex-direction:column;gap:10px}
 .sa-empty{color:var(--sa-muted);text-align:center;margin:auto;padding:24px}
 .sa-msg{max-width:90%;white-space:pre-wrap;word-break:break-word}
 .sa-user{align-self:flex-end;background:var(--sa-surface);padding:7px 12px;border-radius:calc(var(--sa-radius) + 4px)}
@@ -111,7 +111,7 @@ export const CSS = `
 .sa-input::placeholder{color:var(--sa-muted)}
 .sa-composer-bar{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .sa-hint{color:var(--sa-muted);font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sa-send{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;border:0;background:var(--sa-accent);color:var(--sa-accent-fg);cursor:pointer}
+.sa-send{flex:none;margin-left:auto;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;border:0;background:var(--sa-accent);color:var(--sa-accent-fg);cursor:pointer}
 .sa-send:hover{opacity:.88}
 .sa-send:disabled{opacity:.35;cursor:not-allowed}
 .sa-send svg{width:16px;height:16px}
@@ -124,4 +124,20 @@ export const CSS = `
 .sa-thread-open:hover{background:var(--sa-surface)}
 .sa-thread-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sa-error{color:var(--sa-danger)}
+@media (max-width:640px){
+  .sa-root .sa-panel{position:fixed;inset:0;width:auto!important;max-width:none;height:auto;border:0;border-radius:0;box-shadow:none;z-index:2147483000;
+    padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
+  .sa-resizer,.sa-mode-btn{display:none}
+  .sa-input{font-size:16px}
+  .sa-msg{max-width:100%}
+  .sa-user{max-width:85%}
+  .sa-approval{max-height:55dvh;overflow-y:auto}
+}
+@media (pointer:coarse){
+  .sa-btn{min-height:36px}
+  .sa-icon-btn{min-width:36px}
+  .sa-icon-btn svg{width:17px;height:17px}
+  .sa-send{width:36px;height:36px}
+  .sa-hint{display:none}
+}
 `;
