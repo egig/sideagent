@@ -53,8 +53,13 @@ export function AgentChat(props: AgentChatProps) {
   const [width, setWidth] = useState(() => clampWidth(Number(storeGet(WIDTH_KEY)) || DEFAULT_WIDTH));
   const [resizing, setResizing] = useState(false);
   const booted = useRef(false);
-  const key = threadKey(target.endpoint);
-  const opts = { endpoint: target.endpoint, credentials: props.credentials, headers: target.headers };
+  const key = threadKey(target.endpoint, props.storageKey);
+  const opts = {
+    endpoint: target.endpoint,
+    credentials: props.credentials,
+    headers: target.headers,
+    getHeaders: props.getHeaders,
+  };
 
   const setMode = useCallback((m: AgentChatMode) => {
     setModeState(m);
@@ -81,7 +86,7 @@ export function AgentChat(props: AgentChatProps) {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [target, props.credentials],
+    [target, props.credentials, props.getHeaders],
   );
 
   const resizeTo = useCallback((w: number) => {
@@ -115,6 +120,16 @@ export function AgentChat(props: AgentChatProps) {
   };
 
   const visible = open;
+
+  // Another user (storageKey) or endpoint: drop the open conversation and reopen theirs.
+  const shownKey = useRef(key);
+  useEffect(() => {
+    if (shownKey.current === key) return;
+    shownKey.current = key;
+    booted.current = false;
+    setView("chat");
+    setSession((s) => ({ key: s.key + 1 }));
+  }, [key]);
 
   // Reopen the last conversation the first time the panel is shown.
   useEffect(() => {

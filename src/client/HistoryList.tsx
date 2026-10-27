@@ -2,19 +2,25 @@ import { ArrowLeftIcon, TrashIcon } from "@radix-ui/react-icons";
 import { useEffect, useState } from "react";
 import type { ThreadMeta } from "../protocol.js";
 import { ago } from "./format.js";
-import { callJson } from "./transport.js";
+import { callJson, type GetHeaders } from "./transport.js";
 
 export function HistoryList(props: {
   endpoint: string;
   credentials?: RequestCredentials;
   headers?: Record<string, string>;
+  getHeaders?: GetHeaders;
   onOpen: (id: string) => void;
   onClose: () => void;
   onDeleted: (id: string) => void;
 }) {
   const [threads, setThreads] = useState<ThreadMeta[] | null>(null);
   const [error, setError] = useState(false);
-  const opts = { endpoint: props.endpoint, credentials: props.credentials, headers: props.headers };
+  const opts = {
+    endpoint: props.endpoint,
+    credentials: props.credentials,
+    headers: props.headers,
+    getHeaders: props.getHeaders,
+  };
   useEffect(() => {
     callJson<{ threads: ThreadMeta[] }>({ action: "threads.list" }, opts)
       .then((r) => (r.data?.threads ? setThreads(r.data.threads) : setError(true)))

@@ -1,18 +1,34 @@
 import type { AgentEvent, ChatRequest } from "../protocol.js";
 
+export type GetHeaders = () => Record<string, string> | Promise<Record<string, string>>;
+
 export interface TransportOptions {
   endpoint: string;
   credentials?: RequestCredentials;
   headers?: Record<string, string>;
+  /** Called before every request, e.g. for a fresh login token. `headers` wins on a clash. */
+  getHeaders?: GetHeaders;
   signal?: AbortSignal;
+}
+
+async function requestHeaders(opts: Omit<TransportOptions, "signal">): Promise<Record<string, string>> {
+  const dynamic = opts.getHeaders ? await opts.getHeaders() : {};
+  return { "content-type": "application/json", ...dynamic, ...opts.headers };
 }
 
 /** POSTs a chat request and yields the server's SSE events. */
 export async function* streamChat(body: ChatRequest, opts: TransportOptions): AsyncGenerator<AgentEvent> {
+  let headers: Record<string, string>;
+  try {
+    headers = await requestHeaders(opts);
+  } catch {
+    yield { type: "error", code: "headers_failed", message: "Could not get credentials. Sign in again." };
+    return;
+  }
   const res = await fetch(opts.endpoint, {
     method: "POST",
     credentials: opts.credentials ?? "same-origin",
-    headers: { "content-type": "application/json", ...opts.headers },
+    headers,
     body: JSON.stringify(body),
     signal: opts.signal,
   });
@@ -48,10 +64,16 @@ export async function callJson<T>(
   body: ChatRequest,
   opts: Omit<TransportOptions, "signal">,
 ): Promise<{ status: number; data: T | null }> {
+  let headers: Record<string, string>;
+  try {
+    headers = await requestHeaders(opts);
+  } catch {
+    return { status: 0, data: null };
+  }
   const res = await fetch(opts.endpoint, {
     method: "POST",
     credentials: opts.credentials ?? "same-origin",
-    headers: { "content-type": "application/json", ...opts.headers },
+    headers,
     body: JSON.stringify(body),
   });
   let data: T | null = null;
