@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { mockEmbed } from "../testing/mock-llm.js";
-import { chunkText, htmlToText, KnowledgeBase, wrapKnowledge, type KnowledgeOptions } from "./knowledge.js";
-import { assertPublicUrl } from "./url-guard.js";
+import { mockEmbed } from "../../testing/mock-llm.js";
+import { chunkText, htmlToText, KnowledgeBase, wrapKnowledge, type KnowledgeOptions } from "./index.js";
+import { assertPublicUrl } from "../url-guard.js";
 
 const opts = (over: Partial<KnowledgeOptions> = {}): KnowledgeOptions => ({
   sources: [],

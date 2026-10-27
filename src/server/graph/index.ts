@@ -2,7 +2,7 @@ import { AIMessage, SystemMessage, ToolMessage } from "@langchain/core/messages"
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { END, MemorySaver, MessagesAnnotation, START, StateGraph, type BaseCheckpointSaver } from "@langchain/langgraph";
 import type { AgentConfig } from "../config.js";
-import { SEARCH_TOOL, type KnowledgeBase } from "../knowledge.js";
+import { SEARCH_TOOL, type KnowledgeBase } from "../knowledge/index.js";
 import type { Operation } from "../openapi.js";
 import { buildSystemPrompt, redact, type AuditEvent } from "../policy.js";
 import { toolResult, type ToolContext } from "./tools/context.js";

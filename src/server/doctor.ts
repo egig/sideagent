@@ -1,6 +1,6 @@
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { AgentConfig } from "./config.js";
-import type { KnowledgeBase } from "./knowledge.js";
+import type { KnowledgeBase } from "./knowledge/index.js";
 import type { Operation } from "./openapi.js";
 
 export interface DoctorReport {

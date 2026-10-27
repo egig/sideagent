@@ -1,5 +1,5 @@
 import type { ToolMessage } from "@langchain/core/messages";
-import { SEARCH_TOOL, uniqueSources, wrapKnowledge, type KnowledgeBase } from "../../knowledge.js";
+import { SEARCH_TOOL, uniqueSources, wrapKnowledge, type KnowledgeBase } from "../../knowledge/index.js";
 import { toolResult, type ToolContext } from "./context.js";
 
 export const SEARCH_TOOL_DEF = {

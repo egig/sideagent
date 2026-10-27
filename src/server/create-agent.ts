@@ -5,7 +5,7 @@ import { parseConfig, type AgentConfig, type AgentConfigInput } from "./config.j
 import { runDoctor } from "./doctor.js";
 import { buildGraph } from "./graph/index.js";
 import { createHandler, type AuthResult } from "./http/handler.js";
-import { KnowledgeBase, SEARCH_TOOL, type VectorStore } from "./knowledge.js";
+import { KnowledgeBase, SEARCH_TOOL, type VectorStore } from "./knowledge/index.js";
 import { createChatModel, createEmbeddings, type EmbeddingsLike } from "./model.js";
 import { loadOperations, type Operation } from "./openapi.js";
 import type { AuditEvent } from "./policy.js";
