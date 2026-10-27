@@ -1,6 +1,6 @@
 {
   "name": "sideagent",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "license": "MIT",
   "type": "module",
   "exports": {
@@ -24,6 +24,10 @@
     "./protocol": {
       "types": "./dist/protocol.d.ts",
       "import": "./dist/protocol.js"
+    },
+    "./keys": {
+      "types": "./dist/keys.d.ts",
+      "import": "./dist/keys.js"
     },
     "./testing": {
       "types": "./dist/testing/mock-llm.d.ts",

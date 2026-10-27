@@ -7,8 +7,10 @@ export type ApprovalEvent = Extract<AgentEvent, { type: "approval.request" }>;
 export type Decision = "approve" | "reject";
 
 export interface AgentChatProps {
-  /** URL of your sideagent endpoint, e.g. "/api/agent". */
-  endpoint: string;
+  /** URL of your sideagent endpoint, e.g. "/api/agent". With `publishableKey`, overrides the URL the key names. */
+  endpoint?: string;
+  /** sideagent Cloud publishable key (`pk_live_…`). Requests go to the agent it names and carry it. */
+  publishableKey?: string;
   /** Starting layout. The user can switch; their choice is remembered. */
   mode?: AgentChatMode;
   title?: string;
