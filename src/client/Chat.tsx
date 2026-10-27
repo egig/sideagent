@@ -17,7 +17,7 @@ import type { AgentChatProps, ApprovalEvent, Decision, Session } from "./types.j
 
 /** One conversation: streams turns, pauses on approval requests, and resumes with the user's decision. */
 export function Chat(
-  props: AgentChatProps & { session: Session; onThread: (id: string) => void; onReload: () => void },
+  props: AgentChatProps & { endpoint: string; session: Session; onThread: (id: string) => void; onReload: () => void },
 ) {
   const { endpoint, hooks, credentials, headers } = props;
   const latest = useRef(props);

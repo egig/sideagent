@@ -6,13 +6,23 @@ import {
   PlusIcon,
   ViewVerticalIcon,
 } from "@radix-ui/react-icons";
-import { useCallback, useContext, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+} from "react";
 import type { ThreadResponse } from "../protocol.js";
 import { Chat } from "./Chat.js";
 import { AgentContext, DockContext } from "./context.js";
 import { HistoryList } from "./HistoryList.js";
 import { MODE_KEY, readMode, storeGet, storeSet, threadKey, WIDTH_KEY } from "./storage.js";
 import { CSS } from "./styles.js";
+import { resolveTarget } from "./target.js";
 import { callJson } from "./transport.js";
 import type { AgentChatMode, AgentChatProps, Session } from "./types.js";
 
@@ -25,6 +35,12 @@ const clampWidth = (w: number) => Math.min(maxWidth(), Math.max(MIN_WIDTH, Math.
 
 /** The panel shell: open/close, floating or docked layout, resize, history and session loading. */
 export function AgentChat(props: AgentChatProps) {
+  // First, so a bad key or missing endpoint throws before anything else renders.
+  const target = useMemo(
+    () => resolveTarget(props),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [props.endpoint, props.publishableKey, props.headers],
+  );
   const [mode, setModeState] = useState<AgentChatMode>(() => readMode(props.mode ?? "floating"));
   const [localOpen, setLocalOpen] = useState(props.defaultOpen ?? false);
   const shared = useContext(AgentContext);
@@ -37,8 +53,8 @@ export function AgentChat(props: AgentChatProps) {
   const [width, setWidth] = useState(() => clampWidth(Number(storeGet(WIDTH_KEY)) || DEFAULT_WIDTH));
   const [resizing, setResizing] = useState(false);
   const booted = useRef(false);
-  const key = threadKey(props.endpoint);
-  const opts = { endpoint: props.endpoint, credentials: props.credentials, headers: props.headers };
+  const key = threadKey(target.endpoint);
+  const opts = { endpoint: target.endpoint, credentials: props.credentials, headers: target.headers };
 
   const setMode = useCallback((m: AgentChatMode) => {
     setModeState(m);
@@ -65,7 +81,7 @@ export function AgentChat(props: AgentChatProps) {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [props.endpoint, props.credentials, props.headers],
+    [target, props.credentials],
   );
 
   const resizeTo = useCallback((w: number) => {
@@ -186,6 +202,7 @@ export function AgentChat(props: AgentChatProps) {
               <Chat
                 key={session.key}
                 {...props}
+                {...target}
                 session={session}
                 onThread={(id) => storeSet(key, id)}
                 onReload={() => session.threadId && void openThread(session.threadId)}

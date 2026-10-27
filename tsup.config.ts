@@ -4,6 +4,7 @@ export default defineConfig({
   entry: {
     index: "src/index.ts",
     protocol: "src/protocol.ts",
+    keys: "src/keys.ts",
     "server/index": "src/server/index.ts",
     "server/browser": "src/server/browser.ts",
     "workers-ai/index": "src/workers-ai/index.ts",
