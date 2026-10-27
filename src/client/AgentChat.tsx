@@ -142,7 +142,7 @@ export function AgentChat(props: AgentChatProps) {
             <span className="sa-title">{props.title ?? "Assistant"}</span>
             {props.allowModeSwitch !== false && (
               <button
-                className="sa-btn sa-icon-btn"
+                className="sa-btn sa-icon-btn sa-mode-btn"
                 onClick={() => setMode(mode === "floating" ? "sidebar" : "floating")}
                 title={mode === "floating" ? "Dock to sidebar" : "Float"}
                 aria-label={mode === "floating" ? "Dock to sidebar" : "Float"}
