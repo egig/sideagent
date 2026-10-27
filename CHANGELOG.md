@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- The package is built before it is packed (`prepack`). 0.3.0 was published from a stale `dist/`: it declared the `sideagent/keys` export but shipped neither `dist/keys.js` nor the `publishableKey` prop. Use 0.3.1.
+
 ## 0.3.0
 
 - New `publishableKey` prop on `AgentChat` and `AgentProvider` for agents hosted on sideagent Cloud. The chat derives the endpoint from the key (https, http for `localhost` and `127.0.0.1`) and sends the key in the `x-sideagent-key` header. `endpoint` is now optional and, when given with a key, overrides the derived URL. A malformed key, or neither prop, throws during render.

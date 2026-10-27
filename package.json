@@ -1,6 +1,6 @@
 {
   "name": "sideagent",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "license": "MIT",
   "type": "module",
   "exports": {
@@ -41,6 +41,7 @@
   ],
   "scripts": {
     "build": "tsup",
+    "prepack": "tsup",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write src demo",
