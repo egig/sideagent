@@ -34,7 +34,13 @@ function useTheme() {
 function App() {
   const [theme, toggleTheme] = useTheme();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const load = useCallback(() => fetch("/api/invoices", { headers: AUTH }).then((r) => r.json()).then(setInvoices), []);
+  const load = useCallback(
+    () =>
+      fetch("/api/invoices", { headers: AUTH })
+        .then((r) => r.json())
+        .then(setInvoices),
+    [],
+  );
   useEffect(() => void load(), [load]);
 
   return (
@@ -51,7 +57,12 @@ function App() {
       <main className="page">
         <header className="page-head">
           <h1>Invoices</h1>
-          <button className="theme-toggle" onClick={toggleTheme} aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} title="Toggle dark mode">
+          <button
+            className="theme-toggle"
+            onClick={toggleTheme}
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+            title="Toggle dark mode"
+          >
             {theme === "dark" ? "☀ Light" : "☾ Dark"}
           </button>
         </header>

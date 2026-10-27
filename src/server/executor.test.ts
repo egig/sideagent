@@ -3,8 +3,16 @@ import { executeOperation } from "./executor.js";
 import type { Operation } from "./openapi.js";
 
 const op: Operation = {
-  operationId: "x", method: "get", path: "/x", description: "", tags: [], params: [], hasBody: false,
-  inputSchema: {}, ext: {}, needsApproval: false,
+  operationId: "x",
+  method: "get",
+  path: "/x",
+  description: "",
+  tags: [],
+  params: [],
+  hasBody: false,
+  inputSchema: {},
+  ext: {},
+  needsApproval: false,
 };
 const ctx = { baseUrl: "https://api.example.com", headers: {}, callTimeoutMs: 1000, maxResultBytes: 50 };
 

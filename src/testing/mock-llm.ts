@@ -14,15 +14,21 @@ function script(messages: Msg[], forced?: string): { text?: string; call?: { nam
   const text = String(last.content ?? "");
   const explicit = /CALL (\S+)\s*(\{.*\})?/s.exec(text);
   if (explicit) return { call: { name: explicit[1]!, args: explicit[2] ? JSON.parse(explicit[2]) : {} } };
-  if (/\b(policy|refunds?|terms|docs|warranty)\b/i.test(text)) return { call: { name: "search_knowledge", args: { query: text } } };
+  if (/\b(policy|refunds?|terms|docs|warranty)\b/i.test(text))
+    return { call: { name: "search_knowledge", args: { query: text } } };
   if (/\blist\b/i.test(text)) return { call: { name: "listInvoices", args: {} } };
-  if (/\bcreate\b/i.test(text)) return { call: { name: "createInvoice", args: { body: { customer: "Acme", amount: 100 } } } };
+  if (/\bcreate\b/i.test(text))
+    return { call: { name: "createInvoice", args: { body: { customer: "Acme", amount: 100 } } } };
   if (/\bdelete\b/i.test(text)) return { call: { name: "deleteInvoice", args: { id: "1" } } };
   return { text: "Hello from the mock model." };
 }
 
 export async function mockLlmHandler(request: Request): Promise<Response> {
-  const body = (await request.json()) as { messages: Msg[]; stream?: boolean; tool_choice?: { function?: { name?: string } } };
+  const body = (await request.json()) as {
+    messages: Msg[];
+    stream?: boolean;
+    tool_choice?: { function?: { name?: string } };
+  };
   const { text, call } = script(body.messages, body.tool_choice?.function?.name);
   // Unique per response: LangGraph merges messages that share an id.
   const id = `chatcmpl-mock-${crypto.randomUUID()}`;
@@ -39,7 +45,17 @@ export async function mockLlmHandler(request: Request): Promise<Response> {
           index: 0,
           finish_reason: call ? "tool_calls" : "stop",
           message: call
-            ? { role: "assistant", content: null, tool_calls: [{ id: "call_1", type: "function", function: { name: call.name, arguments: JSON.stringify(call.args) } }] }
+            ? {
+                role: "assistant",
+                content: null,
+                tool_calls: [
+                  {
+                    id: "call_1",
+                    type: "function",
+                    function: { name: call.name, arguments: JSON.stringify(call.args) },
+                  },
+                ],
+              }
             : { role: "assistant", content: text },
         },
       ],
@@ -50,11 +66,26 @@ export async function mockLlmHandler(request: Request): Promise<Response> {
   if (call) {
     chunks.push({
       ...base,
-      choices: [{ index: 0, delta: { tool_calls: [{ index: 0, id: `call_${Math.random().toString(36).slice(2, 8)}`, type: "function", function: { name: call.name, arguments: JSON.stringify(call.args) } }] } }],
+      choices: [
+        {
+          index: 0,
+          delta: {
+            tool_calls: [
+              {
+                index: 0,
+                id: `call_${Math.random().toString(36).slice(2, 8)}`,
+                type: "function",
+                function: { name: call.name, arguments: JSON.stringify(call.args) },
+              },
+            ],
+          },
+        },
+      ],
     });
     chunks.push({ ...base, choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }] });
   } else {
-    for (const w of (text ?? "").split(/(?<= )/)) chunks.push({ ...base, choices: [{ index: 0, delta: { content: w } }] });
+    for (const w of (text ?? "").split(/(?<= )/))
+      chunks.push({ ...base, choices: [{ index: 0, delta: { content: w } }] });
     chunks.push({ ...base, choices: [{ index: 0, delta: {}, finish_reason: "stop" }] });
   }
   const sse = chunks.map((c) => `data: ${JSON.stringify(c)}\n\n`).join("") + "data: [DONE]\n\n";
@@ -88,7 +119,11 @@ export async function mockEmbeddingsHandler(request: Request): Promise<Response>
   return Response.json({
     object: "list",
     model: "mock-embedding",
-    data: inputs.map((t, index) => ({ object: "embedding", index, embedding: body.encoding_format === "base64" ? toB64(mockEmbed(t)) : mockEmbed(t) })),
+    data: inputs.map((t, index) => ({
+      object: "embedding",
+      index,
+      embedding: body.encoding_format === "base64" ? toB64(mockEmbed(t)) : mockEmbed(t),
+    })),
     usage: { prompt_tokens: 0, total_tokens: 0 },
   });
 }

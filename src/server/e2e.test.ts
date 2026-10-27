@@ -11,17 +11,38 @@ const spec = {
   info: { title: "t", version: "1" },
   paths: {
     "/invoices": {
-      get: { operationId: "listInvoices", summary: "List invoices", "x-agent": { responseFields: ["id", "customer", "amount"] }, responses: { "200": { description: "ok" } } },
+      get: {
+        operationId: "listInvoices",
+        summary: "List invoices",
+        "x-agent": { responseFields: ["id", "customer", "amount"] },
+        responses: { "200": { description: "ok" } },
+      },
       post: {
         operationId: "createInvoice",
         summary: "Create invoice",
         "x-agent": { invalidates: ["invoices"] },
-        requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { customer: { type: "string" }, amount: { type: "number" } }, required: ["customer", "amount"] } } } },
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: { customer: { type: "string" }, amount: { type: "number" } },
+                required: ["customer", "amount"],
+              },
+            },
+          },
+        },
         responses: { "200": { description: "ok" } },
       },
     },
     "/invoices/{id}": {
-      delete: { operationId: "deleteInvoice", summary: "Delete", parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { "200": { description: "ok" } } },
+      delete: {
+        operationId: "deleteInvoice",
+        summary: "Delete",
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        responses: { "200": { description: "ok" } },
+      },
     },
   },
 };
@@ -30,7 +51,9 @@ const invoices: any[] = [{ id: "1", customer: "Acme", amount: 5, internalNote: "
 const seenAuth: (string | undefined)[] = [];
 const apiHits: string[] = [];
 
-function listen(handler: (req: IncomingMessage, body: string) => { status: number; body: unknown } | Promise<Response>): Promise<Server> {
+function listen(
+  handler: (req: IncomingMessage, body: string) => { status: number; body: unknown } | Promise<Response>,
+): Promise<Server> {
   return new Promise((resolve) => {
     const s = createServer(async (req, res) => {
       let body = "";
@@ -87,16 +110,23 @@ afterAll(() => {
 });
 
 async function chat(body: unknown, opts: { user?: string; origin?: string | null; method?: string } = {}) {
-  const headers: Record<string, string> = { "content-type": "application/json", authorization: `Bearer ${opts.user ?? "u1"}` };
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+    authorization: `Bearer ${opts.user ?? "u1"}`,
+  };
   if (opts.origin !== null) headers.origin = opts.origin ?? ORIGIN;
-  const res = await agent.handler(new Request("http://localhost/agent", { method: opts.method ?? "POST", headers, body: JSON.stringify(body) }));
+  const res = await agent.handler(
+    new Request("http://localhost/agent", { method: opts.method ?? "POST", headers, body: JSON.stringify(body) }),
+  );
   const events: AgentEvent[] = [];
   if (res.headers.get("content-type")?.includes("event-stream")) {
-    for (const block of (await res.text()).split("\n\n")) if (block.startsWith("data: ")) events.push(JSON.parse(block.slice(6)));
+    for (const block of (await res.text()).split("\n\n"))
+      if (block.startsWith("data: ")) events.push(JSON.parse(block.slice(6)));
   }
   return { res, events };
 }
-const of = <T extends AgentEvent["type"]>(events: AgentEvent[], t: T) => events.filter((e) => e.type === t) as Extract<AgentEvent, { type: T }>[];
+const of = <T extends AgentEvent["type"]>(events: AgentEvent[], t: T) =>
+  events.filter((e) => e.type === t) as Extract<AgentEvent, { type: T }>[];
 
 describe("happy paths", () => {
   it("runs a read call without approval, forwards auth, filters fields", async () => {
@@ -180,21 +210,43 @@ describe("attacks", () => {
     expect((await chat({ message: "hi" }, { origin: "https://evil.com" })).res.status).toBe(403);
     expect((await chat({ message: "hi" }, { origin: null })).res.status).toBe(403);
     expect((await chat({ message: "hi" }, { method: "PUT" })).res.status).toBe(405);
-    const res = await agent.handler(new Request("http://x", { method: "POST", headers: { origin: ORIGIN, "content-type": "text/plain" }, body: "x" }));
+    const res = await agent.handler(
+      new Request("http://x", { method: "POST", headers: { origin: ORIGIN, "content-type": "text/plain" }, body: "x" }),
+    );
     expect(res.status).toBe(415);
   });
 });
 
 describe("config safety", () => {
   it("requires getAuth or anonymous", async () => {
-    await expect(createAgent({ spec, baseUrl: "https://a.com", llm: { baseUrl: "https://l.com/v1", apiKey: "k", model: "m" }, allow: ["listInvoices"], allowedOrigins: [ORIGIN] })).rejects.toThrow(/getAuth/);
+    await expect(
+      createAgent({
+        spec,
+        baseUrl: "https://a.com",
+        llm: { baseUrl: "https://l.com/v1", apiKey: "k", model: "m" },
+        allow: ["listInvoices"],
+        allowedOrigins: [ORIGIN],
+      }),
+    ).rejects.toThrow(/getAuth/);
   });
   it("fails when an allow pattern matches nothing", async () => {
-    await expect(createAgent({ spec, baseUrl: "https://a.com", llm: { baseUrl: "https://l.com/v1", apiKey: "k", model: "m" }, allow: ["nope"], allowedOrigins: [ORIGIN], anonymous: true })).rejects.toThrow(/matched no operation/);
+    await expect(
+      createAgent({
+        spec,
+        baseUrl: "https://a.com",
+        llm: { baseUrl: "https://l.com/v1", apiKey: "k", model: "m" },
+        allow: ["nope"],
+        allowedOrigins: [ORIGIN],
+        anonymous: true,
+      }),
+    ).rejects.toThrow(/matched no operation/);
   });
   it("doctor lists exposed tools with approval mode", async () => {
     const report = await agent.doctor();
-    expect(report.tools.map((t) => `${t.operationId}:${t.approval}`).sort()).toEqual(["createInvoice:required", "listInvoices:auto"]);
+    expect(report.tools.map((t) => `${t.operationId}:${t.approval}`).sort()).toEqual([
+      "createInvoice:required",
+      "listInvoices:auto",
+    ]);
   });
 });
 
@@ -203,7 +255,9 @@ describe("cors", () => {
     const ok = await agent.handler(new Request("http://x", { method: "OPTIONS", headers: { origin: ORIGIN } }));
     expect(ok.status).toBe(204);
     expect(ok.headers.get("access-control-allow-origin")).toBe(ORIGIN);
-    const bad = await agent.handler(new Request("http://x", { method: "OPTIONS", headers: { origin: "https://evil.com" } }));
+    const bad = await agent.handler(
+      new Request("http://x", { method: "OPTIONS", headers: { origin: "https://evil.com" } }),
+    );
     expect(bad.status).toBe(405);
     expect(bad.headers.get("access-control-allow-origin")).toBeNull();
   });
@@ -212,7 +266,11 @@ describe("cors", () => {
 describe("history", () => {
   const post = async (body: unknown, user = "u1") => {
     const res = await agent.handler(
-      new Request("http://x", { method: "POST", headers: { "content-type": "application/json", origin: ORIGIN, authorization: `Bearer ${user}` }, body: JSON.stringify(body) }),
+      new Request("http://x", {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: ORIGIN, authorization: `Bearer ${user}` },
+        body: JSON.stringify(body),
+      }),
     );
     return { status: res.status, json: res.headers.get("content-type")?.includes("json") ? await res.json() : null };
   };

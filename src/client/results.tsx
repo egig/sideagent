@@ -6,7 +6,11 @@ const MAX_CELL = 80;
 
 /** "createdAt" / "created_at" -> "Created at" */
 export function humanize(key: string): string {
-  const s = key.replace(/[_-]+/g, " ").replace(/([a-z0-9])([A-Z])/g, "$1 $2").trim().toLowerCase();
+  const s = key
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .trim()
+    .toLowerCase();
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 

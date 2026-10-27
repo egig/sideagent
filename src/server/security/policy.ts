@@ -14,7 +14,9 @@ export function buildSystemPrompt(instructions: string | undefined, context: unk
   let out = SECURITY_PREAMBLE + (hasKnowledge ? KNOWLEDGE_RULE : "");
   if (instructions) out += `\n\nApplication instructions:\n${instructions}`;
   if (context !== undefined) {
-    const text = JSON.stringify(context).slice(0, 4000).replace(/<\/page_context/gi, "<\\/page_context");
+    const text = JSON.stringify(context)
+      .slice(0, 4000)
+      .replace(/<\/page_context/gi, "<\\/page_context");
     out += `\n\n<page_context>${text}</page_context>`;
   }
   return out;
@@ -31,9 +33,7 @@ const SENSITIVE = /pass(word)?|secret|token|api[-_]?key|authorization|cookie|cre
 export function redact(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(redact);
   if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value).map(([k, v]) => [k, SENSITIVE.test(k) ? "[redacted]" : redact(v)]),
-    );
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, SENSITIVE.test(k) ? "[redacted]" : redact(v)]));
   }
   return value;
 }

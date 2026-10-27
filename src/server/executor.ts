@@ -1,4 +1,4 @@
-import { assertAllowedUrl } from "./url-guard.js";
+import { assertAllowedUrl } from "./security/url-guard.js";
 import type { Operation } from "./openapi.js";
 
 export interface ExecContext {

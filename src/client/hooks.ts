@@ -31,3 +31,11 @@ export function safely(fn: (() => void) | undefined) {
     console.error("[sideagent] hook threw:", err);
   }
 }
+
+/** Runs the operation hooks for a finished tool call. */
+export function fireComplete(hooks: AgentHooks | undefined, ev: Extract<AgentEvent, { type: "tool.complete" }>) {
+  const oe: OperationEvent = { operationId: ev.operationId, status: ev.status, args: ev.args, result: ev.result };
+  safely(() => hooks?.onAnyOperation?.(oe));
+  safely(() => hooks?.onOperationComplete?.[ev.operationId]?.(oe));
+  for (const tag of ev.invalidates) safely(() => hooks?.onInvalidate?.(tag, oe));
+}

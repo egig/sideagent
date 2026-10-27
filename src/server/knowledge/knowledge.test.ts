@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { mockEmbed } from "../testing/mock-llm.js";
-import { chunkText, htmlToText, KnowledgeBase, wrapKnowledge, type KnowledgeOptions } from "./knowledge.js";
-import { assertPublicUrl } from "./url-guard.js";
+import { mockEmbed } from "../../testing/mock-llm.js";
+import { chunkText, htmlToText, KnowledgeBase, wrapKnowledge, type KnowledgeOptions } from "./index.js";
+import { assertPublicUrl } from "../security/url-guard.js";
 
 const opts = (over: Partial<KnowledgeOptions> = {}): KnowledgeOptions => ({
   sources: [],
@@ -69,10 +69,16 @@ describe("assertPublicUrl", () => {
 describe("KnowledgeBase", () => {
   it("ranks the relevant source first", async () => {
     const kb = new KnowledgeBase(
-      opts({ sources: [
-        { id: "refunds", title: "Refunds", content: "Customers can request a refund within thirty days of purchase." },
-        { id: "shipping", title: "Shipping", content: "Orders ship from the warehouse in two business days." },
-      ] }),
+      opts({
+        sources: [
+          {
+            id: "refunds",
+            title: "Refunds",
+            content: "Customers can request a refund within thirty days of purchase.",
+          },
+          { id: "shipping", title: "Shipping", content: "Orders ship from the warehouse in two business days." },
+        ],
+      }),
       embed,
     );
     await kb.load();
@@ -81,7 +87,10 @@ describe("KnowledgeBase", () => {
   });
 
   it("records oversize sources as errors instead of throwing", async () => {
-    const kb = new KnowledgeBase(opts({ maxSourceBytes: 50, sources: [{ id: "big", title: "Big", content: "x".repeat(500) }] }), embed);
+    const kb = new KnowledgeBase(
+      opts({ maxSourceBytes: 50, sources: [{ id: "big", title: "Big", content: "x".repeat(500) }] }),
+      embed,
+    );
     await expect(kb.load()).resolves.toBeUndefined();
     expect(kb.status()[0]!.error).toMatch(/maxSourceBytes/);
   });
@@ -89,12 +98,21 @@ describe("KnowledgeBase", () => {
   it("fetches html urls, refuses cross-host redirects and private hosts, and keeps going", async () => {
     const fetchMock = vi.fn(async (u: any) => {
       const url = String(u);
-      if (url.includes("good")) return new Response("<h1>Refund policy</h1><p>Thirty days.</p>", { headers: { "content-type": "text/html" } });
-      if (url.includes("hop")) return new Response(null, { status: 302, headers: { location: "https://evil.example.net/x" } });
+      if (url.includes("good"))
+        return new Response("<h1>Refund policy</h1><p>Thirty days.</p>", { headers: { "content-type": "text/html" } });
+      if (url.includes("hop"))
+        return new Response(null, { status: 302, headers: { location: "https://evil.example.net/x" } });
       return new Response("bin", { headers: { "content-type": "image/png" } });
     }) as unknown as typeof fetch;
     const kb = new KnowledgeBase(
-      opts({ urls: ["https://docs.example.com/good", "https://docs.example.com/hop", "http://10.0.0.5/secret", "https://docs.example.com/img"] }),
+      opts({
+        urls: [
+          "https://docs.example.com/good",
+          "https://docs.example.com/hop",
+          "http://10.0.0.5/secret",
+          "https://docs.example.com/img",
+        ],
+      }),
       { ...embed, fetch: fetchMock },
     );
     await kb.load();
@@ -108,8 +126,14 @@ describe("KnowledgeBase", () => {
 
   it("refreshes url sources in the background after the ttl, once", async () => {
     let now = 0;
-    const fetchMock = vi.fn(async () => new Response("# Doc\n\nrefund text", { headers: { "content-type": "text/markdown" } })) as unknown as typeof fetch;
-    const kb = new KnowledgeBase(opts({ urls: ["https://docs.example.com/a"] }), { ...embed, fetch: fetchMock, now: () => now });
+    const fetchMock = vi.fn(
+      async () => new Response("# Doc\n\nrefund text", { headers: { "content-type": "text/markdown" } }),
+    ) as unknown as typeof fetch;
+    const kb = new KnowledgeBase(opts({ urls: ["https://docs.example.com/a"] }), {
+      ...embed,
+      fetch: fetchMock,
+      now: () => now,
+    });
     await kb.load();
     expect(fetchMock).toHaveBeenCalledTimes(1);
     now = 500;
@@ -123,7 +147,10 @@ describe("KnowledgeBase", () => {
 
   it("keeps old data when a refresh fails", async () => {
     let ok = true;
-    const fetchMock = (async () => (ok ? new Response("# Doc\n\nrefund text", { headers: { "content-type": "text/markdown" } }) : new Response("no", { status: 500 }))) as unknown as typeof fetch;
+    const fetchMock = (async () =>
+      ok
+        ? new Response("# Doc\n\nrefund text", { headers: { "content-type": "text/markdown" } })
+        : new Response("no", { status: 500 })) as unknown as typeof fetch;
     const kb = new KnowledgeBase(opts({ urls: ["https://docs.example.com/a"] }), { ...embed, fetch: fetchMock });
     await kb.load();
     ok = false;

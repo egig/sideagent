@@ -35,13 +35,17 @@ app.post("/mock/v1/embeddings", (c) => mockEmbeddingsHandler(c.req.raw));
 
 // A docs page the agent loads as a URL knowledge source (served here so the demo is self-contained).
 app.get("/docs/payment-terms", (c) =>
-  c.html("<html><head><title>Payment terms</title></head><body><h1>Payment terms</h1><p>Invoices are due net-30. Late payments accrue 1.5% interest per month.</p><h2>Refunds</h2><p>Refunds are issued to the original payment method within 5 business days.</p></body></html>"),
+  c.html(
+    "<html><head><title>Payment terms</title></head><body><h1>Payment terms</h1><p>Invoices are due net-30. Late payments accrue 1.5% interest per month.</p><h2>Refunds</h2><p>Refunds are issued to the original payment method within 5 business days.</p></body></html>",
+  ),
 );
 
 // Listen first: the mock LLM, mock embeddings and docs page below are served by this same process,
 // and the agent calls them while it starts up.
 let agentHandler: ((req: Request) => Promise<Response>) | undefined;
-app.on(["POST", "OPTIONS"], "/agent", (c) => (agentHandler ? agentHandler(c.req.raw) : c.json({ error: "starting up" }, 503)));
+app.on(["POST", "OPTIONS"], "/agent", (c) =>
+  agentHandler ? agentHandler(c.req.raw) : c.json({ error: "starting up" }, 503),
+);
 await new Promise<void>((resolve) => serve({ fetch: app.fetch, port: PORT }, () => resolve()));
 
 const real = !!process.env.LLM_API_KEY;
@@ -63,7 +67,8 @@ const agent = await createAgent({
       {
         id: "invoicing-guide",
         title: "Invoicing guide",
-        content: "# Invoicing guide\n\nCreate an invoice with a customer name and an amount. Amounts are in US dollars.\n\n## Disputes\n\nA customer can dispute an invoice within 14 days by contacting support.",
+        content:
+          "# Invoicing guide\n\nCreate an invoice with a customer name and an amount. Amounts are in US dollars.\n\n## Disputes\n\nA customer can dispute an invoice within 14 days by contacting support.",
       },
     ],
     urls: [{ url: `http://localhost:${PORT}/docs/payment-terms`, title: "Payment terms" }],

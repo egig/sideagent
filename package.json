@@ -39,6 +39,8 @@
     "build": "tsup",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
+    "format": "prettier --write src demo",
+    "format:check": "prettier --check src demo",
     "demo:api": "tsx demo/server.ts",
     "demo": "tsx demo/server.ts & vite demo",
     "eval:skill": "cd skills/sideagent && claude plugin eval . --scaffold --allow-tools Write Edit --trust-plugin --no-publish"
@@ -69,6 +71,7 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^5.0.0",
     "hono": "^4.9.0",
+    "prettier": "^3.9.10",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tsup": "^8.5.0",

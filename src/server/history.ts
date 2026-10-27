@@ -1,13 +1,6 @@
 import type { BaseMessage } from "@langchain/core/messages";
 import type { HistoryMessage, HistoryPart } from "../protocol.js";
-
-function textOf(content: unknown): string {
-  if (typeof content === "string") return content;
-  if (Array.isArray(content)) {
-    return content.map((c) => (c && typeof c === "object" && "text" in c ? String((c as { text: unknown }).text) : "")).join("");
-  }
-  return "";
-}
+import { messageText } from "./message-text.js";
 
 /**
  * Rebuilds what the user saw from stored messages. Tool results come from the structured
@@ -23,13 +16,13 @@ export function toHistory(messages: BaseMessage[]): HistoryMessage[] {
   for (const m of messages) {
     const type = m._getType();
     if (type === "human") {
-      out.push({ role: "user", parts: [{ type: "text", text: textOf(m.content) }] });
+      out.push({ role: "user", parts: [{ type: "text", text: messageText(m.content) }] });
     } else if (type === "ai") {
       const a = assistant();
       for (const tc of (m as any).tool_calls ?? []) {
         a.parts.push({ type: "tool", callId: tc.id, operationId: tc.name, args: tc.args });
       }
-      const text = textOf(m.content);
+      const text = messageText(m.content);
       if (text) a.parts.push({ type: "text", text });
     } else if (type === "tool") {
       const id = (m as any).tool_call_id;
