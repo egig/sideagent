@@ -17,7 +17,8 @@ export function chunkText(content: string, size: number): string[] {
       heading = block.split("\n")[0]!;
     }
     // hard-split blocks that are bigger than a chunk
-    const pieces = block.length > size ? (block.match(new RegExp(`[\\s\\S]{1,${size}}(?:\\s|$)`, "g")) ?? [block]) : [block];
+    const pieces =
+      block.length > size ? (block.match(new RegExp(`[\\s\\S]{1,${size}}(?:\\s|$)`, "g")) ?? [block]) : [block];
     for (const piece of pieces) {
       if (cur && cur.length + piece.length + 2 > size) flush();
       if (!cur) cur = withHeading(piece.trim());

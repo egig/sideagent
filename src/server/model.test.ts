@@ -17,7 +17,14 @@ const spec = {
       post: {
         operationId: "createInvoice",
         summary: "Create",
-        requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { customer: { type: "string" } }, required: ["customer"] } } } },
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { type: "object", properties: { customer: { type: "string" } }, required: ["customer"] },
+            },
+          },
+        },
         responses: { "200": { description: "ok" } },
       },
     },
@@ -33,8 +40,25 @@ const ai: WorkersAiBinding = {
     const last = input.messages.at(-1);
     if (last.role === "tool") return { response: `done: ${String(last.content).slice(0, 40)}` };
     const text = String(last.content);
-    if (/create/.test(text)) return { choices: [{ message: { content: null, tool_calls: [{ id: "c1", type: "function", function: { name: "createInvoice", arguments: '{"body":{"customer":"Acme"}}' } }] } }] };
-    if (/list/.test(text)) return { output: [{ type: "function_call", call_id: "c2", name: "listInvoices", arguments: "{}" }] };
+    if (/create/.test(text))
+      return {
+        choices: [
+          {
+            message: {
+              content: null,
+              tool_calls: [
+                {
+                  id: "c1",
+                  type: "function",
+                  function: { name: "createInvoice", arguments: '{"body":{"customer":"Acme"}}' },
+                },
+              ],
+            },
+          },
+        ],
+      };
+    if (/list/.test(text))
+      return { output: [{ type: "function_call", call_id: "c2", name: "listInvoices", arguments: "{}" }] };
     return { response: "hi" };
   },
 };
@@ -65,12 +89,20 @@ beforeAll(async () => {
 afterAll(() => api.close());
 
 async function chat(body: unknown) {
-  const res = await agent.handler(new Request("http://x/agent", { method: "POST", headers: { "content-type": "application/json", origin: ORIGIN }, body: JSON.stringify(body) }));
+  const res = await agent.handler(
+    new Request("http://x/agent", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: ORIGIN },
+      body: JSON.stringify(body),
+    }),
+  );
   const events: AgentEvent[] = [];
-  for (const block of (await res.text()).split("\n\n")) if (block.startsWith("data: ")) events.push(JSON.parse(block.slice(6)));
+  for (const block of (await res.text()).split("\n\n"))
+    if (block.startsWith("data: ")) events.push(JSON.parse(block.slice(6)));
   return events;
 }
-const of = <T extends AgentEvent["type"]>(events: AgentEvent[], t: T) => events.filter((e) => e.type === t) as Extract<AgentEvent, { type: T }>[];
+const of = <T extends AgentEvent["type"]>(events: AgentEvent[], t: T) =>
+  events.filter((e) => e.type === t) as Extract<AgentEvent, { type: T }>[];
 
 describe("createAgent with an injected model", () => {
   it("runs an allowed GET operation without approval and streams the final text", async () => {
@@ -78,7 +110,11 @@ describe("createAgent with an injected model", () => {
     const events = await chat({ message: "list invoices" });
     expect(of(events, "tool.complete")[0]).toMatchObject({ operationId: "listInvoices", status: 200 });
     expect(hits).toEqual(["GET /invoices"]);
-    expect(of(events, "text.delta").map((e) => e.text).join("")).toContain("done:");
+    expect(
+      of(events, "text.delta")
+        .map((e) => e.text)
+        .join(""),
+    ).toContain("done:");
     // tools reached the binding in OpenAI function format
     expect(aiCalls.some((c) => c.input.tools?.some((t: any) => t.function.name === "listInvoices"))).toBe(true);
   });
@@ -103,14 +139,31 @@ describe("createAgent with an injected model", () => {
 
   it("doctor checks tool calling through invoke, not an HTTP call", async () => {
     const calls: any[] = [];
-    const m = workersAiChatModel({ run: async (_m, i) => (calls.push(i), { response: null, tool_calls: [{ name: "ping", arguments: {} }] }) }, "m");
-    const a = await createAgent({ spec, baseUrl: "https://a.com", model: m, allow: ["listInvoices"], allowedOrigins: [ORIGIN], anonymous: true });
+    const m = workersAiChatModel(
+      { run: async (_m, i) => (calls.push(i), { response: null, tool_calls: [{ name: "ping", arguments: {} }] }) },
+      "m",
+    );
+    const a = await createAgent({
+      spec,
+      baseUrl: "https://a.com",
+      model: m,
+      allow: ["listInvoices"],
+      allowedOrigins: [ORIGIN],
+      anonymous: true,
+    });
     const report = await a.doctor();
     expect(report.checks.find((c) => c.name === "llm tool calling")).toMatchObject({ ok: true });
     expect(calls[0].tools[0].function.name).toBe("ping");
 
     const dumb = workersAiChatModel({ run: async () => ({ response: "no tools" }) }, "m");
-    const b = await createAgent({ spec, baseUrl: "https://a.com", model: dumb, allow: ["listInvoices"], allowedOrigins: [ORIGIN], anonymous: true });
+    const b = await createAgent({
+      spec,
+      baseUrl: "https://a.com",
+      model: dumb,
+      allow: ["listInvoices"],
+      allowedOrigins: [ORIGIN],
+      anonymous: true,
+    });
     expect((await b.doctor()).ok).toBe(false);
   });
 });
@@ -128,7 +181,13 @@ describe("model / llm / embeddings config", () => {
     const knowledge = { sources: [{ id: "a", title: "A", content: "x" }] };
     expect(() => parseConfig({ ...base, llm, knowledge }, true)).toThrow(/knowledge needs/);
     expect(() => parseConfig({ ...base, llm, knowledge }, true, { embeddings: true })).not.toThrow();
-    expect(() => parseConfig({ ...base, llm, knowledge: { ...knowledge, embeddings: { model: "e" } } }, true, { embeddings: true })).toThrow(/mutually exclusive/);
-    expect(() => parseConfig({ ...base, knowledge: { ...knowledge, embeddings: { model: "e" } } }, true, { model: true })).toThrow(/baseUrl and apiKey/);
+    expect(() =>
+      parseConfig({ ...base, llm, knowledge: { ...knowledge, embeddings: { model: "e" } } }, true, {
+        embeddings: true,
+      }),
+    ).toThrow(/mutually exclusive/);
+    expect(() =>
+      parseConfig({ ...base, knowledge: { ...knowledge, embeddings: { model: "e" } } }, true, { model: true }),
+    ).toThrow(/baseUrl and apiKey/);
   });
 });

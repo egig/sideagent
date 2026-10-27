@@ -40,7 +40,12 @@ export function HistoryList(props: {
             <span className="sa-thread-title">{t.title}</span>
             <span className="sa-more">{ago(t.updatedAt)}</span>
           </button>
-          <button className="sa-btn sa-icon-btn" aria-label="Delete conversation" title="Delete" onClick={() => void remove(t.id)}>
+          <button
+            className="sa-btn sa-icon-btn"
+            aria-label="Delete conversation"
+            title="Delete"
+            onClick={() => void remove(t.id)}
+          >
             <TrashIcon />
           </button>
         </div>

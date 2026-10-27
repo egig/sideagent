@@ -6,7 +6,12 @@ const run = (events: AgentEvent[]) => events.reduce<Part[]>((parts, ev) => apply
 
 describe("applyEvent", () => {
   it("joins consecutive text deltas into one part", () => {
-    expect(run([{ type: "text.delta", text: "Hel" }, { type: "text.delta", text: "lo" }])).toEqual([{ type: "text", text: "Hello" }]);
+    expect(
+      run([
+        { type: "text.delta", text: "Hel" },
+        { type: "text.delta", text: "lo" },
+      ]),
+    ).toEqual([{ type: "text", text: "Hello" }]);
   });
 
   it("starts a new text part after a tool call", () => {
@@ -20,12 +25,35 @@ describe("applyEvent", () => {
 
   it("updates one tool part from request to completion", () => {
     const parts = run([
-      { type: "approval.request", callId: "c1", operationId: "createInvoice", method: "POST", path: "/invoices", args: { body: { customer: "x" } }, token: "t", expiresAt: 0 },
+      {
+        type: "approval.request",
+        callId: "c1",
+        operationId: "createInvoice",
+        method: "POST",
+        path: "/invoices",
+        args: { body: { customer: "x" } },
+        token: "t",
+        expiresAt: 0,
+      },
       { type: "tool.start", callId: "c1", operationId: "createInvoice" },
-      { type: "tool.complete", callId: "c1", operationId: "createInvoice", status: 201, args: { body: { customer: "x" } }, result: { id: 1 }, invalidates: [] },
+      {
+        type: "tool.complete",
+        callId: "c1",
+        operationId: "createInvoice",
+        status: 201,
+        args: { body: { customer: "x" } },
+        result: { id: 1 },
+        invalidates: [],
+      },
     ]);
     expect(parts).toHaveLength(1);
-    expect(parts[0]).toMatchObject({ type: "tool-call", toolCallId: "c1", toolName: "createInvoice", args: { body: { customer: "x" } }, result: { id: 1 } });
+    expect(parts[0]).toMatchObject({
+      type: "tool-call",
+      toolCallId: "c1",
+      toolName: "createInvoice",
+      args: { body: { customer: "x" } },
+      result: { id: 1 },
+    });
   });
 
   it("marks rejected calls and reports errors as text", () => {
@@ -48,9 +76,18 @@ describe("toInitialMessages", () => {
   it("maps history tool parts to tool-call parts", () => {
     const [user, assistant] = toInitialMessages([
       { role: "user", parts: [{ type: "text", text: "hi" }] },
-      { role: "assistant", parts: [{ type: "tool", callId: "c1", operationId: "listInvoices", args: { limit: 1 }, result: [] }] },
+      {
+        role: "assistant",
+        parts: [{ type: "tool", callId: "c1", operationId: "listInvoices", args: { limit: 1 }, result: [] }],
+      },
     ]);
     expect(user!.content).toEqual([{ type: "text", text: "hi" }]);
-    expect(assistant!.content[0]).toMatchObject({ type: "tool-call", toolCallId: "c1", toolName: "listInvoices", args: { limit: 1 }, result: [] });
+    expect(assistant!.content[0]).toMatchObject({
+      type: "tool-call",
+      toolCallId: "c1",
+      toolName: "listInvoices",
+      args: { limit: 1 },
+      result: [],
+    });
   });
 });

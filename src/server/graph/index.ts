@@ -1,6 +1,14 @@
 import { AIMessage, SystemMessage, ToolMessage } from "@langchain/core/messages";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
-import { END, MemorySaver, MessagesAnnotation, START, StateGraph, type BaseCheckpointSaver, type LangGraphRunnableConfig } from "@langchain/langgraph";
+import {
+  END,
+  MemorySaver,
+  MessagesAnnotation,
+  START,
+  StateGraph,
+  type BaseCheckpointSaver,
+  type LangGraphRunnableConfig,
+} from "@langchain/langgraph";
 import type { AgentConfig } from "../config.js";
 import { SEARCH_TOOL, type KnowledgeBase } from "../knowledge/index.js";
 import type { Operation } from "../openapi.js";
@@ -29,7 +37,16 @@ export interface GraphDeps {
 /** Per-turn fields that http/turn.ts puts under `configurable`. LangGraph types them as Record<string, any>. */
 const turnOf = (cfg: LangGraphRunnableConfig) => cfg.configurable as { thread_id: string; run: RunContext };
 
-export function buildGraph({ config, ops, secret, checkpointer, onAudit, knowledge, model: baseModel, bindOptions }: GraphDeps) {
+export function buildGraph({
+  config,
+  ops,
+  secret,
+  checkpointer,
+  onAudit,
+  knowledge,
+  model: baseModel,
+  bindOptions,
+}: GraphDeps) {
   const byName = new Map(ops.map((o) => [o.operationId, o]));
   const toolDefs = ops.map((o) => ({
     type: "function" as const,
@@ -37,7 +54,8 @@ export function buildGraph({ config, ops, secret, checkpointer, onAudit, knowled
   }));
   if (knowledge) toolDefs.push(SEARCH_TOOL_DEF);
 
-  if (!baseModel.bindTools) throw new Error("The chat model does not support bindTools(), which sideagent needs for tool calling.");
+  if (!baseModel.bindTools)
+    throw new Error("The chat model does not support bindTools(), which sideagent needs for tool calling.");
   const model = baseModel.bindTools(toolDefs, bindOptions);
 
   const audit = (e: AuditEvent) => {
@@ -61,7 +79,9 @@ export function buildGraph({ config, ops, secret, checkpointer, onAudit, knowled
 
     // Only the first call runs: a node that pauses for approval is re-executed on resume,
     // so running several calls here could repeat a mutation.
-    const skipped = calls.slice(1).map((c) => new ToolMessage({ tool_call_id: c.id!, content: "Skipped: call one tool at a time and retry." }));
+    const skipped = calls
+      .slice(1)
+      .map((c) => new ToolMessage({ tool_call_id: c.id!, content: "Skipped: call one tool at a time and retry." }));
     const call = calls[0];
     if (!call) return { messages: skipped };
 
@@ -107,6 +127,8 @@ export function buildGraph({ config, ops, secret, checkpointer, onAudit, knowled
 export type AgentGraph = ReturnType<typeof buildGraph>;
 
 /** The approval a thread is paused on, if any. */
-export function pendingApprovalOf(snapshot: { tasks: readonly { interrupts: readonly { value?: unknown }[] }[] }): PendingApproval | undefined {
+export function pendingApprovalOf(snapshot: {
+  tasks: readonly { interrupts: readonly { value?: unknown }[] }[];
+}): PendingApproval | undefined {
   return snapshot.tasks.flatMap((t) => t.interrupts)[0]?.value as PendingApproval | undefined;
 }

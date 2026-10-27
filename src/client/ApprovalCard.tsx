@@ -6,7 +6,8 @@ import type { ApprovalEvent, Decision } from "./types.js";
 /** Primitive top-level values of the request (and its body), shown as plain "Label: value" rows. */
 function summaryFields(args: unknown): [string, string][] {
   const a = (args && typeof args === "object" ? args : {}) as Record<string, unknown>;
-  const body = a.body && typeof a.body === "object" && !Array.isArray(a.body) ? (a.body as Record<string, unknown>) : {};
+  const body =
+    a.body && typeof a.body === "object" && !Array.isArray(a.body) ? (a.body as Record<string, unknown>) : {};
   const { body: _body, ...rest } = a;
   return Object.entries({ ...rest, ...body })
     .filter(([, v]) => ["string", "number", "boolean"].includes(typeof v))

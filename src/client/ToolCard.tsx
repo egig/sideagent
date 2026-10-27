@@ -1,4 +1,11 @@
-import { CheckCircledIcon, ChevronRightIcon, CrossCircledIcon, ExternalLinkIcon, FileTextIcon, ReloadIcon } from "@radix-ui/react-icons";
+import {
+  CheckCircledIcon,
+  ChevronRightIcon,
+  CrossCircledIcon,
+  ExternalLinkIcon,
+  FileTextIcon,
+  ReloadIcon,
+} from "@radix-ui/react-icons";
 import { useContext } from "react";
 import { RenderersContext } from "./context.js";
 import { httpUrl, pretty } from "./format.js";
@@ -42,11 +49,23 @@ export function ToolCard(props: { toolName: string; args: unknown; result?: unkn
   return (
     <div className="sa-tool" data-state={running ? "running" : rejected ? "rejected" : failed ? "error" : "done"}>
       <div className="sa-tool-head">
-        {running ? <ReloadIcon className="sa-spin" /> : rejected || failed ? <CrossCircledIcon /> : <CheckCircledIcon />}
+        {running ? (
+          <ReloadIcon className="sa-spin" />
+        ) : rejected || failed ? (
+          <CrossCircledIcon />
+        ) : (
+          <CheckCircledIcon />
+        )}
         <span>{toolName === SEARCH_TOOL ? "Sources" : humanize(toolName)}</span>
       </div>
       {!running &&
-        (custom ? custom({ operationId: toolName, args, result }) : toolName === SEARCH_TOOL ? <Sources result={result} /> : <ResultView result={result} />)}
+        (custom ? (
+          custom({ operationId: toolName, args, result })
+        ) : toolName === SEARCH_TOOL ? (
+          <Sources result={result} />
+        ) : (
+          <ResultView result={result} />
+        ))}
       <details className="sa-details">
         <summary>
           <ChevronRightIcon /> Details

@@ -11,7 +11,8 @@ let done: Promise<void> | undefined;
 export function ensureAsyncLocalStorage(): Promise<void> {
   done ??= (async () => {
     const spec = "node:async_hooks";
-    let ALS: (new () => unknown) | undefined = (globalThis as { AsyncLocalStorage?: new () => unknown }).AsyncLocalStorage;
+    let ALS: (new () => unknown) | undefined = (globalThis as { AsyncLocalStorage?: new () => unknown })
+      .AsyncLocalStorage;
     if (!ALS) {
       try {
         ALS = ((await import(/* @vite-ignore */ spec)) as { AsyncLocalStorage: new () => unknown }).AsyncLocalStorage;

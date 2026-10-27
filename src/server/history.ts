@@ -2,7 +2,6 @@ import type { BaseMessage } from "@langchain/core/messages";
 import type { HistoryMessage, HistoryPart } from "../protocol.js";
 import { messageText } from "./message-text.js";
 
-
 /**
  * Rebuilds what the user saw from stored messages. Tool results come from the structured
  * `artifact` (already filtered), never from the wrapped text the model saw.

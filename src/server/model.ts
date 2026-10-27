@@ -12,7 +12,13 @@ type LlmConfig = NonNullable<AgentConfig["llm"]>;
 type EmbeddingsConfig = NonNullable<NonNullable<AgentConfig["knowledge"]>["embeddings"]>;
 
 export function createChatModel(llm: LlmConfig): BaseChatModel {
-  return new ChatOpenAI({ model: llm.model, apiKey: llm.apiKey, temperature: llm.temperature, streaming: true, configuration: { baseURL: llm.baseUrl } });
+  return new ChatOpenAI({
+    model: llm.model,
+    apiKey: llm.apiKey,
+    temperature: llm.temperature,
+    streaming: true,
+    configuration: { baseURL: llm.baseUrl },
+  });
 }
 
 /** baseUrl and apiKey fall back to the llm ones (parseConfig guarantees one of the two is set). */

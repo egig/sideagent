@@ -14,10 +14,19 @@ export async function handleThreadAction(
 
   if (body.action === "threads.delete") {
     await threads.delete(userId, body.threadId);
-    await (graph.checkpointer as { deleteThread?: (id: string) => Promise<void> } | undefined)?.deleteThread?.(body.threadId);
+    await (graph.checkpointer as { deleteThread?: (id: string) => Promise<void> } | undefined)?.deleteThread?.(
+      body.threadId,
+    );
     return json(200, { ok: true }, cors);
   }
   const snap = await graph.getState({ configurable: { thread_id: body.threadId } });
   const waiting = pendingApprovalOf(snap);
-  return json(200, { messages: toHistory(snap.values.messages ?? []), ...(waiting ? { pending: { type: "approval.request", ...waiting } } : {}) }, cors);
+  return json(
+    200,
+    {
+      messages: toHistory(snap.values.messages ?? []),
+      ...(waiting ? { pending: { type: "approval.request", ...waiting } } : {}),
+    },
+    cors,
+  );
 }

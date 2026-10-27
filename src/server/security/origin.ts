@@ -4,7 +4,9 @@ export function checkOrigin(request: Request, allowedOrigins: string[]): { ok: b
   const ok = !!origin && allowedOrigins.some((o) => new URL(o).origin === origin);
   return {
     ok,
-    cors: ok ? { "access-control-allow-origin": origin!, "access-control-allow-credentials": "true", vary: "origin" } : {},
+    cors: ok
+      ? { "access-control-allow-origin": origin!, "access-control-allow-credentials": "true", vary: "origin" }
+      : {},
   };
 }
 

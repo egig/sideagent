@@ -7,6 +7,7 @@ Library that embeds a chat agent in an app: OpenAPI spec + OpenAI-compatible LLM
 - `pnpm install`
 - `pnpm test` — vitest (uses `src/testing/mock-llm.ts`, no API key needed)
 - `pnpm typecheck`
+- `pnpm format` / `pnpm format:check` — Prettier (width 120) over `src/` and `demo/`
 - `pnpm build` — tsup to `dist/`
 - `pnpm demo` — demo API on :8787 + vite UI on :5173 (scripted mock LLM unless `LLM_API_KEY` is set)
 - Docs: `pnpm --dir website install && pnpm --dir website build`
@@ -45,7 +46,7 @@ Tests sit next to the code they cover (`*.test.ts`). `e2e.test.ts` drives the fu
 - Everything in `src/server/` (non-test) must run on edge runtimes: no `node:*` imports, `Buffer`, or `process.` (enforced by `edge-compat.test.ts`, which scans subfolders).
 - `src/client/` must not import server code (enforced by `client-isolation.test.ts`).
 - Update `website/docs/` and README when public API changes.
-- Run `pnpm test && pnpm typecheck` before finishing.
+- Run `pnpm test && pnpm typecheck && pnpm format:check` before finishing.
 
 ## Skill evals
 

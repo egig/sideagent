@@ -34,26 +34,51 @@ export interface CreateAgentOptions extends AgentConfigInput {
 const KNOWLEDGE_STARTUP_WAIT_MS = 60_000;
 
 export async function createAgent(options: CreateAgentOptions) {
-  const { getAuth, beforeTurn, onAudit, checkpointer, threadStore: givenStore, vectorStore, model: givenModel, embeddings: givenEmbeddings, ...data } = options;
+  const {
+    getAuth,
+    beforeTurn,
+    onAudit,
+    checkpointer,
+    threadStore: givenStore,
+    vectorStore,
+    model: givenModel,
+    embeddings: givenEmbeddings,
+    ...data
+  } = options;
   await ensureAsyncLocalStorage();
   const config = parseConfig(data, !!getAuth, { model: !!givenModel, embeddings: !!givenEmbeddings });
   const ops = await loadOperations(config.spec, config.allow, config.limits.maxTools);
 
   const secret: string = config.approvalSecret ?? crypto.randomUUID() + crypto.randomUUID();
   if (!config.approvalSecret) {
-    console.warn("[sideagent] approvalSecret not set: using a random per-instance secret. Set it on serverless/multi-instance deployments.");
+    console.warn(
+      "[sideagent] approvalSecret not set: using a random per-instance secret. Set it on serverless/multi-instance deployments.",
+    );
   }
   const threads: ThreadStore = givenStore ?? new MemoryThreadStore();
   if (checkpointer && !givenStore) {
-    console.warn("[sideagent] persistent checkpointer without a threadStore: the history list is in-memory and will not survive restarts.");
+    console.warn(
+      "[sideagent] persistent checkpointer without a threadStore: the history list is in-memory and will not survive restarts.",
+    );
   }
   if (!checkpointer) {
-    console.warn("[sideagent] using the in-memory checkpointer: conversations are lost on restart. Pass a persistent checkpointer for production.");
+    console.warn(
+      "[sideagent] using the in-memory checkpointer: conversations are lost on restart. Pass a persistent checkpointer for production.",
+    );
   }
 
   const knowledge = config.knowledge ? await startKnowledge(config, ops, givenEmbeddings, vectorStore) : undefined;
   const model = givenModel ?? createChatModel(config.llm!);
-  const graph = buildGraph({ config, ops, secret, checkpointer, onAudit, knowledge, model, bindOptions: givenModel ? undefined : { parallel_tool_calls: false } });
+  const graph = buildGraph({
+    config,
+    ops,
+    secret,
+    checkpointer,
+    onAudit,
+    knowledge,
+    model,
+    bindOptions: givenModel ? undefined : { parallel_tool_calls: false },
+  });
   const handler = createHandler({ config, graph, threads, secret, getAuth, beforeTurn });
 
   return {
@@ -64,7 +89,12 @@ export async function createAgent(options: CreateAgentOptions) {
   };
 }
 
-async function startKnowledge(config: AgentConfig, ops: Operation[], givenEmbeddings: EmbeddingsLike | undefined, store: VectorStore | undefined) {
+async function startKnowledge(
+  config: AgentConfig,
+  ops: Operation[],
+  givenEmbeddings: EmbeddingsLike | undefined,
+  store: VectorStore | undefined,
+) {
   if (ops.some((o) => o.operationId === SEARCH_TOOL)) {
     throw new Error(`An allowlisted operation is named "${SEARCH_TOOL}", which is reserved for knowledge search`);
   }
@@ -83,7 +113,10 @@ async function startKnowledge(config: AgentConfig, ops: Operation[], givenEmbedd
     loading.then(() => false),
     new Promise<boolean>((r) => setTimeout(() => r(true), KNOWLEDGE_STARTUP_WAIT_MS)),
   ]);
-  if (timedOut) console.warn("[sideagent] knowledge is still loading after 60s; search results may be incomplete until it finishes.");
+  if (timedOut)
+    console.warn(
+      "[sideagent] knowledge is still loading after 60s; search results may be incomplete until it finishes.",
+    );
   return knowledge;
 }
 

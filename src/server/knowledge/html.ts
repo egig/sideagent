@@ -1,4 +1,11 @@
-const ENTITIES: Record<string, string> = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#39;": "'", "&nbsp;": " " };
+const ENTITIES: Record<string, string> = {
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&#39;": "'",
+  "&nbsp;": " ",
+};
 
 /** Dependency-free HTML to text/markdown-ish conversion. Plain text out; never HTML. */
 export function htmlToText(html: string): { title?: string; text: string } {
@@ -6,7 +13,10 @@ export function htmlToText(html: string): { title?: string; text: string } {
   const text = html
     .replace(/<!--[\s\S]*?-->/g, "")
     .replace(/<(script|style|noscript|svg|nav|footer|header|form|iframe)\b[\s\S]*?<\/\1>/gi, "")
-    .replace(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi, (_m, n: string, t: string) => `\n\n${"#".repeat(Number(n))} ${t}\n\n`)
+    .replace(
+      /<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi,
+      (_m, n: string, t: string) => `\n\n${"#".repeat(Number(n))} ${t}\n\n`,
+    )
     .replace(/<li[^>]*>/gi, "\n- ")
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/(p|div|section|article|tr|ul|ol|table|pre|blockquote)>/gi, "\n\n")

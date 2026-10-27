@@ -82,11 +82,18 @@ export class KnowledgeBase {
       const { url, title } = typeof entry === "string" ? { url: entry, title: undefined } : entry;
       const id = `url:${url}`;
       try {
-        const page = await fetchPage(url, { maxBytes: this.opts.maxSourceBytes, allowPrivateNetworks: this.deps.allowPrivateNetworks, fetch: this.deps.fetch });
+        const page = await fetchPage(url, {
+          maxBytes: this.opts.maxSourceBytes,
+          allowPrivateNetworks: this.deps.allowPrivateNetworks,
+          fetch: this.deps.fetch,
+        });
         await this.ingest(id, title ?? page.title ?? new URL(url).hostname + new URL(url).pathname, page.text, url);
       } catch (e) {
         const prev = this.statuses.get(id);
-        this.statuses.set(id, { ...(prev ?? { id, title: title ?? url, url, chunks: 0 }), error: (e as Error).message });
+        this.statuses.set(id, {
+          ...(prev ?? { id, title: title ?? url, url, chunks: 0 }),
+          error: (e as Error).message,
+        });
         console.warn(`[sideagent] knowledge url failed (${url}): ${(e as Error).message}`);
       }
     }
@@ -99,15 +106,22 @@ export class KnowledgeBase {
       }
       const texts = chunkText(content, this.opts.chunkSize);
       const others = this.totalChunks - (this.statuses.get(id)?.chunks ?? 0);
-      if (others + texts.length > this.opts.maxChunks) throw new Error(`would exceed maxChunks (${this.opts.maxChunks})`);
+      if (others + texts.length > this.opts.maxChunks)
+        throw new Error(`would exceed maxChunks (${this.opts.maxChunks})`);
       const vectors = texts.length ? await this.deps.embedDocuments(texts) : [];
       const meta: ChunkMeta = { sourceId: id, title, ...(url ? { url } : {}) };
-      await this.store.replace(id, texts.map((text, i) => ({ text, vector: vectors[i]!, meta })));
+      await this.store.replace(
+        id,
+        texts.map((text, i) => ({ text, vector: vectors[i]!, meta })),
+      );
       this.totalChunks = others + texts.length;
       this.statuses.set(id, { id, title, ...(url ? { url } : {}), chunks: texts.length, loadedAt: this.now() });
     } catch (e) {
       const prev = this.statuses.get(id);
-      this.statuses.set(id, { ...(prev ?? { id, title, ...(url ? { url } : {}), chunks: 0 }), error: (e as Error).message });
+      this.statuses.set(id, {
+        ...(prev ?? { id, title, ...(url ? { url } : {}), chunks: 0 }),
+        error: (e as Error).message,
+      });
       console.warn(`[sideagent] knowledge source "${id}" failed: ${(e as Error).message}`);
     }
   }

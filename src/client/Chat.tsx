@@ -1,4 +1,10 @@
-import { AssistantRuntimeProvider, ComposerPrimitive, ThreadPrimitive, useLocalRuntime, type ChatModelAdapter } from "@assistant-ui/react";
+import {
+  AssistantRuntimeProvider,
+  ComposerPrimitive,
+  ThreadPrimitive,
+  useLocalRuntime,
+  type ChatModelAdapter,
+} from "@assistant-ui/react";
 import { ArrowUpIcon } from "@radix-ui/react-icons";
 import { useMemo, useRef, useState } from "react";
 import { ApprovalCard } from "./ApprovalCard.js";
@@ -10,7 +16,9 @@ import { streamChat } from "./transport.js";
 import type { AgentChatProps, ApprovalEvent, Decision, Session } from "./types.js";
 
 /** One conversation: streams turns, pauses on approval requests, and resumes with the user's decision. */
-export function Chat(props: AgentChatProps & { session: Session; onThread: (id: string) => void; onReload: () => void }) {
+export function Chat(
+  props: AgentChatProps & { session: Session; onThread: (id: string) => void; onReload: () => void },
+) {
   const { endpoint, hooks, credentials, headers } = props;
   const latest = useRef(props);
   latest.current = props;
@@ -37,7 +45,12 @@ export function Chat(props: AgentChatProps & { session: Session; onThread: (id: 
         try {
           for (;;) {
             let pending: ApprovalEvent | undefined;
-            for await (const ev of streamChat(body, { endpoint: p.endpoint, credentials: p.credentials, headers: p.headers, signal: abortSignal })) {
+            for await (const ev of streamChat(body, {
+              endpoint: p.endpoint,
+              credentials: p.credentials,
+              headers: p.headers,
+              signal: abortSignal,
+            })) {
               parts = applyEvent(parts, ev);
               if (ev.type === "turn.start") {
                 threadId.current = ev.threadId;
@@ -78,7 +91,10 @@ export function Chat(props: AgentChatProps & { session: Session; onThread: (id: 
     const req = loadedPending;
     if (!req || !threadId.current) return;
     setLoadedPending(null);
-    for await (const ev of streamChat({ threadId: threadId.current, approval: { token: req.token, decision } }, { endpoint, credentials, headers })) {
+    for await (const ev of streamChat(
+      { threadId: threadId.current, approval: { token: req.token, decision } },
+      { endpoint, credentials, headers },
+    )) {
       if (ev.type === "tool.complete") fireComplete(hooks, ev);
       if (ev.type === "error") safely(() => hooks?.onError?.({ code: ev.code, message: ev.message }));
     }
@@ -93,13 +109,20 @@ export function Chat(props: AgentChatProps & { session: Session; onThread: (id: 
         <ThreadPrimitive.Root style={{ display: "contents" }}>
           <ThreadPrimitive.Viewport className="sa-viewport">
             <ThreadPrimitive.Empty>
-              <div className="sa-empty">Ask me to look things up or make changes. I will ask before changing anything.</div>
+              <div className="sa-empty">
+                Ask me to look things up or make changes. I will ask before changing anything.
+              </div>
             </ThreadPrimitive.Empty>
             <ThreadPrimitive.Messages components={{ UserMessage, AssistantMessage }} />
           </ThreadPrimitive.Viewport>
           {shownApproval && <ApprovalCard event={shownApproval} onDecide={decide} />}
           <ComposerPrimitive.Root className="sa-composer">
-            <ComposerPrimitive.Input className="sa-input" rows={2} placeholder={props.placeholder ?? "Message…"} disabled={!!shownApproval} />
+            <ComposerPrimitive.Input
+              className="sa-input"
+              rows={2}
+              placeholder={props.placeholder ?? "Message…"}
+              disabled={!!shownApproval}
+            />
             <div className="sa-composer-bar">
               <span className="sa-hint">Enter to send · Shift+Enter for a new line</span>
               <ComposerPrimitive.Send className="sa-send" aria-label="Send" title="Send">

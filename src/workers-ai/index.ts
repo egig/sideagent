@@ -1,4 +1,8 @@
-import { BaseChatModel, type BaseChatModelCallOptions, type BindToolsInput } from "@langchain/core/language_models/chat_models";
+import {
+  BaseChatModel,
+  type BaseChatModelCallOptions,
+  type BindToolsInput,
+} from "@langchain/core/language_models/chat_models";
 import type { BaseLanguageModelInput } from "@langchain/core/language_models/base";
 import type { CallbackManagerForLLMRun } from "@langchain/core/callbacks/manager";
 import { AIMessage, AIMessageChunk, type BaseMessage } from "@langchain/core/messages";
@@ -45,13 +49,20 @@ function toWire(messages: BaseMessage[]): unknown[] {
     const content = messageText(m.content);
     if (type === "system") return { role: "system", content };
     if (type === "human") return { role: "user", content };
-    if (type === "tool") return { role: "tool", tool_call_id: (m as unknown as { tool_call_id: string }).tool_call_id, content };
+    if (type === "tool")
+      return { role: "tool", tool_call_id: (m as unknown as { tool_call_id: string }).tool_call_id, content };
     const calls = (m as AIMessage).tool_calls ?? [];
     return {
       role: "assistant",
       content,
       ...(calls.length
-        ? { tool_calls: calls.map((c) => ({ id: c.id, type: "function", function: { name: c.name, arguments: JSON.stringify(c.args ?? {}) } })) }
+        ? {
+            tool_calls: calls.map((c) => ({
+              id: c.id,
+              type: "function",
+              function: { name: c.name, arguments: JSON.stringify(c.args ?? {}) },
+            })),
+          }
         : {}),
     };
   });
@@ -77,7 +88,10 @@ const newId = () => `call_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`
 /** Reads every response shape the binding is known to return. Throws on anything else. */
 export function parseWorkersAiResponse(res: unknown): Parsed {
   // Some models return the payload under `result`, like the REST API does.
-  const r = isObj(res) && isObj(res.result) && !("response" in res) && !("choices" in res) && !("output" in res) ? res.result : res;
+  const r =
+    isObj(res) && isObj(res.result) && !("response" in res) && !("choices" in res) && !("output" in res)
+      ? res.result
+      : res;
   if (typeof r === "string") return { text: r, toolCalls: [] };
   if (!isObj(r)) throw new Error("Workers AI returned an unrecognized response");
 
@@ -91,10 +105,15 @@ export function parseWorkersAiResponse(res: unknown): Parsed {
     for (const item of r.output) {
       if (!isObj(item)) continue;
       if (item.type === "function_call") {
-        toolCalls.push({ id: String(item.call_id ?? item.id ?? newId()), name: String(item.name), args: parseArgs(item.arguments) });
+        toolCalls.push({
+          id: String(item.call_id ?? item.id ?? newId()),
+          name: String(item.name),
+          args: parseArgs(item.arguments),
+        });
       } else if (item.type === "message" || (item.type === undefined && Array.isArray(item.content))) {
         for (const part of Array.isArray(item.content) ? item.content : []) {
-          if (isObj(part) && (part.type === "output_text" || part.type === "text") && typeof part.text === "string") text += part.text;
+          if (isObj(part) && (part.type === "output_text" || part.type === "text") && typeof part.text === "string")
+            text += part.text;
         }
       }
     }
@@ -130,10 +149,15 @@ export function parseWorkersAiResponse(res: unknown): Parsed {
 }
 
 /** Yields the JSON payload of each `data:` line of an SSE byte stream. */
-async function* sseEvents(stream: ReadableStream<Uint8Array> | AsyncIterable<Uint8Array | string>): AsyncGenerator<unknown> {
+async function* sseEvents(
+  stream: ReadableStream<Uint8Array> | AsyncIterable<Uint8Array | string>,
+): AsyncGenerator<unknown> {
   const dec = new TextDecoder();
   let buf = "";
-  const source = Symbol.asyncIterator in stream ? (stream as AsyncIterable<Uint8Array | string>) : readerIterable(stream as ReadableStream<Uint8Array>);
+  const source =
+    Symbol.asyncIterator in stream
+      ? (stream as AsyncIterable<Uint8Array | string>)
+      : readerIterable(stream as ReadableStream<Uint8Array>);
   function* drain(final: boolean): Generator<unknown> {
     const lines = buf.split("\n");
     buf = final ? "" : (lines.pop() ?? "");
@@ -170,7 +194,9 @@ async function* readerIterable(stream: ReadableStream<Uint8Array>): AsyncGenerat
 }
 
 const isStream = (v: unknown): v is ReadableStream<Uint8Array> | AsyncIterable<Uint8Array | string> =>
-  !!v && typeof v === "object" && (typeof (v as ReadableStream).getReader === "function" || Symbol.asyncIterator in (v as object));
+  !!v &&
+  typeof v === "object" &&
+  (typeof (v as ReadableStream).getReader === "function" || Symbol.asyncIterator in (v as object));
 
 export class ChatWorkersAI extends BaseChatModel<WorkersAiCallOptions> {
   constructor(
@@ -185,9 +211,15 @@ export class ChatWorkersAI extends BaseChatModel<WorkersAiCallOptions> {
     return "workers-ai";
   }
 
-  override bindTools(tools: BindToolsInput[], kwargs?: Partial<WorkersAiCallOptions>): Runnable<BaseLanguageModelInput, AIMessageChunk, WorkersAiCallOptions> {
+  override bindTools(
+    tools: BindToolsInput[],
+    kwargs?: Partial<WorkersAiCallOptions>,
+  ): Runnable<BaseLanguageModelInput, AIMessageChunk, WorkersAiCallOptions> {
     // kwargs may carry provider options for other models (e.g. parallel_tool_calls); they mean nothing here.
-    return this.withConfig({ ...(kwargs as object), tools: tools.map((t) => convertToOpenAITool(t as never)) } as Partial<WorkersAiCallOptions>) as never;
+    return this.withConfig({
+      ...(kwargs as object),
+      tools: tools.map((t) => convertToOpenAITool(t as never)),
+    } as Partial<WorkersAiCallOptions>) as never;
   }
 
   private input(messages: BaseMessage[], options: WorkersAiCallOptions, stream: boolean) {
@@ -206,16 +238,29 @@ export class ChatWorkersAI extends BaseChatModel<WorkersAiCallOptions> {
   }
 
   async _generate(messages: BaseMessage[], options: this["ParsedCallOptions"]): Promise<ChatResult> {
-    const { text, toolCalls } = parseWorkersAiResponse(await this.run(this.input(messages, options, false), options.signal));
-    const message = new AIMessage({ content: text, tool_calls: toolCalls.map((c) => ({ type: "tool_call" as const, ...c })) });
+    const { text, toolCalls } = parseWorkersAiResponse(
+      await this.run(this.input(messages, options, false), options.signal),
+    );
+    const message = new AIMessage({
+      content: text,
+      tool_calls: toolCalls.map((c) => ({ type: "tool_call" as const, ...c })),
+    });
     return { generations: [{ text, message }] };
   }
 
-  async *_streamResponseChunks(messages: BaseMessage[], options: this["ParsedCallOptions"], runManager?: CallbackManagerForLLMRun): AsyncGenerator<ChatGenerationChunk> {
-    const res = this.opts.streaming === false ? undefined : await this.run(this.input(messages, options, true), options.signal);
+  async *_streamResponseChunks(
+    messages: BaseMessage[],
+    options: this["ParsedCallOptions"],
+    runManager?: CallbackManagerForLLMRun,
+  ): AsyncGenerator<ChatGenerationChunk> {
+    const res =
+      this.opts.streaming === false ? undefined : await this.run(this.input(messages, options, true), options.signal);
     if (!isStream(res)) {
       // The binding ignored `stream` (or streaming is off): emit the full reply as one chunk.
-      const full = res === undefined ? parseWorkersAiResponse(await this.run(this.input(messages, options, false), options.signal)) : parseWorkersAiResponse(res);
+      const full =
+        res === undefined
+          ? parseWorkersAiResponse(await this.run(this.input(messages, options, false), options.signal))
+          : parseWorkersAiResponse(res);
       yield* this.emit(full, runManager);
       return;
     }
@@ -244,7 +289,11 @@ export class ChatWorkersAI extends BaseChatModel<WorkersAiCallOptions> {
       // Responses-style events (gpt-oss)
       if (ev.type === "response.output_text.delta" && typeof ev.delta === "string") delta += ev.delta;
       if (ev.type === "response.output_item.done" && isObj(ev.item) && ev.item.type === "function_call") {
-        whole.push({ id: String(ev.item.call_id ?? ev.item.id ?? newId()), name: String(ev.item.name), args: parseArgs(ev.item.arguments) });
+        whole.push({
+          id: String(ev.item.call_id ?? ev.item.id ?? newId()),
+          name: String(ev.item.name),
+          args: parseArgs(ev.item.arguments),
+        });
       }
       if (Array.isArray(ev.tool_calls)) whole.push(...parseWorkersAiResponse({ tool_calls: ev.tool_calls }).toolCalls);
       if (delta) yield* this.emit({ text: delta, toolCalls: [] }, runManager);
@@ -257,12 +306,21 @@ export class ChatWorkersAI extends BaseChatModel<WorkersAiCallOptions> {
     if (toolCalls.length) yield* this.emit({ text: "", toolCalls }, runManager);
   }
 
-  private async *emit({ text, toolCalls }: Parsed, runManager?: CallbackManagerForLLMRun): AsyncGenerator<ChatGenerationChunk> {
+  private async *emit(
+    { text, toolCalls }: Parsed,
+    runManager?: CallbackManagerForLLMRun,
+  ): AsyncGenerator<ChatGenerationChunk> {
     const chunk = new ChatGenerationChunk({
       text,
       message: new AIMessageChunk({
         content: text,
-        tool_call_chunks: toolCalls.map((c, index) => ({ type: "tool_call_chunk" as const, index, id: c.id, name: c.name, args: JSON.stringify(c.args) })),
+        tool_call_chunks: toolCalls.map((c, index) => ({
+          type: "tool_call_chunk" as const,
+          index,
+          id: c.id,
+          name: c.name,
+          args: JSON.stringify(c.args),
+        })),
       }),
     });
     yield chunk;

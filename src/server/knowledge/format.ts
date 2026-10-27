@@ -18,7 +18,11 @@ export function uniqueSources(hits: Hit[]): { id: string; title: string; url?: s
   const seen = new Map<string, { id: string; title: string; url?: string }>();
   for (const h of hits) {
     if (!seen.has(h.meta.sourceId)) {
-      seen.set(h.meta.sourceId, { id: h.meta.sourceId, title: h.meta.title, ...(h.meta.url ? { url: h.meta.url } : {}) });
+      seen.set(h.meta.sourceId, {
+        id: h.meta.sourceId,
+        title: h.meta.title,
+        ...(h.meta.url ? { url: h.meta.url } : {}),
+      });
     }
   }
   return [...seen.values()];

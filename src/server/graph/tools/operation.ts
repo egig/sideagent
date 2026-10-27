@@ -11,7 +11,12 @@ import { toolResult, type ToolContext } from "./context.js";
 const APPROVAL_TTL_MS = 10 * 60_000;
 
 /** Validates, asks for approval when the operation needs it, then calls the API. */
-export async function runOperation(op: Operation, rawArgs: unknown, deps: { config: AgentConfig; secret: string }, ctx: ToolContext): Promise<ToolMessage> {
+export async function runOperation(
+  op: Operation,
+  rawArgs: unknown,
+  deps: { config: AgentConfig; secret: string },
+  ctx: ToolContext,
+): Promise<ToolMessage> {
   const { config, secret } = deps;
   const { callId, threadId, run, write, audit, base } = ctx;
 
@@ -77,7 +82,15 @@ export async function runOperation(op: Operation, rawArgs: unknown, deps: { conf
   } catch (e) {
     const msg = (e as Error).message;
     audit({ ...base, args, status: "error", approval, durationMs: Date.now() - started, error: msg });
-    write({ type: "tool.complete", callId, operationId: op.operationId, status: 0, args, result: { error: msg }, invalidates: [] });
+    write({
+      type: "tool.complete",
+      callId,
+      operationId: op.operationId,
+      status: 0,
+      args,
+      result: { error: msg },
+      invalidates: [],
+    });
     return toolResult(callId, `Error calling ${op.operationId}: ${msg}`, { error: msg });
   }
 }

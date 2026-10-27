@@ -12,7 +12,10 @@ export interface DoctorReport {
 
 type Check = DoctorReport["checks"][number];
 
-const PING_TOOL = { type: "function" as const, function: { name: "ping", description: "ping", parameters: { type: "object", properties: {} } } };
+const PING_TOOL = {
+  type: "function" as const,
+  function: { name: "ping", description: "ping", parameters: { type: "object", properties: {} } },
+};
 
 async function checkInjectedModel(m: BaseChatModel): Promise<Check> {
   try {

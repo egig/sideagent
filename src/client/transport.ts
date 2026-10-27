@@ -44,7 +44,10 @@ export async function* streamChat(body: ChatRequest, opts: TransportOptions): As
 }
 
 /** POSTs a non-streaming request (history actions) and returns the JSON body. */
-export async function callJson<T>(body: ChatRequest, opts: Omit<TransportOptions, "signal">): Promise<{ status: number; data: T | null }> {
+export async function callJson<T>(
+  body: ChatRequest,
+  opts: Omit<TransportOptions, "signal">,
+): Promise<{ status: number; data: T | null }> {
   const res = await fetch(opts.endpoint, {
     method: "POST",
     credentials: opts.credentials ?? "same-origin",

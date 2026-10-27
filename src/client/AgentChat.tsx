@@ -109,7 +109,10 @@ export function AgentChat(props: AgentChatProps) {
   }, [visible, key, openThread]);
 
   return (
-    <div className={`sa-root sa-${mode}${docked ? " sa-docked" : ""}${resizing ? " sa-resizing" : ""}`} data-theme={props.theme ?? "auto"}>
+    <div
+      className={`sa-root sa-${mode}${docked ? " sa-docked" : ""}${resizing ? " sa-resizing" : ""}`}
+      data-theme={props.theme ?? "auto"}
+    >
       <style>{CSS}</style>
       {!open && (
         <button className="sa-fab" aria-label="Open assistant" onClick={() => setOpen(true)}>
@@ -147,7 +150,13 @@ export function AgentChat(props: AgentChatProps) {
                 {mode === "floating" ? <ViewVerticalIcon /> : <OpenInNewWindowIcon />}
               </button>
             )}
-            <button className="sa-btn sa-icon-btn" aria-pressed={view === "history"} onClick={() => setView((v) => (v === "history" ? "chat" : "history"))} title="History" aria-label="History">
+            <button
+              className="sa-btn sa-icon-btn"
+              aria-pressed={view === "history"}
+              onClick={() => setView((v) => (v === "history" ? "chat" : "history"))}
+              title="History"
+              aria-label="History"
+            >
               <CounterClockwiseClockIcon />
             </button>
             <button className="sa-btn sa-icon-btn" onClick={newChat} title="New chat" aria-label="New chat">

@@ -21,13 +21,14 @@ export const AssistantMessage = () => (
   <MessagePrimitive.Root style={{ display: "contents" }}>
     <MessagePrimitive.Parts
       components={{
-        Text: ({ text }: { text: string }) => (text ? (
-          <div className="sa-msg sa-assistant sa-md">
-            <Markdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-              {text}
-            </Markdown>
-          </div>
-        ) : null),
+        Text: ({ text }: { text: string }) =>
+          text ? (
+            <div className="sa-msg sa-assistant sa-md">
+              <Markdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+                {text}
+              </Markdown>
+            </div>
+          ) : null,
         tools: { Fallback: ToolCard as any },
       }}
     />

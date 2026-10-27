@@ -23,11 +23,22 @@ export interface TurnAuth {
 }
 
 /** Starts (or resumes, after an approval decision) a turn and streams its events as SSE. */
-export async function runTurn(request: Request, body: TurnBody, auth: TurnAuth, deps: TurnDeps, cors: Record<string, string>): Promise<Response> {
+export async function runTurn(
+  request: Request,
+  body: TurnBody,
+  auth: TurnAuth,
+  deps: TurnDeps,
+  cors: Record<string, string>,
+): Promise<Response> {
   const { config, graph, threads, secret, active } = deps;
   const { userId } = auth;
   const threadId = body.threadId ?? `${threadPrefix(userId)}${crypto.randomUUID()}`;
-  const runCfg = { configurable: { thread_id: threadId, run: { userId, headers: auth.headers, context: "message" in body ? body.context : undefined } } };
+  const runCfg = {
+    configurable: {
+      thread_id: threadId,
+      run: { userId, headers: auth.headers, context: "message" in body ? body.context : undefined },
+    },
+  };
 
   const pending = body.threadId ? pendingApprovalOf(await graph.getState(runCfg)) : undefined;
 

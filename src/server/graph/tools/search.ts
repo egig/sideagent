@@ -7,11 +7,21 @@ export const SEARCH_TOOL_DEF = {
   function: {
     name: SEARCH_TOOL,
     description: "Search the application's documentation and knowledge base. Returns relevant passages.",
-    parameters: { type: "object", properties: { query: { type: "string", description: "What to look up" } }, required: ["query"], additionalProperties: false },
+    parameters: {
+      type: "object",
+      properties: { query: { type: "string", description: "What to look up" } },
+      required: ["query"],
+      additionalProperties: false,
+    },
   },
 };
 
-export async function runSearch(knowledge: KnowledgeBase, rawArgs: unknown, maxResultBytes: number, ctx: ToolContext): Promise<ToolMessage> {
+export async function runSearch(
+  knowledge: KnowledgeBase,
+  rawArgs: unknown,
+  maxResultBytes: number,
+  ctx: ToolContext,
+): Promise<ToolMessage> {
   const { callId, write, audit, base } = ctx;
   const q = (rawArgs as { query?: unknown } | undefined)?.query;
   const query = typeof q === "string" ? q.trim().slice(0, 300) : "";
@@ -24,12 +34,28 @@ export async function runSearch(knowledge: KnowledgeBase, rawArgs: unknown, maxR
     const sources = uniqueSources(hits);
     audit({ ...base, args: { query }, status: "executed", approval: "auto", durationMs: Date.now() - started });
     // The browser only gets source titles and config-provided URLs, never passage text.
-    write({ type: "tool.complete", callId, operationId: SEARCH_TOOL, status: 200, args: { query }, result: { sources }, invalidates: [] });
+    write({
+      type: "tool.complete",
+      callId,
+      operationId: SEARCH_TOOL,
+      status: 200,
+      args: { query },
+      result: { sources },
+      invalidates: [],
+    });
     return toolResult(callId, wrapKnowledge(hits, maxResultBytes), { sources });
   } catch (e) {
     audit({ ...base, args: { query }, status: "error", approval: "auto", error: (e as Error).message });
     const error = "Knowledge search is unavailable.";
-    write({ type: "tool.complete", callId, operationId: SEARCH_TOOL, status: 0, args: { query }, result: { error }, invalidates: [] });
+    write({
+      type: "tool.complete",
+      callId,
+      operationId: SEARCH_TOOL,
+      status: 0,
+      args: { query },
+      result: { error },
+      invalidates: [],
+    });
     return toolResult(callId, "Error: knowledge search is unavailable.", { error });
   }
 }

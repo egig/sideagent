@@ -11,7 +11,9 @@ const knowledgeSchema = z
     /** Pages the server fetches itself (never model-chosen). Public hosts only unless allowPrivateNetworks. */
     urls: z.array(z.union([url, z.object({ url, title: z.string().max(200).optional() })])).default([]),
     /** OpenAI-compatible /embeddings endpoint. baseUrl and apiKey default to the llm ones. Omit when you pass the `embeddings` option to createAgent. */
-    embeddings: z.object({ model: z.string().min(1), baseUrl: url.optional(), apiKey: z.string().min(1).optional() }).optional(),
+    embeddings: z
+      .object({ model: z.string().min(1), baseUrl: url.optional(), apiKey: z.string().min(1).optional() })
+      .optional(),
     topK: z.number().int().min(1).max(12).default(4),
     ttlMs: z.number().int().positive().default(3_600_000),
     maxSourceBytes: z.number().int().positive().default(200_000),
@@ -46,7 +48,11 @@ export const configSchema = z
       .object({
         maxSteps: z.number().int().positive().default(8),
         callTimeoutMs: z.number().int().positive().default(30_000),
-        maxResultBytes: z.number().int().positive().default(64 * 1024),
+        maxResultBytes: z
+          .number()
+          .int()
+          .positive()
+          .default(64 * 1024),
         turnTimeoutMs: z.number().int().positive().default(120_000),
         maxConcurrentTurnsPerUser: z.number().int().positive().default(2),
         maxTools: z.number().int().positive().default(40),
@@ -66,7 +72,11 @@ export type AgentConfigInput = z.input<typeof configSchema>;
 export type AgentConfig = z.output<typeof configSchema>;
 
 /** Validates config; also requires getAuth or anonymous:true (checked by caller with the function in hand). */
-export function parseConfig(input: unknown, hasGetAuth: boolean, injected: { model?: boolean; embeddings?: boolean } = {}): AgentConfig {
+export function parseConfig(
+  input: unknown,
+  hasGetAuth: boolean,
+  injected: { model?: boolean; embeddings?: boolean } = {},
+): AgentConfig {
   const result = configSchema.safeParse(input);
   if (!result.success) {
     const lines = result.error.issues.map((i) => `  - ${i.path.join(".") || "(root)"}: ${i.message}`);
@@ -79,10 +89,16 @@ export function parseConfig(input: unknown, hasGetAuth: boolean, injected: { mod
   const fail = (msg: string): never => {
     throw new Error(`Invalid agent config:\n  - ${msg}`);
   };
-  if (llm && injected.model) fail("llm and model are mutually exclusive: pass llm for an OpenAI-compatible endpoint, or model for your own chat model");
-  if (!llm && !injected.model) fail("no model: pass llm ({ baseUrl, apiKey, model }) or model (a LangChain BaseChatModel)");
-  if (knowledge?.embeddings && injected.embeddings) fail("knowledge.embeddings and the embeddings option are mutually exclusive");
-  if (knowledge && !knowledge.embeddings && !injected.embeddings) fail("knowledge needs knowledge.embeddings (HTTP endpoint) or the embeddings option");
+  if (llm && injected.model)
+    fail(
+      "llm and model are mutually exclusive: pass llm for an OpenAI-compatible endpoint, or model for your own chat model",
+    );
+  if (!llm && !injected.model)
+    fail("no model: pass llm ({ baseUrl, apiKey, model }) or model (a LangChain BaseChatModel)");
+  if (knowledge?.embeddings && injected.embeddings)
+    fail("knowledge.embeddings and the embeddings option are mutually exclusive");
+  if (knowledge && !knowledge.embeddings && !injected.embeddings)
+    fail("knowledge needs knowledge.embeddings (HTTP endpoint) or the embeddings option");
   if (knowledge?.embeddings && !llm && !(knowledge.embeddings.baseUrl && knowledge.embeddings.apiKey)) {
     fail("knowledge.embeddings needs baseUrl and apiKey when llm is not set");
   }

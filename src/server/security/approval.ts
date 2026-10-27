@@ -15,7 +15,9 @@ export function canonicalJson(v: unknown): string {
 const enc = new TextEncoder();
 
 async function hmac(secret: string, data: string): Promise<string> {
-  const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, [
+    "sign",
+  ]);
   const sig = new Uint8Array(await crypto.subtle.sign("HMAC", key, enc.encode(data)));
   let s = "";
   for (const b of sig) s += String.fromCharCode(b);

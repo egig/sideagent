@@ -6,9 +6,7 @@ export interface UrlGuardOptions {
 
 function parseIPv4(host: string): number[] | null {
   const parts = host.split(".").map(Number);
-  return parts.length === 4 && parts.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)
-    ? parts
-    : null;
+  return parts.length === 4 && parts.every((n) => Number.isInteger(n) && n >= 0 && n <= 255) ? parts : null;
 }
 
 const isIPv6 = (h: string) => h.includes(":");
@@ -58,7 +56,8 @@ export function assertAllowedUrl(url: string, opts: UrlGuardOptions): URL {
 /** For knowledge URLs: any public http(s) host. Private ranges need allowPrivateNetworks; metadata never. */
 export function assertPublicUrl(url: string, allowPrivateNetworks?: boolean): URL {
   const target = new URL(url);
-  if (target.protocol !== "https:" && target.protocol !== "http:") throw new Error(`blocked scheme: ${target.protocol}`);
+  if (target.protocol !== "https:" && target.protocol !== "http:")
+    throw new Error(`blocked scheme: ${target.protocol}`);
   if (isAlwaysBlockedHost(target.hostname)) throw new Error("blocked: link-local/metadata address");
   if (!allowPrivateNetworks && isPrivateHost(target.hostname)) throw new Error("blocked: private network address");
   return target;
