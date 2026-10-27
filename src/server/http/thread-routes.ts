@@ -1,7 +1,7 @@
 import { toHistory } from "../history.js";
 import { pendingApprovalOf, type AgentGraph } from "../graph/index.js";
 import { ownsThread, type ThreadStore } from "../threads.js";
-import { json } from "./cors.js";
+import { json } from "./json.js";
 import type { ThreadAction } from "./request.js";
 
 export async function handleThreadAction(

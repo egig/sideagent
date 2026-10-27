@@ -8,7 +8,7 @@ import { createHandler, type AuthResult } from "./http/handler.js";
 import { KnowledgeBase, SEARCH_TOOL, type VectorStore } from "./knowledge/index.js";
 import { createChatModel, createEmbeddings, type EmbeddingsLike } from "./model.js";
 import { loadOperations, type Operation } from "./openapi.js";
-import type { AuditEvent } from "./policy.js";
+import type { AuditEvent } from "./security/policy.js";
 import { MemoryThreadStore, type ThreadStore } from "./threads.js";
 
 export type { AuthResult } from "./http/handler.js";

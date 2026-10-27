@@ -1,7 +1,3 @@
-export function json(status: number, body: unknown, extra: Record<string, string> = {}): Response {
-  return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", ...extra } });
-}
-
 /** CORS headers are only ever sent to origins on the allowlist. */
 export function checkOrigin(request: Request, allowedOrigins: string[]): { ok: boolean; cors: Record<string, string> } {
   const origin = request.headers.get("origin");

@@ -1,10 +1,10 @@
 import type { ToolMessage } from "@langchain/core/messages";
 import { interrupt } from "@langchain/langgraph";
-import { signApproval } from "../../approval.js";
+import { signApproval } from "../../security/approval.js";
 import type { AgentConfig } from "../../config.js";
 import { executeOperation } from "../../executor.js";
 import { validateArgs, type Operation } from "../../openapi.js";
-import { wrapToolResult, type AuditEvent } from "../../policy.js";
+import { wrapToolResult, type AuditEvent } from "../../security/policy.js";
 import type { PendingApproval } from "../types.js";
 import { toolResult, type ToolContext } from "./context.js";
 

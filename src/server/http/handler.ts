@@ -1,7 +1,8 @@
 import type { AgentConfig } from "../config.js";
 import type { AgentGraph } from "../graph/index.js";
 import { ownsThread, type ThreadStore } from "../threads.js";
-import { checkOrigin, json, preflight } from "./cors.js";
+import { checkOrigin, preflight } from "../security/origin.js";
+import { json } from "./json.js";
 import { readChatBody } from "./request.js";
 import { handleThreadAction } from "./thread-routes.js";
 import { runTurn } from "./turn.js";

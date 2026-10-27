@@ -1,5 +1,5 @@
 import { readCapped } from "../executor.js";
-import { assertPublicUrl } from "../url-guard.js";
+import { assertPublicUrl } from "../security/url-guard.js";
 import { htmlToText } from "./html.js";
 
 const MAX_REDIRECTS = 3;

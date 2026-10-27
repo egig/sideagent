@@ -13,16 +13,37 @@ Library that embeds a chat agent in an app: OpenAPI spec + OpenAI-compatible LLM
 
 ## Layout
 
-- `src/server/` — `createAgent`, config, executor (OpenAPI → tools), policy, approval, url-guard (SSRF), knowledge, threads, adapters (Hono/Next/Express)
-- `src/client/` — `AgentChat`, `AgentProvider`, hooks, transport
+- `src/server/` — server entry (`sideagent/server`)
+  - `create-agent.ts` — wiring only: config → operations → model → graph → handler
+  - `http/` — the endpoint: `handler.ts` (request pipeline), `request.ts` (body schema), `thread-routes.ts`, `turn.ts` (approval check + SSE)
+  - `graph/` — LangGraph agent; `tools/operation.ts` (validate → approve → call API), `tools/search.ts` (knowledge)
+  - `security/` — approval tokens, origin check, SSRF guard, prompt policy and audit redaction
+  - `knowledge/` — chunking, HTML to text, vector store, guarded page fetch, `KnowledgeBase`
+  - `openapi.ts` (spec → operations, allowlist), `executor.ts` (HTTP call to your API), `config.ts`, `threads.ts`, `history.ts`, `doctor.ts`, `model.ts`, `adapters/` (Hono/Next/Express)
+- `src/client/` — React UI (`sideagent`): `AgentChat.tsx` (panel shell), `Chat.tsx` (runtime adapter), `parts.ts` (pure event → message parts), cards, `transport.ts`, `hooks.ts`
+- `src/workers-ai/` — Cloudflare Workers AI chat model and embeddings
 - `src/protocol.ts` — wire types shared by both sides
 - `src/testing/` — mock LLM, exported as `sideagent/testing`
 - `demo/` — example app; `website/docs/` — Docusaurus docs (source of `llms.txt`)
 
+Tests sit next to the code they cover (`*.test.ts`). `e2e.test.ts` drives the full handler.
+
 ## Rules
 
-- Security defaults are the product. Do not weaken: default-deny `allow`, end-user credentials forwarded, approval for non-GET bound to exact args, pinned `baseUrl`, SSRF guards, origin checks. Any change here needs a test.
-- Everything in `src/server/` (non-test) must run on edge runtimes: no `node:*` imports, `Buffer`, or `process.` (enforced by `edge-compat.test.ts`).
+- Security defaults are the product. Do not weaken them. Any change to the code below needs a test.
+
+  | Invariant | Code | Tests |
+  |---|---|---|
+  | Default-deny `allow` | `openapi.ts` (`loadOperations`) | `e2e.test.ts` "rejects a non-allowlisted tool", "fails when an allow pattern matches nothing" |
+  | End-user credentials forwarded, never shown to the model | `http/handler.ts` (`getAuth`), `executor.ts` | `e2e.test.ts` "forwards auth" |
+  | Approval for non-GET, bound to exact args | `security/approval.ts`, `graph/tools/operation.ts`, `http/turn.ts` | `e2e.test.ts` "pauses a write", "rejects a tampered approval token", "does not run a rejected write" |
+  | Pinned `baseUrl`, SSRF guards | `security/url-guard.ts`, `executor.ts`, `knowledge/fetch-page.ts` | `security/url-guard.test.ts`, `executor.test.ts`, `knowledge/knowledge.test.ts` |
+  | Origin, method and content-type checks | `security/origin.ts`, `http/handler.ts` | `e2e.test.ts` "checks origin, method and content type", "cors" |
+  | Threads bound to their user | `threads.ts` (`ownsThread`) | `e2e.test.ts` "denies another user's thread", "history" |
+  | Tool output and page context are untrusted data | `security/policy.ts`, `knowledge/format.ts` | `knowledge.e2e.test.ts` "wraps passages as untrusted data" |
+
+- Everything in `src/server/` (non-test) must run on edge runtimes: no `node:*` imports, `Buffer`, or `process.` (enforced by `edge-compat.test.ts`, which scans subfolders).
+- `src/client/` must not import server code (enforced by `client-isolation.test.ts`).
 - Update `website/docs/` and README when public API changes.
 - Run `pnpm test && pnpm typecheck` before finishing.
 

@@ -1,6 +1,6 @@
 import { ToolMessage } from "@langchain/core/messages";
 import type { AgentEvent } from "../../../protocol.js";
-import type { AuditEvent } from "../../policy.js";
+import type { AuditEvent } from "../../security/policy.js";
 import type { RunContext } from "../types.js";
 
 export interface ToolContext {

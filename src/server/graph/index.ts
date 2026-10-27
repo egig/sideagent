@@ -4,7 +4,7 @@ import { END, MemorySaver, MessagesAnnotation, START, StateGraph, type BaseCheck
 import type { AgentConfig } from "../config.js";
 import { SEARCH_TOOL, type KnowledgeBase } from "../knowledge/index.js";
 import type { Operation } from "../openapi.js";
-import { buildSystemPrompt, redact, type AuditEvent } from "../policy.js";
+import { buildSystemPrompt, redact, type AuditEvent } from "../security/policy.js";
 import { toolResult, type ToolContext } from "./tools/context.js";
 import { runOperation } from "./tools/operation.js";
 import { runSearch, SEARCH_TOOL_DEF } from "./tools/search.js";
