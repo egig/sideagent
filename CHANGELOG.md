@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.0
 
 - New client hooks `onOperationStart` and `onOperationAbort`. Each started operation ends in exactly one `onAnyOperation` or `onOperationAbort`, so an app can block input while a call runs and never stay blocked after a new chat, a thread switch or a lost connection.
 - New `useAgentBusy()` hook: `true` while one of the agent's operations runs, anywhere under `AgentProvider`. It throws outside it, like `useAgent()`.
