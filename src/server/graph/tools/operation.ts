@@ -9,6 +9,7 @@ import type { PendingApproval } from "../types.js";
 import { toolResult, type ToolContext } from "./context.js";
 
 const APPROVAL_TTL_MS = 10 * 60_000;
+const READ_METHODS = new Set(["get", "head"]);
 
 /** Validates, asks for approval when the operation needs it, then calls the API. */
 export async function runOperation(
@@ -54,6 +55,18 @@ export async function runOperation(
 
   write({ type: "tool.start", callId, operationId: op.operationId });
   const started = Date.now();
+  // The host asked for a dry run (see dryRun): everything that is not a plain read stops here, after
+  // validation and approval, so the user sees exactly what would have been sent.
+  if (run.dryRun && !READ_METHODS.has(op.method.toLowerCase())) {
+    const result = { dryRun: true, sent: false };
+    audit({ ...base, args, status: "dry_run", approval, durationMs: Date.now() - started });
+    write({ type: "tool.complete", callId, operationId: op.operationId, status: 202, args, result, invalidates: [] });
+    return toolResult(
+      callId,
+      `Dry run: ${op.operationId} was NOT sent to the API. Nothing changed. Tell the user it was not sent.`,
+      result,
+    );
+  }
   try {
     const res = await executeOperation(
       op,

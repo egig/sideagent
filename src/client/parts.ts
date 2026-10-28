@@ -41,6 +41,12 @@ export function applyEvent(parts: readonly Part[], ev: AgentEvent): Part[] {
       });
     case "tool.start":
       return upsertTool(parts, ev.callId, { toolName: ev.operationId });
+    case "knowledge.hits": {
+      // After tool.complete: fold the passages into the search call's result for the card to show.
+      const prev = parts.find((p) => p.type === "tool-call" && p.toolCallId === ev.callId);
+      const base = prev?.type === "tool-call" && prev.result && typeof prev.result === "object" ? prev.result : {};
+      return upsertTool(parts, ev.callId, { result: { ...base, hits: ev.hits } });
+    }
     case "tool.rejected":
       return upsertTool(parts, ev.callId, { toolName: ev.operationId, result: { rejected: true } });
     case "tool.complete":

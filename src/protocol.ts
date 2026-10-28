@@ -22,6 +22,16 @@ export type AgentEvent =
       result: unknown;
       invalidates: string[];
     }
+  /**
+   * Passages a knowledge search returned, after its `tool.complete`. Sent only when the host opts in
+   * per request (`exposeKnowledge` on createAgent); never in history. Clients may ignore it.
+   */
+  | {
+      type: "knowledge.hits";
+      callId: string;
+      query: string;
+      hits: { title: string; url?: string; score: number; text: string }[];
+    }
   | { type: "tool.rejected"; callId: string; operationId: string }
   | { type: "error"; code: string; message: string }
   | { type: "turn.end" };

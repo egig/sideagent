@@ -55,6 +55,7 @@ import { AgentProvider } from "sideagent";
 
 Anything under `AgentProvider` can call `useAgent()` to get `{ open, setOpen }`, e.g. an "Ask assistant" button in your toolbar, and `useAgentBusy()` to know whether one of the agent's operations is running, e.g. to disable a form that would race it. See [Hooks](./hooks.md#blocking-the-app-while-an-operation-runs).
 
+
 ## Small screens
 
 At 640px wide or less, the panel opens full screen in every mode (floating, sidebar and docked) and the layout switcher and resize handle are hidden. It respects the safe-area insets when your page sets `viewport-fit=cover`. On touch devices the buttons are larger and the keyboard hint is hidden.
