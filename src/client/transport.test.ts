@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { threadKey } from "./storage";
-import { callJson, streamChat } from "./transport";
+import { callJson, fetchAgentName, streamChat } from "./transport";
 
 const sent: Headers[] = [];
 afterEach(() => {
@@ -53,5 +53,29 @@ describe("storageKey", () => {
     expect(threadKey("/agent")).toBe("sideagent:thread:/agent");
     expect(threadKey("/agent", "u1")).toBe("sideagent:thread:/agent:u1");
     expect(threadKey("/agent", "u1")).not.toBe(threadKey("/agent", "u2"));
+  });
+});
+
+describe("fetchAgentName", () => {
+  const reply = (status: number, body: unknown) =>
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response(JSON.stringify(body), { status }));
+
+  it("returns the name and asks once per endpoint", async () => {
+    const f = reply(200, { name: "Billing helper" });
+    expect(await fetchAgentName({ endpoint: "/a" })).toBe("Billing helper");
+    expect(await fetchAgentName({ endpoint: "/a" })).toBe("Billing helper");
+    expect(f).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(f.mock.calls[0]![1]!.body as string)).toEqual({ action: "agent.info" });
+  });
+
+  it("is null for an error, an empty name or a network failure, and retries after", async () => {
+    reply(400, { error: "invalid request" });
+    expect(await fetchAgentName({ endpoint: "/b" })).toBeNull();
+    reply(200, { name: "  " });
+    expect(await fetchAgentName({ endpoint: "/b" })).toBeNull();
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+    expect(await fetchAgentName({ endpoint: "/b" })).toBeNull();
+    reply(200, { name: "Back" });
+    expect(await fetchAgentName({ endpoint: "/b" })).toBe("Back");
   });
 });

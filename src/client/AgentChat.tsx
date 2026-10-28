@@ -23,7 +23,7 @@ import { HistoryList } from "./HistoryList.js";
 import { MODE_KEY, readMode, storeGet, storeSet, threadKey, WIDTH_KEY } from "./storage.js";
 import { CSS } from "./styles.js";
 import { resolveTarget } from "./target.js";
-import { callJson } from "./transport.js";
+import { callJson, fetchAgentName } from "./transport.js";
 import type { AgentChatMode, AgentChatProps, Session } from "./types.js";
 
 export type { AgentChatMode, AgentChatProps } from "./types.js";
@@ -61,6 +61,20 @@ export function AgentChat(props: AgentChatProps) {
     headers: target.headers,
     getHeaders: props.getHeaders,
   };
+
+  // Only Cloud agents (publishableKey) have a name to show; an explicit `title` always wins.
+  const [agentName, setAgentName] = useState<string | null>(null);
+  const wantName = props.title === undefined && props.publishableKey !== undefined;
+  useEffect(() => {
+    if (!wantName) return;
+    let live = true;
+    void fetchAgentName(opts).then((n) => live && setAgentName(n));
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantName, target.endpoint]);
+  const title = props.title ?? agentName ?? "Assistant";
 
   const setMode = useCallback((m: AgentChatMode) => {
     setModeState(m);
@@ -153,7 +167,7 @@ export function AgentChat(props: AgentChatProps) {
         </button>
       )}
       {visible && (
-        <section className="sa-panel" aria-label={props.title ?? "Assistant"} style={docked ? { width } : undefined}>
+        <section className="sa-panel" aria-label={title} style={docked ? { width } : undefined}>
           {docked && (
             <div
               className="sa-resizer"
@@ -172,7 +186,7 @@ export function AgentChat(props: AgentChatProps) {
             />
           )}
           <header className="sa-header">
-            <span className="sa-title">{props.title ?? "Assistant"}</span>
+            <span className="sa-title">{title}</span>
             {props.allowModeSwitch !== false && (
               <button
                 className="sa-btn sa-icon-btn sa-mode-btn"

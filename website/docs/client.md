@@ -23,6 +23,8 @@ With an agent hosted on sideagent Cloud, pass its publishable key instead of `en
 
 Pass `endpoint` as well to send the requests somewhere else, such as a proxy in front of sideagent Cloud. A malformed key, or neither prop, throws during render. `parsePublishableKey` and `publishableEndpoint` are exported from `sideagent/keys`.
 
+The panel title is the agent's name from the Cloud dashboard. The chat asks for it once with `{ "action": "agent.info" }` and shows "Assistant" until it answers, or if the request fails. Pass `title` to use your own text. Without a `publishableKey` the title is "Assistant" and nothing is asked.
+
 Signed-in users: pass `getHeaders`, which the chat calls before every request, so a login token that expires is fetched fresh each time. Pass `storageKey` (the user's ID) so the last conversation the chat remembers in `localStorage` belongs to that user; on a shared browser another user starts from their own.
 
 ```tsx

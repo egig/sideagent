@@ -29,9 +29,15 @@ export type AgentEvent =
 export type ChatRequest =
   | { threadId?: string; message: string; context?: unknown }
   | { threadId: string; approval: { token: string; decision: "approve" | "reject" } }
+  | { action: "agent.info" }
   | { action: "threads.list" }
   | { action: "threads.get"; threadId: string }
   | { action: "threads.delete"; threadId: string };
+
+/** Answer to `agent.info`. Only sideagent Cloud serves it; the chat title falls back to "Assistant" without it. */
+export interface AgentInfo {
+  name: string;
+}
 
 export interface ThreadMeta {
   id: string;

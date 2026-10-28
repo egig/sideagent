@@ -13,6 +13,7 @@ export interface AgentChatProps {
   publishableKey?: string;
   /** Starting layout. The user can switch; their choice is remembered. */
   mode?: AgentChatMode;
+  /** Panel title. With `publishableKey` and no `title`, the agent's name from the Cloud dashboard; otherwise "Assistant". */
   title?: string;
   placeholder?: string;
   hooks?: AgentHooks;

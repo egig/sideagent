@@ -1,4 +1,4 @@
-import type { AgentEvent, ChatRequest } from "../protocol.js";
+import type { AgentEvent, AgentInfo, ChatRequest } from "../protocol.js";
 
 export type GetHeaders = () => Record<string, string> | Promise<Record<string, string>>;
 
@@ -83,4 +83,20 @@ export async function callJson<T>(
     /* no body */
   }
   return { status: res.status, data };
+}
+
+const names = new Map<string, Promise<string | null>>();
+
+/** The agent's display name from sideagent Cloud (`agent.info`), or null if the server does not give one. Cached per endpoint. */
+export function fetchAgentName(opts: Omit<TransportOptions, "signal">): Promise<string | null> {
+  let name = names.get(opts.endpoint);
+  if (!name) {
+    name = callJson<AgentInfo>({ action: "agent.info" }, opts)
+      .then((r) => (r.status === 200 && typeof r.data?.name === "string" && r.data.name.trim() ? r.data.name : null))
+      .catch(() => null);
+    names.set(opts.endpoint, name);
+    // A failure (signed out, offline) is retried on the next mount.
+    void name.then((n) => n === null && names.delete(opts.endpoint));
+  }
+  return name;
 }
