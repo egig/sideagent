@@ -35,6 +35,8 @@ Signed-in users: pass `getHeaders`, which the chat calls before every request, s
 
 `getHeaders` works with `endpoint` too. Its headers are merged under `headers`, which wins on a clash, so it cannot replace the publishable key. If it throws, the request is not sent and the chat shows an error.
 
+Hide the floating launcher with `launcher={false}` and open the panel from your own button through `useAgent().setOpen`. Turn off chat history with `history={false}`: no History button, and the chat does not remember or reopen the last conversation. Add your own buttons to the panel header with `headerActions`.
+
 ## Docked sidebar
 
 Wrap your app in `AgentProvider` to dock the chat on the right, side by side with the app instead of over it. It takes the same props as `AgentChat`. The user drags the panel's left edge (or uses the arrow keys on it) to resize; the width is remembered. Outside `AgentProvider`, sidebar mode overlays the page.

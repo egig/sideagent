@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- New `launcher` prop on `AgentChat` and `AgentProvider`: `false` hides the floating launcher button, so the panel opens only through `useAgent().setOpen` or `defaultOpen`.
+- New `history` prop: `false` turns off chat history. No History button, and the chat neither remembers nor reopens the last conversation (nothing is written to `localStorage`). The server still keeps its threads.
+- New `headerActions` prop: extra buttons rendered in the panel header, before History.
+- Wire format (`src/protocol.ts`) unchanged.
+
 ## 0.5.0
 
 - New `getHeaders` prop on `AgentChat` and `AgentProvider`: called before every request (chat turns, approvals, history), for a login token that expires. Its headers are merged under `headers`, which wins on a clash, so it cannot replace the publishable key. If it throws, nothing is sent: a turn shows a `headers_failed` error, a history call fails like a network error.

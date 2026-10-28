@@ -36,6 +36,15 @@ export interface AgentChatProps {
    */
   storageKey?: string;
   defaultOpen?: boolean;
+  /** Set false to hide the floating launcher button. The panel then opens only through `useAgent().setOpen` or `defaultOpen`. */
+  launcher?: boolean;
+  /**
+   * Set false to turn off chat history: no History button, and the chat does not remember or reopen the last
+   * conversation, so every visit starts fresh. The server still keeps its threads.
+   */
+  history?: boolean;
+  /** Extra buttons rendered in the panel header, before History. Use `className="sa-btn sa-icon-btn"` to match. */
+  headerActions?: ReactNode;
   /** Custom result views per operationId. Anything not listed gets the built-in table / fields view. */
   resultRenderers?: Record<string, (e: { operationId: string; args: unknown; result: unknown }) => ReactNode>;
   /** "auto" follows the OS and host `.dark` / `data-theme=dark`. Colors are overridable via --sideagent-* CSS variables. */

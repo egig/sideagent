@@ -53,6 +53,7 @@ export function AgentChat(props: AgentChatProps) {
   const [width, setWidth] = useState(() => clampWidth(Number(storeGet(WIDTH_KEY)) || DEFAULT_WIDTH));
   const [resizing, setResizing] = useState(false);
   const booted = useRef(false);
+  const remember = props.history !== false;
   const key = threadKey(target.endpoint, props.storageKey);
   const opts = {
     endpoint: target.endpoint,
@@ -73,7 +74,7 @@ export function AgentChat(props: AgentChatProps) {
         const r = await callJson<ThreadResponse>({ action: "threads.get", threadId: id }, opts);
         if (r.status === 200 && r.data) {
           setSession((s) => ({ key: s.key + 1, threadId: id, messages: r.data!.messages, pending: r.data!.pending }));
-          storeSet(key, id);
+          if (remember) storeSet(key, id);
         } else {
           if (r.status === 404) storeSet(key, null);
           setSession((s) => ({ key: s.key + 1 }));
@@ -86,7 +87,7 @@ export function AgentChat(props: AgentChatProps) {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [target, props.credentials, props.getHeaders],
+    [target, props.credentials, props.getHeaders, remember],
   );
 
   const resizeTo = useCallback((w: number) => {
@@ -135,9 +136,10 @@ export function AgentChat(props: AgentChatProps) {
   useEffect(() => {
     if (!visible || booted.current) return;
     booted.current = true;
+    if (!remember) return;
     const last = storeGet(key);
     if (last) void openThread(last);
-  }, [visible, key, openThread]);
+  }, [visible, key, openThread, remember]);
 
   return (
     <div
@@ -145,7 +147,7 @@ export function AgentChat(props: AgentChatProps) {
       data-theme={props.theme ?? "auto"}
     >
       <style>{CSS}</style>
-      {!open && (
+      {!open && props.launcher !== false && (
         <button className="sa-fab" aria-label="Open assistant" onClick={() => setOpen(true)}>
           <ChatBubbleIcon width={22} height={22} />
         </button>
@@ -181,15 +183,18 @@ export function AgentChat(props: AgentChatProps) {
                 {mode === "floating" ? <ViewVerticalIcon /> : <OpenInNewWindowIcon />}
               </button>
             )}
-            <button
-              className="sa-btn sa-icon-btn"
-              aria-pressed={view === "history"}
-              onClick={() => setView((v) => (v === "history" ? "chat" : "history"))}
-              title="History"
-              aria-label="History"
-            >
-              <CounterClockwiseClockIcon />
-            </button>
+            {props.headerActions}
+            {remember && (
+              <button
+                className="sa-btn sa-icon-btn"
+                aria-pressed={view === "history"}
+                onClick={() => setView((v) => (v === "history" ? "chat" : "history"))}
+                title="History"
+                aria-label="History"
+              >
+                <CounterClockwiseClockIcon />
+              </button>
+            )}
             <button className="sa-btn sa-icon-btn" onClick={newChat} title="New chat" aria-label="New chat">
               <PlusIcon />
             </button>
@@ -197,7 +202,7 @@ export function AgentChat(props: AgentChatProps) {
               <Cross2Icon />
             </button>
           </header>
-          {view === "history" && (
+          {remember && view === "history" && (
             <HistoryList
               {...opts}
               onOpen={(id) => void openThread(id)}
@@ -219,7 +224,7 @@ export function AgentChat(props: AgentChatProps) {
                 {...props}
                 {...target}
                 session={session}
-                onThread={(id) => storeSet(key, id)}
+                onThread={(id) => remember && storeSet(key, id)}
                 onReload={() => session.threadId && void openThread(session.threadId)}
               />
             )}
