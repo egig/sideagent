@@ -7,6 +7,8 @@ export interface RunContext {
   exposeKnowledge?: boolean;
   /** Host decision for this request (dryRun): writes are approved but not sent. */
   dryRun?: boolean;
+  /** The relevance gate's search of the user's message, made once per request. */
+  gate?: Promise<boolean>;
 }
 
 /** What the graph interrupts with when a call needs the user's approval. */

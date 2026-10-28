@@ -21,6 +21,7 @@ export async function runSearch(
   rawArgs: unknown,
   maxResultBytes: number,
   ctx: ToolContext,
+  minScore = 0,
 ): Promise<ToolMessage> {
   const { callId, write, audit, base } = ctx;
   const q = (rawArgs as { query?: unknown } | undefined)?.query;
@@ -57,7 +58,12 @@ export async function runSearch(
         })),
       });
     }
-    return toolResult(callId, wrapKnowledge(hits, maxResultBytes), { sources });
+    return toolResult(
+      callId,
+      wrapKnowledge(hits, maxResultBytes),
+      { sources },
+      hits.some((h) => h.score >= minScore),
+    );
   } catch (e) {
     audit({ ...base, args: { query }, status: "error", approval: "auto", error: (e as Error).message });
     const error = "Knowledge search is unavailable.";

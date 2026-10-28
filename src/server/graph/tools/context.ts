@@ -20,6 +20,6 @@ export interface ToolContext {
  * `content` is what the model sees. `result` is stored as the message artifact and used to
  * rebuild history in the browser, so it must already be safe to show there.
  */
-export function toolResult(callId: string, content: string, result: unknown): ToolMessage {
-  return new ToolMessage({ tool_call_id: callId, content, artifact: { result } });
+export function toolResult(callId: string, content: string, result: unknown, relevant?: boolean): ToolMessage {
+  return new ToolMessage({ tool_call_id: callId, content, artifact: { result, ...(relevant ? { relevant } : {}) } });
 }

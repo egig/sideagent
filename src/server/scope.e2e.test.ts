@@ -1,0 +1,135 @@
+import { createServer, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import type { AgentEvent } from "../protocol.js";
+import { mockEmbeddingsHandler, mockLlmHandler } from "../testing/mock-llm.js";
+import { createAgent, type Agent } from "./index.js";
+
+const ORIGIN = "https://app.example.com";
+const OFF_TOPIC = "Stay on topic.";
+const spec = {
+  openapi: "3.0.3",
+  info: { title: "t", version: "1" },
+  paths: { "/invoices": { get: { operationId: "listInvoices", responses: { "200": { description: "ok" } } } } },
+};
+
+let srv: Server;
+let docsOnly: Agent;
+let withOps: Agent;
+let owner: Agent;
+let chatCalls = 0;
+const port = () => (srv.address() as AddressInfo).port;
+
+beforeAll(async () => {
+  srv = createServer(async (req, res) => {
+    let body = "";
+    for await (const c of req) body += c;
+    const handler = req.url?.endsWith("/embeddings") ? mockEmbeddingsHandler : mockLlmHandler;
+    if (req.url?.endsWith("/chat/completions")) chatCalls++;
+    const out = await handler(
+      new Request("http://x", { method: "POST", body, headers: { "content-type": "application/json" } }),
+    );
+    res.writeHead(out.status, Object.fromEntries(out.headers));
+    res.end(Buffer.from(await out.arrayBuffer()));
+  }).listen(0, "127.0.0.1");
+  await new Promise((r) => srv.once("listening", r));
+  const base = {
+    llm: { baseUrl: `http://127.0.0.1:${port()}/v1`, apiKey: "k", model: "mock" },
+    allowedOrigins: [ORIGIN],
+    anonymous: true,
+    allowPrivateNetworks: true,
+    approvalSecret: "test-secret-test-secret",
+    scope: { minScore: 0.3, offTopic: OFF_TOPIC },
+    knowledge: {
+      embeddings: { model: "mock-embedding" },
+      sources: [
+        { id: "refunds", title: "Refund policy", content: "Customers can request a refund within thirty days." },
+      ],
+    },
+  };
+  docsOnly = await createAgent({ ...base, allow: [] });
+  owner = await createAgent({ ...base, allow: [], exposeKnowledge: () => true });
+  withOps = await createAgent({ ...base, spec, baseUrl: "https://api.example.com", allow: ["listInvoices"] });
+});
+afterAll(() => srv.close());
+
+async function chat(agent: Agent, message: string) {
+  const res = await agent.handler(
+    new Request("http://x", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: ORIGIN },
+      body: JSON.stringify({ message }),
+    }),
+  );
+  const raw = await res.text();
+  const events = raw
+    .split("\n\n")
+    .filter((b) => b.startsWith("data: "))
+    .map((b) => JSON.parse(b.slice(6)) as AgentEvent);
+  const text = events.map((e) => (e.type === "text.delta" ? e.text : "")).join("");
+  return { events, text };
+}
+
+describe("scope: knowledge-only agent", () => {
+  it("answers off-topic questions with the fixed reply and never calls the model", async () => {
+    const before = chatCalls;
+    const { text, events } = await chat(docsOnly, "what is 2+2");
+    expect(text).toBe(OFF_TOPIC);
+    expect(events.at(-1)?.type).toBe("turn.end");
+    expect(chatCalls).toBe(before);
+  });
+
+  it("lets a question that matches the documentation through to the model", async () => {
+    const before = chatCalls;
+    const { text } = await chat(docsOnly, "refund within thirty days");
+    expect(chatCalls).toBeGreaterThan(before);
+    expect(text).not.toBe(OFF_TOPIC);
+    expect(text).toContain("Done.");
+  });
+});
+
+describe("scope: owner view", () => {
+  it("streams what the gate retrieved, with scores, even when it stops the turn", async () => {
+    const { events, text } = await chat(owner, "what is 2+2");
+    expect(text).toBe(OFF_TOPIC);
+    expect(events.map((e) => e.type)).toEqual([
+      "turn.start",
+      "tool.start",
+      "tool.complete",
+      "knowledge.hits",
+      "text.delta",
+      "turn.end",
+    ]);
+    const hits = events.find((e) => e.type === "knowledge.hits");
+    expect(hits).toMatchObject({ callId: "gate", hits: [{ title: "Refund policy" }] });
+  });
+
+  it("sends nothing of the sort to end users", async () => {
+    const { events } = await chat(docsOnly, "what is 2+2");
+    expect(events.some((e) => e.type === "knowledge.hits")).toBe(false);
+  });
+});
+
+describe("scope: agent with operations", () => {
+  it("never shows the model's text for an off-topic question", async () => {
+    const { text } = await chat(withOps, "hello there");
+    expect(text).toBe(OFF_TOPIC);
+  });
+
+  it("lets a turn that calls an operation answer normally", async () => {
+    const real = globalThis.fetch;
+    const spy = vi.spyOn(globalThis, "fetch");
+    spy.mockImplementation(async (input, init) =>
+      String(input instanceof Request ? input.url : input).startsWith("https://api.example.com")
+        ? Response.json([{ id: "inv_1" }])
+        : real(input, init),
+    );
+    try {
+      const { text, events } = await chat(withOps, "list invoices");
+      expect(events.some((e) => e.type === "tool.complete" && e.operationId === "listInvoices")).toBe(true);
+      expect(text).toContain("Done.");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});

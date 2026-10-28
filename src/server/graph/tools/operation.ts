@@ -72,7 +72,7 @@ export async function runOperation(
       op,
       args,
       {
-        baseUrl: config.baseUrl,
+        baseUrl: config.baseUrl!,
         headers: run.headers,
         callTimeoutMs: config.limits.callTimeoutMs,
         maxResultBytes: config.limits.maxResultBytes,
