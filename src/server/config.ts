@@ -19,6 +19,7 @@ const knowledgeSchema = z
         baseUrl: url.optional(),
         apiKey: z.string().min(1).optional(),
         fetch: customFetch.optional(),
+        maxRetries: z.number().int().min(0).max(6).optional(),
       })
       .optional(),
     topK: z.number().int().min(1).max(12).default(4),
@@ -42,6 +43,8 @@ export const configSchema = z
         model: z.string().min(1),
         temperature: z.number().min(0).max(2).optional(),
         fetch: customFetch.optional(),
+        /** Retries after a failed call. Default: the client's own (several, with backoff). 0 fails at once. */
+        maxRetries: z.number().int().min(0).max(6).optional(),
       })
       .optional(),
     allow: z.array(z.string()).min(1, "allow is empty; list operationIds, tags or globs to expose"),

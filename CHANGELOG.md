@@ -4,7 +4,7 @@
 
 - `vectorStore` is now any LangChain `VectorStoreInterface` (it was `{ replace, search }`), and `LangGraphThreadStore` adapts a LangGraph `BaseStore` as a `threadStore`. Chunking uses `@langchain/textsplitters`. **Breaking for custom `vectorStore` objects.**
 - New `exposeKnowledge({ request, userId })` option on `createAgent`. When it returns `true`, knowledge searches also stream a `knowledge.hits` event with the passage text and scores. Off by default; the request body cannot turn it on. Old clients ignore the event.
-- New `fetch` on `llm` and `knowledge.embeddings`: every model and embeddings call goes through it.
+- New `fetch` on `llm` and `knowledge.embeddings`: every model and embeddings call goes through it. New `maxRetries` on both, to fail fast.
 - New `storageKey` prop on `AgentChat` and `AgentProvider` to keep the remembered mode, width and thread of two chats apart. Default keys unchanged.
 - Wire format (`src/protocol.ts`): adds the `knowledge.hits` event. Existing events unchanged.
 
