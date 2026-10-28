@@ -2,9 +2,11 @@ import type { AgentChatMode } from "./types.js";
 
 /** localStorage wrappers: private mode and blocked storage must never break the chat. */
 
-export const MODE_KEY = "sideagent:mode";
-export const WIDTH_KEY = "sideagent:width";
-export const threadKey = (endpoint: string) => `sideagent:thread:${endpoint}`;
+/** `ns` keeps two chats on one page (and one origin) from sharing layout settings. Without it the keys are unchanged. */
+const prefix = (ns?: string) => (ns ? `sideagent:${ns}:` : "sideagent:");
+export const modeKey = (ns?: string) => `${prefix(ns)}mode`;
+export const widthKey = (ns?: string) => `${prefix(ns)}width`;
+export const threadKey = (endpoint: string, ns?: string) => `${prefix(ns)}thread:${endpoint}`;
 
 const MODES: AgentChatMode[] = ["floating", "sidebar"];
 
@@ -25,7 +27,7 @@ export function storeSet(k: string, v: string | null) {
   }
 }
 
-export function readMode(fallback: AgentChatMode): AgentChatMode {
-  const v = storeGet(MODE_KEY) as AgentChatMode | null;
+export function readMode(fallback: AgentChatMode, ns?: string): AgentChatMode {
+  const v = storeGet(modeKey(ns)) as AgentChatMode | null;
   return v && MODES.includes(v) ? v : fallback;
 }

@@ -70,7 +70,7 @@ Fixed limits: request body 256 KB, message 8000 characters.
 { at, userId, threadId, operationId, callId, args, status, httpStatus?, approval, durationMs?, error? }
 ```
 
-- `status`: `"executed" | "rejected" | "denied" | "error"`.
+- `status`: `"executed" | "rejected" | "denied" | "error" | "dry_run"`.
 - `approval`: `"auto" | "approved" | "rejected"`.
 - Values under keys that look sensitive (`password`, `token`, `secret`, `api_key`, `authorization`, `cookie`, `credential`) are replaced with `[redacted]` before the callback. Other personal data in `args` is not.
 

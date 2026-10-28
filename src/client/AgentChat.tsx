@@ -20,7 +20,7 @@ import type { ThreadResponse } from "../protocol.js";
 import { Chat } from "./Chat.js";
 import { AgentContext, DockContext } from "./context.js";
 import { HistoryList } from "./HistoryList.js";
-import { MODE_KEY, readMode, storeGet, storeSet, threadKey, WIDTH_KEY } from "./storage.js";
+import { modeKey, readMode, storeGet, storeSet, threadKey, widthKey } from "./storage.js";
 import { CSS } from "./styles.js";
 import { resolveTarget } from "./target.js";
 import { callJson } from "./transport.js";
@@ -41,7 +41,7 @@ export function AgentChat(props: AgentChatProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [props.endpoint, props.publishableKey, props.headers],
   );
-  const [mode, setModeState] = useState<AgentChatMode>(() => readMode(props.mode ?? "floating"));
+  const [mode, setModeState] = useState<AgentChatMode>(() => readMode(props.mode ?? "floating", props.storageKey));
   const [localOpen, setLocalOpen] = useState(props.defaultOpen ?? false);
   const shared = useContext(AgentContext);
   const open = shared ? shared.open : localOpen;
@@ -50,16 +50,19 @@ export function AgentChat(props: AgentChatProps) {
   const [session, setSession] = useState<Session>({ key: 0 });
   const [loading, setLoading] = useState(false);
   const docked = useContext(DockContext) && mode === "sidebar";
-  const [width, setWidth] = useState(() => clampWidth(Number(storeGet(WIDTH_KEY)) || DEFAULT_WIDTH));
+  const [width, setWidth] = useState(() => clampWidth(Number(storeGet(widthKey(props.storageKey))) || DEFAULT_WIDTH));
   const [resizing, setResizing] = useState(false);
   const booted = useRef(false);
-  const key = threadKey(target.endpoint);
+  const key = threadKey(target.endpoint, props.storageKey);
   const opts = { endpoint: target.endpoint, credentials: props.credentials, headers: target.headers };
 
-  const setMode = useCallback((m: AgentChatMode) => {
-    setModeState(m);
-    storeSet(MODE_KEY, m);
-  }, []);
+  const setMode = useCallback(
+    (m: AgentChatMode) => {
+      setModeState(m);
+      storeSet(modeKey(props.storageKey), m);
+    },
+    [props.storageKey],
+  );
 
   const openThread = useCallback(
     async (id: string) => {
@@ -98,13 +101,13 @@ export function AgentChat(props: AgentChatProps) {
   };
   const onHandleUp = () => {
     setResizing(false);
-    storeSet(WIDTH_KEY, String(width));
+    storeSet(widthKey(props.storageKey), String(width));
   };
   const onHandleKey = (e: KeyboardEvent<HTMLDivElement>) => {
     const d = e.key === "ArrowLeft" ? 16 : e.key === "ArrowRight" ? -16 : 0;
     if (d) {
       e.preventDefault();
-      storeSet(WIDTH_KEY, String(resizeTo(width + d)));
+      storeSet(widthKey(props.storageKey), String(resizeTo(width + d)));
     }
   };
 

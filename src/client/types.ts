@@ -25,6 +25,8 @@ export interface AgentChatProps {
   credentials?: RequestCredentials;
   headers?: Record<string, string>;
   defaultOpen?: boolean;
+  /** Names this chat's remembered layout (mode, width, last thread). Set it when a page has two chats; default: shared keys. */
+  storageKey?: string;
   /** Custom result views per operationId. Anything not listed gets the built-in table / fields view. */
   resultRenderers?: Record<string, (e: { operationId: string; args: unknown; result: unknown }) => ReactNode>;
   /** "auto" follows the OS and host `.dark` / `data-theme=dark`. Colors are overridable via --sideagent-* CSS variables. */
