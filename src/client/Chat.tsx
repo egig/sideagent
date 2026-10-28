@@ -6,10 +6,10 @@ import {
   type ChatModelAdapter,
 } from "@assistant-ui/react";
 import { ArrowUpIcon } from "@radix-ui/react-icons";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ApprovalCard } from "./ApprovalCard.js";
 import { RenderersContext } from "./context.js";
-import { fireComplete, safely } from "./hooks.js";
+import { safely, turnHooks } from "./hooks.js";
 import { AssistantMessage, UserMessage } from "./Messages.js";
 import { applyEvent, toInitialMessages, type Part } from "./parts.js";
 import { streamChat } from "./transport.js";
@@ -40,7 +40,7 @@ export function Chat(
         const ctx = typeof p.context === "function" ? (p.context as () => unknown)() : p.context;
 
         let parts: Part[] = [];
-        safely(p.hooks?.onTurnStart);
+        const turn = turnHooks(p.hooks);
         let body: Parameters<typeof streamChat>[0] = { threadId: threadId.current, message: text, context: ctx };
         try {
           for (;;) {
@@ -53,15 +53,12 @@ export function Chat(
               signal: abortSignal,
             })) {
               parts = applyEvent(parts, ev);
+              turn.event(ev);
               if (ev.type === "turn.start") {
                 threadId.current = ev.threadId;
                 p.onThread(ev.threadId);
               } else if (ev.type === "approval.request") {
                 pending = ev;
-              } else if (ev.type === "tool.complete") {
-                fireComplete(p.hooks, ev);
-              } else if (ev.type === "error") {
-                safely(() => p.hooks?.onError?.({ code: ev.code, message: ev.message }));
               }
               yield { content: parts as any };
             }
@@ -77,7 +74,7 @@ export function Chat(
           }
         } finally {
           setApproval(null);
-          safely(p.hooks?.onTurnEnd);
+          turn.end();
         }
         yield { content: parts as any };
       },
@@ -88,16 +85,31 @@ export function Chat(
 
   const runtime = useLocalRuntime(adapter, { initialMessages: toInitialMessages(props.session.messages) });
 
+  // A restored approval is waiting on the user just like a live one.
+  const announced = useRef(false);
+  useEffect(() => {
+    const req = props.session.pending;
+    if (!req || announced.current) return;
+    announced.current = true;
+    safely(() => latest.current.hooks?.onApprovalRequested?.(req));
+  }, [props.session.pending]);
+
   const decideLoaded = async (decision: Decision) => {
     const req = loadedPending;
     if (!req || !threadId.current) return;
     setLoadedPending(null);
-    for await (const ev of streamChat(
-      { threadId: threadId.current, approval: { token: req.token, decision } },
-      { endpoint, credentials, headers, getHeaders },
-    )) {
-      if (ev.type === "tool.complete") fireComplete(hooks, ev);
-      if (ev.type === "error") safely(() => hooks?.onError?.({ code: ev.code, message: ev.message }));
+    const turn = turnHooks(hooks);
+    try {
+      for await (const ev of streamChat(
+        { threadId: threadId.current, approval: { token: req.token, decision } },
+        { endpoint, credentials, headers, getHeaders },
+      )) {
+        turn.event(ev);
+      }
+    } catch {
+      turn.event({ type: "error", code: "network", message: "Connection lost. Reload to see the result." });
+    } finally {
+      turn.end();
     }
     props.onReload();
   };
