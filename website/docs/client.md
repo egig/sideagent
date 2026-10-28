@@ -39,6 +39,8 @@ import { AgentProvider } from "sideagent";
 
 Anything under `AgentProvider` can call `useAgent()` to get `{ open, setOpen }`, e.g. an "Ask assistant" button in your toolbar.
 
+Two chats on one page, such as an assistant and a second agent docked beside it, would share the remembered mode, width and last thread. Give one of them `storageKey="preview"` (any short name) to keep its settings apart. Without it the keys are unchanged. Nest a second `AgentProvider` inside the first to dock it to the left of the outer panel; `useAgent()` returns the nearest one.
+
 ## Small screens
 
 At 640px wide or less, the panel opens full screen in every mode (floating, sidebar and docked) and the layout switcher and resize handle are hidden. It respects the safe-area insets when your page sets `viewport-fit=cover`. On touch devices the buttons are larger and the keyboard hint is hidden.

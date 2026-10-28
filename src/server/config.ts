@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 const url = z.string().url();
+/** Used for every HTTP call to the endpoint, e.g. a guarded fetch that blocks private hosts. */
+const customFetch = z.custom<typeof fetch>((v) => typeof v === "function", "fetch must be a function");
 
 const knowledgeSchema = z
   .object({
@@ -12,7 +14,12 @@ const knowledgeSchema = z
     urls: z.array(z.union([url, z.object({ url, title: z.string().max(200).optional() })])).default([]),
     /** OpenAI-compatible /embeddings endpoint. baseUrl and apiKey default to the llm ones. Omit when you pass the `embeddings` option to createAgent. */
     embeddings: z
-      .object({ model: z.string().min(1), baseUrl: url.optional(), apiKey: z.string().min(1).optional() })
+      .object({
+        model: z.string().min(1),
+        baseUrl: url.optional(),
+        apiKey: z.string().min(1).optional(),
+        fetch: customFetch.optional(),
+      })
       .optional(),
     topK: z.number().int().min(1).max(12).default(4),
     ttlMs: z.number().int().positive().default(3_600_000),
@@ -34,6 +41,7 @@ export const configSchema = z
         apiKey: z.string().min(1, "llm.apiKey is empty; read it from an env var on the server"),
         model: z.string().min(1),
         temperature: z.number().min(0).max(2).optional(),
+        fetch: customFetch.optional(),
       })
       .optional(),
     allow: z.array(z.string()).min(1, "allow is empty; list operationIds, tags or globs to expose"),

@@ -91,3 +91,26 @@ describe("toInitialMessages", () => {
     });
   });
 });
+
+describe("knowledge.hits", () => {
+  it("folds the passages into the search call's result", () => {
+    const parts = run([
+      { type: "tool.start", callId: "c1", operationId: "search_knowledge" },
+      {
+        type: "tool.complete",
+        callId: "c1",
+        operationId: "search_knowledge",
+        status: 200,
+        args: { query: "q" },
+        result: { sources: [{ id: "a", title: "A" }] },
+        invalidates: [],
+      },
+      { type: "knowledge.hits", callId: "c1", query: "q", hits: [{ title: "A", score: 0.9, text: "passage" }] },
+    ]);
+    expect(parts).toHaveLength(1);
+    expect(parts[0]).toMatchObject({
+      type: "tool-call",
+      result: { sources: [{ id: "a", title: "A" }], hits: [{ title: "A", score: 0.9, text: "passage" }] },
+    });
+  });
+});

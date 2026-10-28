@@ -21,11 +21,12 @@ export interface HandlerDeps {
   secret: string;
   getAuth?: (request: Request) => AuthResult | Promise<AuthResult>;
   beforeTurn?: (ctx: { request: Request; userId: string }) => void | Promise<void>;
+  exposeKnowledge?: (ctx: { request: Request; userId: string }) => boolean | Promise<boolean>;
 }
 
 /** The agent endpoint. Each step either rejects the request or narrows what the next step may assume. */
 export function createHandler(deps: HandlerDeps) {
-  const { config, graph, threads, getAuth, beforeTurn } = deps;
+  const { config, graph, threads, getAuth, beforeTurn, exposeKnowledge } = deps;
   const active = new Map<string, number>();
 
   return async function handler(request: Request): Promise<Response> {
@@ -66,6 +67,20 @@ export function createHandler(deps: HandlerDeps) {
       return json(429, { error: "too many concurrent turns" }, cors);
     }
 
-    return runTurn(request, body, { userId, headers: auth.headers ?? {} }, { ...deps, active }, cors);
+    // A throwing callback means no. The answer comes from the host, never from the request body.
+    let expose = false;
+    try {
+      expose = (await exposeKnowledge?.({ request, userId })) === true;
+    } catch {
+      /* stays false */
+    }
+
+    return runTurn(
+      request,
+      body,
+      { userId, headers: auth.headers ?? {}, exposeKnowledge: expose },
+      { ...deps, active },
+      cors,
+    );
   };
 }

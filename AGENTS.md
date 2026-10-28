@@ -41,6 +41,7 @@ Tests sit next to the code they cover (`*.test.ts`). `e2e.test.ts` drives the fu
   | Pinned `baseUrl`, SSRF guards | `security/url-guard.ts`, `executor.ts`, `knowledge/fetch-page.ts` | `security/url-guard.test.ts`, `executor.test.ts`, `knowledge/knowledge.test.ts` |
   | Origin, method and content-type checks | `security/origin.ts`, `http/handler.ts` | `e2e.test.ts` "checks origin, method and content type", "cors" |
   | Threads bound to their user | `threads.ts` (`ownsThread`) | `e2e.test.ts` "denies another user's thread", "history" |
+  | Passage text reaches the browser only when the host opts in per request | `graph/tools/search.ts`, `http/handler.ts` (`exposeKnowledge`) | `knowledge-expose.e2e.test.ts` "is off by default", "ignores flags sent in the request body" |
   | Tool output and page context are untrusted data | `security/policy.ts`, `knowledge/format.ts` | `knowledge.e2e.test.ts` "wraps passages as untrusted data" |
 
 - Everything in `src/server/` (non-test) must run on edge runtimes: no `node:*` imports, `Buffer`, or `process.` (enforced by `edge-compat.test.ts`, which scans subfolders).

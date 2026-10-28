@@ -23,6 +23,8 @@ app.on(["POST", "OPTIONS"], "/agent", honoHandler(agent)); // also: nextRoute, e
 console.log(await agent.doctor());                         // what the agent can do + LLM check
 ```
 
+`llm.fetch` and `knowledge.embeddings.fetch` take a `fetch` function that carries every HTTP call to the model and embeddings endpoint (embeddings fall back to `llm.fetch`). Use it to route those calls through your own guard, for example one that blocks private hosts when the `baseUrl` comes from a customer. They do not apply to `model` or `embeddings` you pass in yourself.
+
 ## Behavior and limits
 
 - Only operations in `allow` are exposed. Anything not listed is denied. Entries are operation ids or `tag:<name>`.

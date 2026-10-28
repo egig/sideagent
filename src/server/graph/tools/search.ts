@@ -43,6 +43,20 @@ export async function runSearch(
       result: { sources },
       invalidates: [],
     });
+    // Host opt-in only (see exposeKnowledge): passage text is otherwise for the model alone.
+    if (ctx.run.exposeKnowledge) {
+      write({
+        type: "knowledge.hits",
+        callId,
+        query,
+        hits: hits.map((h) => ({
+          title: h.meta.title,
+          ...(h.meta.url ? { url: h.meta.url } : {}),
+          score: h.score,
+          text: h.text,
+        })),
+      });
+    }
     return toolResult(callId, wrapKnowledge(hits, maxResultBytes), { sources });
   } catch (e) {
     audit({ ...base, args: { query }, status: "error", approval: "auto", error: (e as Error).message });

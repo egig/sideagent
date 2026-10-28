@@ -39,6 +39,27 @@ function Sources({ result }: { result: unknown }) {
   );
 }
 
+/** Only present when the host opted in (exposeKnowledge), e.g. an owner previewing their agent. */
+function Passages({ result }: { result: unknown }) {
+  const hits = ((result as any)?.hits ?? []) as { title: string; score: number; text: string }[];
+  if (!hits.length) return null;
+  return (
+    <details className="sa-details">
+      <summary>
+        <ChevronRightIcon /> Passages ({hits.length})
+      </summary>
+      {hits.map((h, i) => (
+        <div key={i} className="sa-passage">
+          <div className="sa-more">
+            {h.title} · {h.score.toFixed(2)}
+          </div>
+          <pre>{h.text}</pre>
+        </div>
+      ))}
+    </details>
+  );
+}
+
 export function ToolCard(props: { toolName: string; args: unknown; result?: unknown }) {
   const renderers = useContext(RenderersContext);
   const { toolName, args, result } = props;
@@ -62,7 +83,10 @@ export function ToolCard(props: { toolName: string; args: unknown; result?: unkn
         (custom ? (
           custom({ operationId: toolName, args, result })
         ) : toolName === SEARCH_TOOL ? (
-          <Sources result={result} />
+          <>
+            <Sources result={result} />
+            <Passages result={result} />
+          </>
         ) : (
           <ResultView result={result} />
         ))}
