@@ -52,22 +52,56 @@ Pass `hooks` to `AgentChat` or `AgentProvider`. They run after the server confir
 
 | Hook | Fires |
 |---|---|
-| `onTurnStart()` | When the user sends a message |
+| `onTurnStart()` | When the user sends a message, or answers an approval restored from history |
 | `onTurnEnd()` | When the turn finishes, fails or is stopped |
-| `onApprovalRequested(event)` | When the agent waits for the user to approve a call. `event` has the operation and its arguments |
-| `onError({ code, message })` | On an agent error. Codes: `step_limit`, `timeout`, `error` |
+| `onApprovalRequested(event)` | When the agent waits for the user to approve a call, including an approval restored from history. `event` has the operation and its arguments |
+| `onOperationStart({ callId, operationId })` | When a tool call starts running, after any approval |
+| `onOperationAbort({ callId, operationId })` | When a started call's result never arrived: the user started a new chat or opened another thread mid-call, or the connection dropped |
+| `onError({ code, message })` | On an agent error. Server codes: `step_limit`, `timeout`, `error`. Client codes: `headers_failed`, `http_<status>`, `network` |
 | `onAnyOperation(e)` | After every finished tool call, successful or not |
 | `onOperationComplete[operationId](e)` | Same, for one operation id |
 | `onInvalidate(tag, e)` | Once per tag in the operation's `x-agent.invalidates`, only after a successful call |
 
 `e` is `{ operationId, status, args, result }`.
 
+### Blocking the app while an operation runs
+
+Under `AgentProvider`, `useAgentBusy()` returns `true` while an operation runs:
+
+```tsx
+import { useAgentBusy } from "sideagent";
+
+function SaveButton() {
+  const busy = useAgentBusy();
+  return <button disabled={busy}>Save</button>;
+}
+```
+
+With `AgentChat` alone, count calls with the hooks. Every `onOperationStart` is followed by exactly one `onAnyOperation` (the call finished) or `onOperationAbort` (the outcome is unknown). Abort fires before `onTurnEnd`.
+
+```tsx
+const [busy, setBusy] = useState(0);
+
+<AgentChat
+  endpoint="/agent"
+  hooks={{
+    onOperationStart: () => setBusy((n) => n + 1),
+    onAnyOperation: () => setBusy((n) => n - 1),
+    onOperationAbort: () => setBusy((n) => n - 1),
+  }}
+/>;
+```
+
+- A call starts after the user approves, so the app is not blocked while the approval card waits.
+- After an abort the call may still have run on the server. Refetch the data it touches.
+- Blocking input only guards this tab. To prevent conflicting writes from other tabs or users, enforce it in your API.
+
 ### Details
 
 - `status` is the HTTP status from your API. `0` means the call failed before a response: network error, timeout or a blocked request. `result` is then `{ error }`.
 - `onInvalidate` fires only when `status < 400`. It does not fire for failures, rejected approvals or denied calls.
 - A rejected approval fires no operation hook, because the call never ran.
-- Knowledge search fires `onAnyOperation` with `operationId: "search_knowledge"`. Filter on `operationId` if you only care about your own API.
-- A pending approval restored after a page refresh does not fire `onApprovalRequested`. Answering it fires the operation hooks as usual.
+- Knowledge search fires `onOperationStart` and `onAnyOperation` with `operationId: "search_knowledge"`. Filter on `operationId` if you only care about your own API.
+- A pending approval restored after a page refresh fires `onApprovalRequested` once when it is shown. Answering it runs as a turn: `onTurnStart`, the operation hooks, then `onTurnEnd`. If the connection drops there, `onError` fires with code `network`.
 - `result` is the response body after `responseFields` filtering and the `maxResultBytes` cap. It can be truncated.
 - A hook that throws is caught and logged to the console as `[sideagent] hook threw:`. It never breaks the chat. Hooks are synchronous: do not rely on the chat waiting for a returned promise.

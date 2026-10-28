@@ -83,7 +83,7 @@ import { AgentProvider } from "sideagent";
 
 `AgentProvider` fills the viewport height (`100dvh`); override with the `className` or `style` props.
 
-Anything under `AgentProvider` can call `useAgent()` to get `{ open, setOpen }`, e.g. an "Ask assistant" button in your toolbar.
+Anything under `AgentProvider` can call `useAgent()` to get `{ open, setOpen }`, e.g. an "Ask assistant" button in your toolbar, and `useAgentBusy()` to know whether one of the agent's operations is running, e.g. to disable a form that would race it.
 
 ## Try the demo (no API key needed)
 
