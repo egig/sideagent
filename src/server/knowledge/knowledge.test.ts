@@ -1,6 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { mockEmbed } from "../../testing/mock-llm.js";
-import { chunkText, htmlToText, KnowledgeBase, wrapKnowledge, type KnowledgeOptions } from "./index.js";
+import {
+  chunkText,
+  htmlToText,
+  KnowledgeBase,
+  MemoryVectorStore,
+  wrapKnowledge,
+  type KnowledgeOptions,
+} from "./index.js";
 import { assertPublicUrl } from "../security/url-guard.js";
 
 const opts = (over: Partial<KnowledgeOptions> = {}): KnowledgeOptions => ({
@@ -19,15 +26,42 @@ const embed = {
 };
 
 describe("chunkText", () => {
-  it("keeps the nearest heading as context and respects size", () => {
+  it("keeps the nearest heading as context and respects size", async () => {
     const md = "# Refunds\n\nWithin 30 days.\n\n## Shipping\n\n" + "Ships in two days. ".repeat(40);
-    const chunks = chunkText(md, 200);
+    const chunks = await chunkText(md, 200);
     expect(chunks.length).toBeGreaterThan(2);
     expect(chunks.every((c) => c.length <= 260)).toBe(true);
     expect(chunks.slice(1).every((c) => c.startsWith("#"))).toBe(true);
   });
-  it("hard-splits a single huge block", () => {
-    expect(chunkText("word ".repeat(500), 200).length).toBeGreaterThan(5);
+  it("hard-splits a single huge block", async () => {
+    expect((await chunkText("word ".repeat(500), 200)).length).toBeGreaterThan(5);
+  });
+});
+
+describe("chunkText structure", () => {
+  it("does not treat a # line inside a code fence as a heading", async () => {
+    const md = "# Setup\n\n```sh\n# install deps\nnpm i\n```\n\nDone.";
+    const chunks = await chunkText(md, 500);
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0]).toContain("# install deps");
+    expect(chunks[0]!.startsWith("# Setup")).toBe(true);
+  });
+});
+
+describe("htmlToText robustness", () => {
+  it("survives unclosed tags, '>' in attributes and numeric entities", () => {
+    const { text } = htmlToText(
+      '<body><p>one<p title="a>b">two &#169; &#x41; &euro;<div><b>bold<i>x</div><!-- <h1>hidden</h1> --><script>if (a<b) {}</script>tail',
+    );
+    expect(text).toContain("one");
+    expect(text).toContain("two © A €");
+    expect(text).toContain("tail");
+    expect(text).not.toMatch(/hidden|a<b|title=|a>b/);
+  });
+  it("keeps the title out of the body text", () => {
+    const { title, text } = htmlToText("<head><title>My Page</title></head><body><p>Body</p></body>");
+    expect(title).toBe("My Page");
+    expect(text).toBe("Body");
   });
 });
 
@@ -84,6 +118,44 @@ describe("KnowledgeBase", () => {
     await kb.load();
     const hits = await kb.search("how do I get a refund");
     expect(hits[0]!.meta.sourceId).toBe("refunds");
+  });
+
+  it("upserts chunks by stable id and removes the ones a refresh no longer produces", async () => {
+    let body = Array.from({ length: 6 }, (_, i) => `## Part ${i}\n\n${"filler ".repeat(30)}`).join("\n\n");
+    const fetchMock = vi.fn(
+      async () => new Response(body, { headers: { "content-type": "text/markdown" } }),
+    ) as unknown as typeof fetch;
+    const store = new MemoryVectorStore({ embedDocuments: embed.embedDocuments, embedQuery: embed.embedQuery });
+    const add = vi.spyOn(store, "addVectors");
+    const del = vi.spyOn(store, "delete");
+    const kb = new KnowledgeBase(opts({ topK: 100, chunkSize: 150, urls: ["https://docs.example.com/a"] }), {
+      ...embed,
+      store,
+      fetch: fetchMock,
+    });
+    await kb.load();
+    const before = (await kb.search("filler")).length;
+    expect(before).toBeGreaterThan(3);
+    expect(add.mock.calls[0]![2]!.ids![0]).toBe("url:https://docs.example.com/a#0");
+
+    body = "## Part 0\n\nshort";
+    await kb.refresh();
+    expect(await kb.search("filler")).toHaveLength(1);
+    expect(del).toHaveBeenCalledWith({ ids: expect.arrayContaining(["url:https://docs.example.com/a#1"]) });
+  });
+
+  it("keeps the old chunks when a refresh fails", async () => {
+    let fail = false;
+    const fetchMock = vi.fn(async () =>
+      fail
+        ? new Response("no", { status: 500 })
+        : new Response("# T\n\nkept text", { headers: { "content-type": "text/markdown" } }),
+    ) as unknown as typeof fetch;
+    const kb = new KnowledgeBase(opts({ urls: ["https://docs.example.com/a"] }), { ...embed, fetch: fetchMock });
+    await kb.load();
+    fail = true;
+    await kb.refresh();
+    expect((await kb.search("kept"))[0]!.text).toContain("kept text");
   });
 
   it("records oversize sources as errors instead of throwing", async () => {

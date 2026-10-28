@@ -1,3 +1,4 @@
+import type { BaseStore } from "@langchain/langgraph";
 import type { ThreadMeta } from "../protocol.js";
 
 /** Index of a user's conversations. The messages themselves live in the LangGraph checkpointer. */
@@ -37,6 +38,38 @@ export class MemoryThreadStore implements ThreadStore {
   }
   async delete(userId: string, threadId: string) {
     this.of(userId).delete(threadId);
+  }
+}
+
+/**
+ * Thread index on any LangGraph `BaseStore` (Postgres, Redis, …), so one store can serve the checkpointer
+ * ecosystem and the thread list. Keeps at most 200 threads per user, like `MemoryThreadStore`.
+ */
+export class LangGraphThreadStore implements ThreadStore {
+  constructor(private store: BaseStore) {}
+
+  // Namespace labels cannot contain "." and user ids are often emails.
+  private ns = (userId: string) => ["sideagent", "threads", encodeURIComponent(userId).replace(/\./g, "%2E")];
+
+  private async all(userId: string): Promise<ThreadMeta[]> {
+    const items = await this.store.search(this.ns(userId), { limit: MAX_THREADS_PER_USER + 1 });
+    return items.map((i) => i.value as unknown as ThreadMeta).sort((a, b) => b.updatedAt - a.updatedAt);
+  }
+  async list(userId: string) {
+    return (await this.all(userId)).slice(0, MAX_THREADS_PER_USER);
+  }
+  async has(userId: string, threadId: string) {
+    return (await this.store.get(this.ns(userId), threadId)) != null;
+  }
+  async touch(userId: string, threadId: string, title: string) {
+    const existing = (await this.store.get(this.ns(userId), threadId))?.value as ThreadMeta | undefined;
+    const meta: ThreadMeta = { id: threadId, title: existing?.title ?? title, updatedAt: Date.now() };
+    await this.store.put(this.ns(userId), threadId, meta as unknown as Record<string, unknown>);
+    const threads = await this.all(userId);
+    if (threads.length > MAX_THREADS_PER_USER) await this.delete(userId, threads[threads.length - 1]!.id);
+  }
+  async delete(userId: string, threadId: string) {
+    await this.store.delete(this.ns(userId), threadId);
   }
 }
 

@@ -6,7 +6,7 @@ export { createAgent } from "./create-agent.js";
 export type { Agent, CreateAgentOptions, AuthResult, DoctorReport, EmbeddingsLike } from "./create-agent.js";
 export type { AuditEvent } from "./security/policy.js";
 export { nextRoute, honoHandler, expressHandler } from "./adapters/index.js";
-export { MemoryThreadStore } from "./threads.js";
+export { MemoryThreadStore, LangGraphThreadStore } from "./threads.js";
 export type { ThreadStore } from "./threads.js";
 export { KnowledgeBase, MemoryVectorStore, chunkText, htmlToText } from "./knowledge/index.js";
 export type { VectorStore, KnowledgeSourceInput } from "./knowledge/index.js";
