@@ -19,6 +19,19 @@ createAgent({
 
 The agent gets a `search_knowledge` tool. Answers show a "Sources" card, with links only for your configured URLs.
 
+## Showing passages to the host's own user
+
+By default the browser gets source titles only, never passage text. To let a trusted user (for example an owner previewing their agent) see what was retrieved, pass `exposeKnowledge`:
+
+```ts
+createAgent({
+  …,
+  exposeKnowledge: ({ request, userId }) => isOwner(userId), // decided on the server, per request
+});
+```
+
+When it returns `true`, each knowledge search is followed by a `knowledge.hits` event with `{ callId, query, hits: [{ title, url?, score, text }] }`, and the Sources card gets a "Passages" section. Nothing in the request body can turn it on. A callback that throws or returns anything but `true` means no. The passages are not stored, so they do not appear when a thread is reloaded from history. Keep it off for end users: passage text can contain anything you put in your knowledge base.
+
 ## Limits
 
 - URLs come only from config, never from the user or the model.

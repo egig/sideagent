@@ -17,7 +17,8 @@ export function createChatModel(llm: LlmConfig): BaseChatModel {
     apiKey: llm.apiKey,
     temperature: llm.temperature,
     streaming: true,
-    configuration: { baseURL: llm.baseUrl },
+    maxRetries: llm.maxRetries,
+    configuration: { baseURL: llm.baseUrl, fetch: llm.fetch },
   });
 }
 
@@ -26,6 +27,7 @@ export function createEmbeddings(cfg: EmbeddingsConfig, llm: LlmConfig | undefin
   return new OpenAIEmbeddings({
     model: cfg.model,
     apiKey: cfg.apiKey ?? llm!.apiKey,
-    configuration: { baseURL: cfg.baseUrl ?? llm!.baseUrl },
+    maxRetries: cfg.maxRetries ?? llm?.maxRetries,
+    configuration: { baseURL: cfg.baseUrl ?? llm!.baseUrl, fetch: cfg.fetch ?? llm?.fetch },
   });
 }

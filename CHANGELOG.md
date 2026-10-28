@@ -5,7 +5,10 @@
 - New client hooks `onOperationStart` and `onOperationAbort`. Each started operation ends in exactly one `onAnyOperation` or `onOperationAbort`, so an app can block input while a call runs and never stay blocked after a new chat, a thread switch or a lost connection.
 - New `useAgentBusy()` hook: `true` while one of the agent's operations runs, anywhere under `AgentProvider`. It throws outside it, like `useAgent()`.
 - An approval restored from history now fires `onApprovalRequested` when shown, and answering it fires `onTurnStart` and `onTurnEnd` around the resumed run. A lost connection there fires `onError` with code `network` instead of an unhandled rejection.
-- Wire format (`src/protocol.ts`) unchanged.
+- New `exposeKnowledge({ request, userId })` option on `createAgent`. When it returns `true`, knowledge searches also stream a `knowledge.hits` event with the passage text and scores. Off by default; the request body cannot turn it on. Old clients ignore the event.
+- New `dryRun({ request, userId })` option: writes are approved but not sent (status 202, audit status `dry_run`). Host-decided per request; a throwing callback counts as a dry run.
+- New `fetch` and `maxRetries` on `llm` and `knowledge.embeddings`: every model and embeddings call goes through `fetch`; `maxRetries` fails fast.
+- Wire format (`src/protocol.ts`): adds the `knowledge.hits` event. Existing events unchanged.
 
 ## 0.6.0
 

@@ -45,7 +45,7 @@ export interface AuditEvent {
   operationId: string;
   callId: string;
   args: unknown;
-  status: "executed" | "rejected" | "denied" | "error";
+  status: "executed" | "rejected" | "denied" | "error" | "dry_run";
   httpStatus?: number;
   approval: "auto" | "approved" | "rejected";
   durationMs?: number;
