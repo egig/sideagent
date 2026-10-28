@@ -75,6 +75,17 @@ export const configSchema = z
       })
       .strict()
       .optional(),
+    /**
+     * Replaces older messages of a long thread with a model-written summary once the thread passes `afterTokens`
+     * (approximate count). The last `keepMessages` messages stay as they are. Off by default.
+     */
+    summarize: z
+      .object({
+        afterTokens: z.number().int().positive().default(8000),
+        keepMessages: z.number().int().positive().default(20),
+      })
+      .strict()
+      .optional(),
     knowledge: knowledgeSchema.optional(),
     limits: z
       .object({
@@ -124,6 +135,10 @@ export function parseConfig(
   if (allow.length === 0 && !knowledge) fail("allow is empty; list operationIds, tags or globs to expose");
   if (allow.length > 0 && !(result.data.spec && result.data.baseUrl)) fail("allow needs spec and baseUrl");
   if (scope && !knowledge) fail("scope needs knowledge");
+  // A turn adds up to two messages per step plus the user's. Keeping that many keeps the current turn whole.
+  const { summarize, limits } = result.data;
+  if (summarize && summarize.keepMessages < limits.maxSteps * 2 + 1)
+    fail(`summarize.keepMessages must be at least limits.maxSteps * 2 + 1 (${limits.maxSteps * 2 + 1})`);
   if (llm && injected.model)
     fail(
       "llm and model are mutually exclusive: pass llm for an OpenAI-compatible endpoint, or model for your own chat model",

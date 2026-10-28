@@ -1,5 +1,6 @@
 import type { BaseMessage } from "@langchain/core/messages";
 import type { HistoryMessage, HistoryPart } from "../protocol.js";
+import { isSummary } from "./graph/summarize.js";
 import { messageText } from "./message-text.js";
 
 /**
@@ -15,6 +16,8 @@ export function toHistory(messages: BaseMessage[]): HistoryMessage[] {
   };
   for (const m of messages) {
     const type = m.getType();
+    // A summary of older messages is not something the user wrote, so it is not shown.
+    if (isSummary(m)) continue;
     if (type === "human") {
       out.push({ role: "user", parts: [{ type: "text", text: messageText(m.content) }] });
     } else if (type === "ai") {

@@ -10,6 +10,7 @@ import { buildSystemPrompt, redact, type AuditEvent } from "../security/policy.j
 import { toolResult, type ToolContext } from "./tools/context.js";
 import { runOperation } from "./tools/operation.js";
 import { runSearch, SEARCH_TOOL_DEF } from "./tools/search.js";
+import { forModel, isSummary, summarize } from "./summarize.js";
 import type { PendingApproval, RunContext } from "./types.js";
 
 export type { PendingApproval, RunContext } from "./types.js";
@@ -88,10 +89,15 @@ export function buildGraph({
         if (ops.length === 0) return offTopic();
         // Called directly, not through handler(): the node's call config would drop the nostream tag.
         const quiet = model.bindTools!(tools, bindOptions).withConfig({ tags: ["langsmith:nostream"] });
-        const reply = await quiet.invoke([systemMessage, ...request.messages], { signal });
+        const reply = await quiet.invoke([systemMessage, ...forModel(request.messages)], { signal });
         return reply.tool_calls?.length ? reply : offTopic();
       }
-      return handler({ ...request, systemMessage, modelSettings: { ...bindOptions, ...request.modelSettings } });
+      return handler({
+        ...request,
+        messages: forModel(request.messages),
+        systemMessage,
+        modelSettings: { ...bindOptions, ...request.modelSettings },
+      });
     },
 
     async wrapToolCall(request) {
@@ -130,7 +136,8 @@ export function buildGraph({
   return createAgent({
     model,
     tools,
-    middleware: [sideagent],
+    // Summarizing runs before each model call, ahead of the prompt and gate in `sideagent`.
+    middleware: config.summarize ? [summarize(model, config.summarize), sideagent] : [sideagent],
     checkpointer: checkpointer ?? new MemorySaver(),
   }).graph;
 }
@@ -148,7 +155,7 @@ async function isGrounded(
   cfg: Pick<LangGraphRunnableConfig, "writer">,
 ): Promise<boolean> {
   let at = messages.length - 1;
-  while (at >= 0 && messages[at]!.getType() !== "human") at--;
+  while (at >= 0 && (messages[at]!.getType() !== "human" || isSummary(messages[at]!))) at--;
   const turn = messages.slice(at + 1);
   for (const m of turn) {
     if (m.getType() === "ai" && (m as AIMessage).tool_calls?.some((c) => c.name !== SEARCH_TOOL)) return true;
