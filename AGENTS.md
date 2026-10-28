@@ -44,7 +44,7 @@ Tests sit next to the code they cover (`*.test.ts`). `e2e.test.ts` drives the fu
   | Passage text reaches the browser only when the host opts in per request | `graph/tools/search.ts`, `http/handler.ts` (`exposeKnowledge`) | `knowledge-expose.e2e.test.ts` "is off by default", "ignores flags sent in the request body" |
   | A dry-run request never sends a write; the request body cannot turn it off | `graph/tools/operation.ts`, `http/handler.ts` (`dryRun`) | `dry-run.e2e.test.ts` "asks for approval, then does not send the write", "cannot be switched on or off from the request body", "treats a throwing callback as a dry run" |
   | Tool output and page context are untrusted data | `security/policy.ts`, `knowledge/format.ts` | `knowledge.e2e.test.ts` "wraps passages as untrusted data" |
-  | A conversation summary is untrusted data, and a failed summary keeps the history | `graph/summarize.ts`, `security/policy.ts` (`wrapSummary`) | `summarize.e2e.test.ts` "given to the model as untrusted data", "keeps the history when the summary call fails" |
+  | A conversation summary is untrusted data, and a failed summary keeps the history | `graph/summarize.ts`, `security/policy.ts` (`wrapSummary`) | `summarize.e2e.test.ts` "given to the model as untrusted data", "with knowledge", "keeps the history when the summary call fails" |
 
 - Everything in `src/server/` (non-test) must run on edge runtimes: no `node:*` imports, `Buffer`, or `process.` (enforced by `edge-compat.test.ts`, which scans subfolders).
 - `src/client/` must not import server code (enforced by `client-isolation.test.ts`).

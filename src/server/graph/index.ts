@@ -75,7 +75,13 @@ export function buildGraph({
       const { run } = turnOf(configurable);
       // A plain-string SystemMessage: `systemPrompt` would become a content-block array.
       const systemMessage = new SystemMessage(
-        buildSystemPrompt(config.instructions, run.context, !!knowledge, !!(knowledge && config.scope)),
+        buildSystemPrompt(
+          config.instructions,
+          run.context,
+          !!knowledge,
+          !!(knowledge && config.scope),
+          !!config.summarize,
+        ),
       );
       const { scope } = config;
       if (knowledge && scope && !(await isGrounded(request.messages, run, knowledge, scope.minScore, { writer }))) {
