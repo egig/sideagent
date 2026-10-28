@@ -6,9 +6,9 @@ import {
   type ChatModelAdapter,
 } from "@assistant-ui/react";
 import { ArrowUpIcon } from "@radix-ui/react-icons";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ApprovalCard } from "./ApprovalCard.js";
-import { RenderersContext } from "./context.js";
+import { RenderersContext, SetBusyContext } from "./context.js";
 import { safely, turnHooks } from "./hooks.js";
 import { AssistantMessage, UserMessage } from "./Messages.js";
 import { applyEvent, toInitialMessages, type Part } from "./parts.js";
@@ -28,6 +28,27 @@ export function Chat(
   // An approval raised during a live turn; `decide` resumes the adapter's generator.
   const [approval, setApproval] = useState<{ event: ApprovalEvent; decide: (d: Decision) => void } | null>(null);
 
+  // Operations running in this chat, for useAgentBusy. A turn that outlives this Chat (new chat, history)
+  // must not report into the next one, so reports stop at unmount.
+  const setBusy = useContext(SetBusyContext);
+  const busyCount = useRef(0);
+  const mounted = useRef(true);
+  const onRunning = (delta: 1 | -1) => {
+    if (!mounted.current) return;
+    busyCount.current += delta;
+    setBusy?.(busyCount.current > 0);
+  };
+  const onRunningRef = useRef(onRunning);
+  onRunningRef.current = onRunning;
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      busyCount.current = 0;
+      setBusy?.(false);
+    };
+  }, [setBusy]);
+
   const adapter = useMemo<ChatModelAdapter>(
     () => ({
       async *run({ messages, abortSignal }) {
@@ -40,7 +61,7 @@ export function Chat(
         const ctx = typeof p.context === "function" ? (p.context as () => unknown)() : p.context;
 
         let parts: Part[] = [];
-        const turn = turnHooks(p.hooks);
+        const turn = turnHooks(p.hooks, (d) => onRunningRef.current(d));
         let body: Parameters<typeof streamChat>[0] = { threadId: threadId.current, message: text, context: ctx };
         try {
           for (;;) {
@@ -98,7 +119,7 @@ export function Chat(
     const req = loadedPending;
     if (!req || !threadId.current) return;
     setLoadedPending(null);
-    const turn = turnHooks(hooks);
+    const turn = turnHooks(hooks, onRunning);
     try {
       for await (const ev of streamChat(
         { threadId: threadId.current, approval: { token: req.token, decision } },

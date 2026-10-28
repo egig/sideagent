@@ -84,4 +84,15 @@ describe("turnHooks", () => {
     expect(err).toHaveBeenCalled();
     err.mockRestore();
   });
+
+  it("reports operations running through onRunning", () => {
+    const deltas: number[] = [];
+    const turn = turnHooks({}, (d) => deltas.push(d));
+    turn.event(start("c1", "listInvoices"));
+    turn.event(complete("c1", "listInvoices"));
+    turn.event(complete("c9", "neverStarted"));
+    turn.event(start("c2", "createInvoice"));
+    turn.end();
+    expect(deltas).toEqual([1, -1, 1, -1]);
+  });
 });

@@ -56,7 +56,7 @@ Pass `hooks` to `AgentChat` or `AgentProvider`. They run after the server confir
 | `onTurnEnd()` | When the turn finishes, fails or is stopped |
 | `onApprovalRequested(event)` | When the agent waits for the user to approve a call, including an approval restored from history. `event` has the operation and its arguments |
 | `onOperationStart({ callId, operationId })` | When a tool call starts running, after any approval |
-| `onOperationAbort({ callId, operationId })` | When the turn ends before a started call's result arrived |
+| `onOperationAbort({ callId, operationId })` | When a started call's result never arrived: the user started a new chat or opened another thread mid-call, or the connection dropped |
 | `onError({ code, message })` | On an agent error. Server codes: `step_limit`, `timeout`, `error`. Client codes: `headers_failed`, `http_<status>`, `network` |
 | `onAnyOperation(e)` | After every finished tool call, successful or not |
 | `onOperationComplete[operationId](e)` | Same, for one operation id |
@@ -66,7 +66,18 @@ Pass `hooks` to `AgentChat` or `AgentProvider`. They run after the server confir
 
 ### Blocking the app while an operation runs
 
-Every `onOperationStart` is followed by exactly one `onAnyOperation` (the call finished) or `onOperationAbort` (the user stopped the turn or the connection dropped, so the outcome is unknown). Abort always fires before `onTurnEnd`. Count calls in flight with both:
+Under `AgentProvider`, `useAgentBusy()` returns `true` while an operation runs:
+
+```tsx
+import { useAgentBusy } from "sideagent";
+
+function SaveButton() {
+  const busy = useAgentBusy();
+  return <button disabled={busy}>Save</button>;
+}
+```
+
+With `AgentChat` alone, count calls with the hooks. Every `onOperationStart` is followed by exactly one `onAnyOperation` (the call finished) or `onOperationAbort` (the outcome is unknown). Abort fires before `onTurnEnd`.
 
 ```tsx
 const [busy, setBusy] = useState(0);
@@ -81,9 +92,8 @@ const [busy, setBusy] = useState(0);
 />;
 ```
 
-- `onOperationStart` fires after the user approves, so the app is not blocked while the approval card waits.
+- A call starts after the user approves, so the app is not blocked while the approval card waits.
 - After an abort the call may still have run on the server. Refetch the data it touches.
-- Do not block the chat panel itself: the Stop button is in it.
 - Blocking input only guards this tab. To prevent conflicting writes from other tabs or users, enforce it in your API.
 
 ### Details

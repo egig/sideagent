@@ -53,24 +53,29 @@ export function fireComplete(hooks: AgentHooks | undefined, ev: Extract<AgentEve
  * Fires the hooks for one turn's server events. Tracks operations in flight, so `end` can abort the ones
  * whose result never arrived and an app that blocks on `onOperationStart` is never left blocked.
  * `onApprovalRequested` is left to the caller, which fires it when the approval is shown.
+ * `onRunning` gets +1 when an operation starts and -1 when it completes or is aborted.
  */
-export function turnHooks(hooks: AgentHooks | undefined) {
+export function turnHooks(hooks: AgentHooks | undefined, onRunning?: (delta: 1 | -1) => void) {
   const running = new Map<string, string>();
   safely(hooks?.onTurnStart);
   return {
     event(ev: AgentEvent) {
       if (ev.type === "tool.start") {
         running.set(ev.callId, ev.operationId);
+        onRunning?.(1);
         safely(() => hooks?.onOperationStart?.({ callId: ev.callId, operationId: ev.operationId }));
       } else if (ev.type === "tool.complete") {
-        running.delete(ev.callId);
+        if (running.delete(ev.callId)) onRunning?.(-1);
         fireComplete(hooks, ev);
       } else if (ev.type === "error") {
         safely(() => hooks?.onError?.({ code: ev.code, message: ev.message }));
       }
     },
     end() {
-      for (const [callId, operationId] of running) safely(() => hooks?.onOperationAbort?.({ callId, operationId }));
+      for (const [callId, operationId] of running) {
+        onRunning?.(-1);
+        safely(() => hooks?.onOperationAbort?.({ callId, operationId }));
+      }
       running.clear();
       safely(hooks?.onTurnEnd);
     },

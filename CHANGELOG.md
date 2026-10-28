@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- New client hooks `onOperationStart` and `onOperationAbort`. Each started operation ends in exactly one `onAnyOperation` or `onOperationAbort`, so an app can block input while a call runs and never stay blocked after Stop or a lost connection.
+- New client hooks `onOperationStart` and `onOperationAbort`. Each started operation ends in exactly one `onAnyOperation` or `onOperationAbort`, so an app can block input while a call runs and never stay blocked after a new chat, a thread switch or a lost connection.
+- New `useAgentBusy()` hook: `true` while one of the agent's operations runs, anywhere under `AgentProvider`. It throws outside it, like `useAgent()`.
 - An approval restored from history now fires `onApprovalRequested` when shown, and answering it fires `onTurnStart` and `onTurnEnd` around the resumed run. A lost connection there fires `onError` with code `network` instead of an unhandled rejection.
 - Wire format (`src/protocol.ts`) unchanged.
 

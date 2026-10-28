@@ -18,4 +18,19 @@ export function useAgent(): AgentControls {
   return ctx;
 }
 
+/** Whether an operation is running. Set by AgentProvider; null outside it. */
+export const BusyContext = createContext<boolean | null>(null);
+/** Lets the chat report whether an operation is running. A no-op outside AgentProvider. */
+export const SetBusyContext = createContext<((busy: boolean) => void) | null>(null);
+
+/**
+ * True while one of the agent's operations is running, after any approval, e.g. to block input that would
+ * race it. Use it anywhere under `AgentProvider`.
+ */
+export function useAgentBusy(): boolean {
+  const busy = useContext(BusyContext);
+  if (busy === null) throw new Error("useAgentBusy must be used inside <AgentProvider>");
+  return busy;
+}
+
 export const RenderersContext = createContext<AgentChatProps["resultRenderers"]>(undefined);
