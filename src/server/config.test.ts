@@ -27,3 +27,29 @@ describe("parseConfig", () => {
     expect(() => parseConfig({ ...base, bogus: 1 }, true)).toThrow();
   });
 });
+
+describe("scope and knowledge-only config", () => {
+  const knowledge = {
+    sources: [{ id: "a", title: "A", content: "x" }],
+    embeddings: { model: "m", baseUrl: "https://e.example.com", apiKey: "k" },
+  };
+  const llm = { baseUrl: "https://llm.example.com", apiKey: "k", model: "m" };
+  const only = { llm, allow: [], allowedOrigins: ["https://app.example.com"], knowledge };
+  it("accepts an empty allow list with knowledge, without spec or baseUrl", () => {
+    expect(parseConfig(only, true).allow).toEqual([]);
+  });
+  it("still rejects an empty allow list without knowledge", () => {
+    const { knowledge: _k, ...bare } = only;
+    expect(() => parseConfig(bare, true)).toThrow(/allow is empty/);
+  });
+  it("requires spec and baseUrl once operations are allowed", () => {
+    expect(() => parseConfig({ ...only, allow: ["x"] }, true)).toThrow(/spec and baseUrl/);
+  });
+  it("needs knowledge for scope and fills in defaults", () => {
+    const { knowledge: _k, ...bare } = only;
+    expect(() =>
+      parseConfig({ ...bare, allow: ["x"], spec: {}, baseUrl: "https://a.example.com", scope: {} }, true),
+    ).toThrow(/scope needs knowledge/);
+    expect(parseConfig({ ...only, scope: {} }, true).scope?.minScore).toBe(0.45);
+  });
+});

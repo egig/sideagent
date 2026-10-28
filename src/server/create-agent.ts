@@ -61,7 +61,8 @@ export async function createAgent(options: CreateAgentOptions) {
   } = options;
   await ensureAsyncLocalStorage();
   const config = parseConfig(data, !!getAuth, { model: !!givenModel, embeddings: !!givenEmbeddings });
-  const ops = await loadOperations(config.spec, config.allow, config.limits.maxTools);
+  const ops =
+    config.spec && config.allow.length ? await loadOperations(config.spec, config.allow, config.limits.maxTools) : [];
 
   const secret: string = config.approvalSecret ?? crypto.randomUUID() + crypto.randomUUID();
   if (!config.approvalSecret) {
