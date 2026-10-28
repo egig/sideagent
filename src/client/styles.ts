@@ -33,7 +33,7 @@ export const CSS = `
 .sa-floating .sa-panel{position:fixed;right:16px;bottom:80px;width:min(400px,calc(100vw - 32px));height:min(600px,calc(100vh - 104px));border-radius:calc(var(--sa-radius) + 4px);box-shadow:0 8px 30px rgba(0,0,0,.12);z-index:2147483000}
 .sa-sidebar .sa-panel{position:fixed;top:0;right:0;bottom:0;width:min(400px,100vw);border-width:0 0 0 1px;z-index:2147483000}
 .sa-shell{display:flex;height:100dvh;width:100%;min-width:0}
-.sa-shell-main{flex:1;min-width:0;overflow:auto}
+.sa-shell-main{flex:1;min-width:0;overflow:auto;position:relative}
 .sa-docked{display:contents}
 .sa-docked .sa-panel{position:relative;flex:none;max-width:70vw;height:100%;border-width:0 0 0 1px;z-index:auto}
 .sa-resizer{position:absolute;top:0;bottom:0;left:-3px;width:7px;cursor:col-resize;touch-action:none;z-index:1}

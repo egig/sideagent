@@ -43,6 +43,8 @@ export interface AgentChatProps {
    * conversation, so every visit starts fresh. The server still keeps its threads.
    */
   history?: boolean;
+  /** Set false to hide the New chat button in the panel header. Defaults to true. */
+  newChatButton?: boolean;
   /** Extra buttons rendered in the panel header, before History. Use `className="sa-btn sa-icon-btn"` to match. */
   headerActions?: ReactNode;
   /** Custom result views per operationId. Anything not listed gets the built-in table / fields view. */

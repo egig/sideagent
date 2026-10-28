@@ -195,9 +195,11 @@ export function AgentChat(props: AgentChatProps) {
                 <CounterClockwiseClockIcon />
               </button>
             )}
-            <button className="sa-btn sa-icon-btn" onClick={newChat} title="New chat" aria-label="New chat">
-              <PlusIcon />
-            </button>
+            {props.newChatButton !== false && (
+              <button className="sa-btn sa-icon-btn" onClick={newChat} title="New chat" aria-label="New chat">
+                <PlusIcon />
+              </button>
+            )}
             <button className="sa-btn sa-icon-btn" onClick={() => setOpen(false)} aria-label="Close" title="Close">
               <Cross2Icon />
             </button>
