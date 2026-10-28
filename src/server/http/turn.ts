@@ -3,7 +3,7 @@ import { Command, GraphRecursionError } from "@langchain/langgraph";
 import type { AgentEvent } from "../../protocol.js";
 import { verifyApproval } from "../security/approval.js";
 import type { AgentConfig } from "../config.js";
-import { pendingApprovalOf, type AgentGraph } from "../graph/index.js";
+import { MODEL_NODE, pendingApprovalOf, type AgentGraph } from "../graph/index.js";
 import { threadPrefix, titleFrom, type ThreadStore } from "../threads.js";
 import { json } from "./json.js";
 import type { TurnBody } from "./request.js";
@@ -100,7 +100,7 @@ export async function runTurn(
           if (mode === "custom") send(chunk as AgentEvent);
           else if (mode === "messages") {
             const [msg, meta] = chunk;
-            if (meta?.langgraph_node === "agent" && typeof msg.content === "string" && msg.content) {
+            if (meta?.langgraph_node === MODEL_NODE && typeof msg.content === "string" && msg.content) {
               send({ type: "text.delta", text: msg.content });
             }
           }

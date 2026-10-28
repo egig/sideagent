@@ -17,7 +17,7 @@ Library that embeds a chat agent in an app: OpenAPI spec + OpenAI-compatible LLM
 - `src/server/` — server entry (`sideagent/server`)
   - `create-agent.ts` — wiring only: config → operations → model → graph → handler
   - `http/` — the endpoint: `handler.ts` (request pipeline), `request.ts` (body schema), `thread-routes.ts`, `turn.ts` (approval check + SSE)
-  - `graph/` — LangGraph agent; `tools/operation.ts` (validate → approve → call API), `tools/search.ts` (knowledge)
+  - `graph/` — agent built on LangChain `createAgent` with one middleware (system prompt, relevance gate, one tool call at a time); `tools/operation.ts` (validate → approve → call API), `tools/search.ts` (knowledge)
   - `security/` — approval tokens, origin check, SSRF guard, prompt policy and audit redaction
   - `knowledge/` — chunking, HTML to text, vector store, guarded page fetch, `KnowledgeBase`
   - `openapi.ts` (spec → operations, allowlist), `executor.ts` (HTTP call to your API), `config.ts`, `threads.ts`, `history.ts`, `doctor.ts`, `model.ts`, `adapters/` (Hono/Next/Express)
