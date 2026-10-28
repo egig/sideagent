@@ -1,5 +1,5 @@
 import { HumanMessage } from "@langchain/core/messages";
-import { Command } from "@langchain/langgraph";
+import { Command, GraphRecursionError } from "@langchain/langgraph";
 import type { AgentEvent } from "../../protocol.js";
 import { verifyApproval } from "../security/approval.js";
 import type { AgentConfig } from "../config.js";
@@ -63,7 +63,11 @@ export async function runTurn(
   await threads.touch(userId, threadId, titleFrom("message" in body ? body.message : ""));
   active.set(userId, (active.get(userId) ?? 0) + 1);
   const timeout = new AbortController();
-  const timer = setTimeout(() => timeout.abort(new Error("turn timed out")), config.limits.turnTimeoutMs);
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    timeout.abort(new Error("turn timed out"));
+  }, config.limits.turnTimeoutMs);
   request.signal.addEventListener("abort", () => timeout.abort(), { once: true });
 
   const encoder = new TextEncoder();
@@ -96,9 +100,9 @@ export async function runTurn(
         const waiting = pendingApprovalOf(await graph.getState(runCfg));
         if (waiting) send({ type: "approval.request", ...waiting });
       } catch (e) {
-        const msg = (e as Error).message ?? "error";
-        const code = /recursion/i.test(msg) ? "step_limit" : /timed out/i.test(msg) ? "timeout" : "error";
-        send({ type: "error", code, message: code === "error" ? "The agent failed. Try again." : msg });
+        const code = e instanceof GraphRecursionError ? "step_limit" : timedOut ? "timeout" : "error";
+        const message = code === "step_limit" ? (e as Error).message : timedOut ? "turn timed out" : undefined;
+        send({ type: "error", code, message: message ?? "The agent failed. Try again." });
       } finally {
         clearTimeout(timer);
         active.set(userId, Math.max(0, (active.get(userId) ?? 1) - 1));

@@ -1,13 +1,13 @@
+import { Document } from "@langchain/core/documents";
+import type { EmbeddingsInterface } from "@langchain/core/embeddings";
+import { VectorStore, type VectorStoreInterface } from "@langchain/core/vectorstores";
+import { cosineSimilarity } from "@langchain/core/utils/math";
+
 export interface ChunkMeta {
   sourceId: string;
   title: string;
   /** Only set for sources that came from a URL listed in config. */
   url?: string;
-}
-export interface StoredChunk {
-  text: string;
-  vector: number[];
-  meta: ChunkMeta;
 }
 export interface Hit {
   text: string;
@@ -15,35 +15,52 @@ export interface Hit {
   meta: ChunkMeta;
 }
 
-/** Plug in your own (pgvector, Vectorize, …). The default is an in-memory cosine store. */
-export interface VectorStore {
-  replace(sourceId: string, chunks: StoredChunk[]): Promise<void>;
-  search(vector: number[], k: number): Promise<Hit[]>;
-}
+/**
+ * Any LangChain vector store (pgvector, Vectorize, Qdrant, …). Sideagent embeds chunks itself and calls
+ * `addVectors` with stable ids (`<sourceId>#<n>`) so a refresh overwrites in place, `delete({ ids })` for chunks
+ * that no longer exist, and `similaritySearchVectorWithScore` to search. The store's own `embeddings` are not used.
+ */
+export type { VectorStoreInterface as VectorStore };
 
-export class MemoryVectorStore implements VectorStore {
-  private bySource = new Map<string, StoredChunk[]>();
-  async replace(sourceId: string, chunks: StoredChunk[]) {
-    this.bySource.set(sourceId, chunks);
-  }
-  async search(vector: number[], k: number) {
-    const hits: Hit[] = [];
-    for (const chunks of this.bySource.values()) {
-      for (const c of chunks) hits.push({ text: c.text, meta: c.meta, score: cosine(vector, c.vector) });
-    }
-    return hits.sort((a, b) => b.score - a.score).slice(0, k);
-  }
-}
+/** Default store: cosine similarity over everything in process memory. */
+export class MemoryVectorStore extends VectorStore {
+  declare FilterType: object;
+  lc_namespace = ["sideagent", "vectorstores", "memory"];
+  private rows = new Map<string, { vector: number[]; doc: Document }>();
 
-export function cosine(a: number[], b: number[]): number {
-  let dot = 0;
-  let na = 0;
-  let nb = 0;
-  const n = Math.min(a.length, b.length);
-  for (let i = 0; i < n; i++) {
-    dot += a[i]! * b[i]!;
-    na += a[i]! * a[i]!;
-    nb += b[i]! * b[i]!;
+  constructor(embeddings: EmbeddingsInterface) {
+    super(embeddings, {});
   }
-  return na && nb ? dot / Math.sqrt(na * nb) : 0;
+
+  _vectorstoreType() {
+    return "sideagent_memory";
+  }
+
+  async addVectors(vectors: number[][], documents: Document[], options?: { ids?: string[] }) {
+    const ids = documents.map((_, i) => options?.ids?.[i] ?? crypto.randomUUID());
+    documents.forEach((doc, i) => this.rows.set(ids[i]!, { vector: vectors[i]!, doc }));
+    return ids;
+  }
+
+  async addDocuments(documents: Document[], options?: { ids?: string[] }) {
+    const vectors = await this.embeddings.embedDocuments(documents.map((d) => d.pageContent));
+    return this.addVectors(vectors, documents, options);
+  }
+
+  async delete(params?: { ids?: string[] }) {
+    for (const id of params?.ids ?? []) this.rows.delete(id);
+  }
+
+  async similaritySearchVectorWithScore(query: number[], k: number): Promise<[Document, number][]> {
+    const rows = [...this.rows.values()].filter((r) => r.vector.length === query.length);
+    if (!rows.length) return [];
+    const scores = cosineSimilarity(
+      [query],
+      rows.map((r) => r.vector),
+    )[0]!;
+    return rows
+      .map((r, i): [Document, number] => [r.doc, scores[i]!])
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, k);
+  }
 }

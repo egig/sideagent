@@ -47,26 +47,24 @@ const threadStore: ThreadStore = {
 };
 ```
 
+- On a LangGraph `BaseStore` (Postgres, Redis, …) you can skip this and use `new LangGraphThreadStore(store)` from `sideagent/server`. It keeps the same 200-thread cap as `MemoryThreadStore`.
 - `has` is the ownership check. A thread that is not in the user's own index returns 404, even if the id is guessed.
 - `updatedAt` is a number of milliseconds since epoch.
 - The client shows at most 50 threads. `MemoryThreadStore` keeps at most 200 per user; your store has no such cap unless you add one.
 
 ## Knowledge: `vectorStore`
 
-Implement `VectorStore`. `replace` swaps all chunks of one source. `search` returns the nearest chunks.
+Any LangChain vector store: `VectorStoreInterface` from `@langchain/core/vectorstores` (pgvector, Vectorize, Qdrant, …). Sideagent embeds the chunks itself, so the store's own `embeddings` are not used. It calls:
+
+- `addVectors(vectors, documents, { ids })` with stable ids `<sourceId>#<n>`. A refresh must overwrite rows with the same id (upsert).
+- `delete({ ids })` for chunks a refreshed source no longer has.
+- `similaritySearchVectorWithScore(vector, k)`. Each document carries `metadata: { sourceId, title, url? }`.
 
 ```ts
-import type { VectorStore } from "sideagent/server";
+import { PGVectorStore } from "@langchain/community/vectorstores/pgvector";
 
-const vectorStore: VectorStore = {
-  replace: async (sourceId, chunks) => {
-    // chunks: { text, vector: number[], meta: { sourceId, title, url? } }[]
-    // delete rows for sourceId, then insert chunks (one transaction)
-  },
-  search: async (vector, k) => {
-    // return { text, score, meta }[], best first. Example with pgvector: ORDER BY embedding <=> $1 LIMIT $2
-  },
-};
+const vectorStore = await PGVectorStore.initialize(embeddings, { postgresConnectionOptions, tableName: "sideagent_kb" });
+createAgent({ …, vectorStore });
 ```
 
 - `vector` size is set by your embedding model. The column dimension must match it. Changing `embeddings.model` needs re-embedding, so clear the table first.

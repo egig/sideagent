@@ -14,7 +14,7 @@ export function toHistory(messages: BaseMessage[]): HistoryMessage[] {
     return last;
   };
   for (const m of messages) {
-    const type = m._getType();
+    const type = m.getType();
     if (type === "human") {
       out.push({ role: "user", parts: [{ type: "text", text: messageText(m.content) }] });
     } else if (type === "ai") {

@@ -1,3 +1,4 @@
+import { Validator } from "@langchain/core/utils/json_schema";
 import { dereference } from "@scalar/openapi-parser";
 
 const METHODS = ["get", "post", "put", "patch", "delete"] as const;
@@ -143,7 +144,9 @@ export async function loadOperations(
   return ops;
 }
 
-/** Throws if args don't fit the operation: unknown names, missing required, wrong body presence. */
+const validators = new WeakMap<Operation, Validator>();
+
+/** Throws if args don't fit the operation's input schema: unknown names, missing required, wrong types or values. */
 export function validateArgs(op: Operation, args: unknown): Json {
   if (!args || typeof args !== "object" || Array.isArray(args)) throw new Error("arguments must be an object");
   const a = args as Json;
@@ -151,6 +154,16 @@ export function validateArgs(op: Operation, args: unknown): Json {
   for (const k of Object.keys(a)) if (!(k in props)) throw new Error(`unknown argument "${k}"`);
   for (const r of (op.inputSchema.required as string[]) ?? []) {
     if (a[r] === undefined) throw new Error(`missing required argument "${r}"`);
+  }
+  let validator = validators.get(op);
+  if (!validator) validators.set(op, (validator = new Validator(op.inputSchema as never, "2019-09", false)));
+  const result = validator.validate(a);
+  if (!result.valid) {
+    const detail = result.errors
+      .slice(0, 3)
+      .map((e) => `${e.instanceLocation.replace(/^#\/?/, "") || "arguments"}: ${e.error}`)
+      .join("; ");
+    throw new Error(detail);
   }
   return a;
 }
