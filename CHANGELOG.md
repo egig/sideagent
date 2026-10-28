@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0
 
 - New `launcher` prop on `AgentChat` and `AgentProvider`: `false` hides the floating launcher button, so the panel opens only through `useAgent().setOpen` or `defaultOpen`.
 - New `history` prop: `false` turns off chat history. No History button, and the chat neither remembers nor reopens the last conversation (nothing is written to `localStorage`). The server still keeps its threads.
