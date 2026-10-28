@@ -55,6 +55,18 @@ With an agent hosted on sideagent Cloud, pass its publishable key instead of `en
 
 Pass `endpoint` as well to send the requests somewhere else, such as a proxy in front of sideagent Cloud. A malformed key, or neither prop, throws during render. `parsePublishableKey` and `publishableEndpoint` are exported from `sideagent/keys`.
 
+Signed-in users: pass `getHeaders`, which the chat calls before every request, so a login token that expires is fetched fresh each time. Pass `storageKey` (the user's ID) so the last conversation the chat remembers in `localStorage` belongs to that user; on a shared browser another user starts from their own.
+
+```tsx
+<AgentChat
+  publishableKey="pk_live_…"
+  getHeaders={async () => ({ Authorization: `Bearer ${await getToken()}` })}
+  storageKey={user.id}
+/>
+```
+
+`getHeaders` works with `endpoint` too. Its headers are merged under `headers`, which wins on a clash, so it cannot replace the publishable key. If it throws, the request is not sent and the chat shows an error.
+
 ### Docked sidebar
 
 Wrap your app in `AgentProvider` to dock the chat on the right, side by side with the app instead of over it. It takes the same props as `AgentChat`. The user drags the panel's left edge (or uses the arrow keys on it) to resize; the width is remembered. Outside `AgentProvider`, sidebar mode overlays the page.

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0
+
+- New `getHeaders` prop on `AgentChat` and `AgentProvider`: called before every request (chat turns, approvals, history), for a login token that expires. Its headers are merged under `headers`, which wins on a clash, so it cannot replace the publishable key. If it throws, nothing is sent: a turn shows a `headers_failed` error, a history call fails like a network error.
+- New `storageKey` prop: scopes the remembered last conversation in `localStorage` to one user. Changing it starts over with that user's last conversation.
+- sideagent Cloud agents with token verification (JWKS or a userinfo URL) need both for the documented embed.
+- Wire format (`src/protocol.ts`) unchanged.
+
 ## 0.3.0
 
 - New `publishableKey` prop on `AgentChat` and `AgentProvider` for agents hosted on sideagent Cloud. The chat derives the endpoint from the key (https, http for `localhost` and `127.0.0.1`) and sends the key in the `x-sideagent-key` header. `endpoint` is now optional and, when given with a key, overrides the derived URL. A malformed key, or neither prop, throws during render.

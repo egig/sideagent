@@ -19,7 +19,7 @@ import type { AgentChatProps, ApprovalEvent, Decision, Session } from "./types.j
 export function Chat(
   props: AgentChatProps & { endpoint: string; session: Session; onThread: (id: string) => void; onReload: () => void },
 ) {
-  const { endpoint, hooks, credentials, headers } = props;
+  const { endpoint, hooks, credentials, headers, getHeaders } = props;
   const latest = useRef(props);
   latest.current = props;
   const threadId = useRef<string | undefined>(props.session.threadId);
@@ -49,6 +49,7 @@ export function Chat(
               endpoint: p.endpoint,
               credentials: p.credentials,
               headers: p.headers,
+              getHeaders: p.getHeaders,
               signal: abortSignal,
             })) {
               parts = applyEvent(parts, ev);
@@ -93,7 +94,7 @@ export function Chat(
     setLoadedPending(null);
     for await (const ev of streamChat(
       { threadId: threadId.current, approval: { token: req.token, decision } },
-      { endpoint, credentials, headers },
+      { endpoint, credentials, headers, getHeaders },
     )) {
       if (ev.type === "tool.complete") fireComplete(hooks, ev);
       if (ev.type === "error") safely(() => hooks?.onError?.({ code: ev.code, message: ev.message }));

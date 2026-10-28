@@ -24,6 +24,17 @@ export interface AgentChatProps {
   /** Use "include" when the endpoint is on another origin and relies on cookies. */
   credentials?: RequestCredentials;
   headers?: Record<string, string>;
+  /**
+   * Called before every request; its headers are added to `headers` (which wins on a clash). Use it for a
+   * login token that expires, e.g. `Authorization: Bearer <token>` from your login SDK. If it throws, the
+   * request is not sent and the chat shows an error.
+   */
+  getHeaders?: () => Record<string, string> | Promise<Record<string, string>>;
+  /**
+   * Scopes what the chat remembers in localStorage (the last conversation) to one user, e.g. their user ID.
+   * Changing it starts over with that user's last conversation.
+   */
+  storageKey?: string;
   defaultOpen?: boolean;
   /** Custom result views per operationId. Anything not listed gets the built-in table / fields view. */
   resultRenderers?: Record<string, (e: { operationId: string; args: unknown; result: unknown }) => ReactNode>;

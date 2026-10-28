@@ -4,7 +4,9 @@ import type { AgentChatMode } from "./types.js";
 
 export const MODE_KEY = "sideagent:mode";
 export const WIDTH_KEY = "sideagent:width";
-export const threadKey = (endpoint: string) => `sideagent:thread:${endpoint}`;
+/** The remembered thread, per endpoint and, with `storageKey`, per user. */
+export const threadKey = (endpoint: string, storageKey?: string) =>
+  `sideagent:thread:${endpoint}${storageKey ? `:${storageKey}` : ""}`;
 
 const MODES: AgentChatMode[] = ["floating", "sidebar"];
 
