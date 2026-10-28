@@ -21,6 +21,7 @@ export interface TurnAuth {
   userId: string;
   headers: Record<string, string>;
   exposeKnowledge?: boolean;
+  dryRun?: boolean;
 }
 
 /** Starts (or resumes, after an approval decision) a turn and streams its events as SSE. */
@@ -42,6 +43,7 @@ export async function runTurn(
         headers: auth.headers,
         context: "message" in body ? body.context : undefined,
         exposeKnowledge: auth.exposeKnowledge === true,
+        dryRun: auth.dryRun === true,
       },
     },
   };

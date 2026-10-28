@@ -29,6 +29,12 @@ export interface CreateAgentOptions extends AgentConfigInput {
    * server per request; nothing in the request body can turn it on.
    */
   exposeKnowledge?: (ctx: { request: Request; userId: string }) => boolean | Promise<boolean>;
+  /**
+   * Return true to run this request as a dry run: operations that are not plain reads (GET, HEAD) still
+   * ask for approval, but are not sent to your API after it. The model and the user are told so. For
+   * previews and demos. Decided on the server per request; a callback that throws counts as true.
+   */
+  dryRun?: (ctx: { request: Request; userId: string }) => boolean | Promise<boolean>;
   onAudit?: (event: AuditEvent) => void | Promise<void>;
   checkpointer?: BaseCheckpointSaver;
   /** Index of each user's conversations (history list). Defaults to in-memory. */
@@ -44,6 +50,7 @@ export async function createAgent(options: CreateAgentOptions) {
     getAuth,
     beforeTurn,
     exposeKnowledge,
+    dryRun,
     onAudit,
     checkpointer,
     threadStore: givenStore,
@@ -86,7 +93,7 @@ export async function createAgent(options: CreateAgentOptions) {
     model,
     bindOptions: givenModel ? undefined : { parallel_tool_calls: false },
   });
-  const handler = createHandler({ config, graph, threads, secret, getAuth, beforeTurn, exposeKnowledge });
+  const handler = createHandler({ config, graph, threads, secret, getAuth, beforeTurn, exposeKnowledge, dryRun });
 
   return {
     handler,

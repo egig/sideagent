@@ -22,11 +22,12 @@ export interface HandlerDeps {
   getAuth?: (request: Request) => AuthResult | Promise<AuthResult>;
   beforeTurn?: (ctx: { request: Request; userId: string }) => void | Promise<void>;
   exposeKnowledge?: (ctx: { request: Request; userId: string }) => boolean | Promise<boolean>;
+  dryRun?: (ctx: { request: Request; userId: string }) => boolean | Promise<boolean>;
 }
 
 /** The agent endpoint. Each step either rejects the request or narrows what the next step may assume. */
 export function createHandler(deps: HandlerDeps) {
-  const { config, graph, threads, getAuth, beforeTurn, exposeKnowledge } = deps;
+  const { config, graph, threads, getAuth, beforeTurn, exposeKnowledge, dryRun } = deps;
   const active = new Map<string, number>();
 
   return async function handler(request: Request): Promise<Response> {
@@ -67,18 +68,26 @@ export function createHandler(deps: HandlerDeps) {
       return json(429, { error: "too many concurrent turns" }, cors);
     }
 
-    // A throwing callback means no. The answer comes from the host, never from the request body.
+    // Per-request switches that only the host can flip. A throwing callback means no for exposeKnowledge
+    // and yes for dryRun (the safe side); neither is ever read from the request body.
+    const asked = { request, userId };
     let expose = false;
     try {
-      expose = (await exposeKnowledge?.({ request, userId })) === true;
+      expose = (await exposeKnowledge?.(asked)) === true;
     } catch {
       /* stays false */
+    }
+    let dry = false;
+    try {
+      dry = (await dryRun?.(asked)) === true;
+    } catch {
+      dry = true;
     }
 
     return runTurn(
       request,
       body,
-      { userId, headers: auth.headers ?? {}, exposeKnowledge: expose },
+      { userId, headers: auth.headers ?? {}, exposeKnowledge: expose, dryRun: dry },
       { ...deps, active },
       cors,
     );

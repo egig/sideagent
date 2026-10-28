@@ -25,6 +25,14 @@ console.log(await agent.doctor());                         // what the agent can
 
 `llm.fetch` and `knowledge.embeddings.fetch` take a `fetch` function that carries every HTTP call to the model and embeddings endpoint (embeddings fall back to `llm.fetch`). Use it to route those calls through your own guard, for example one that blocks private hosts when the `baseUrl` comes from a customer. They do not apply to `model` or `embeddings` you pass in yourself. `llm.maxRetries` and `knowledge.embeddings.maxRetries` (0 to 6) set how often a failed call is retried; the clients retry several times with backoff by default, which makes a blocked or dead endpoint slow to fail.
 
+## Previews: `dryRun`
+
+`dryRun({ request, userId })` lets the host run a request as a dry run, for example for a signed-in owner trying their agent against a live API. Operations that are not plain reads (anything but GET and HEAD) still pause for approval, and the approval card shows the exact request. After approval the call is not sent: the browser gets a `tool.complete` with status 202 and `{ dryRun: true, sent: false }`, the model is told nothing was sent, and the audit event has status `"dry_run"`. Reads still run. The callback runs on the server for every request, nothing in the request body can change it, and a callback that throws counts as a dry run.
+
+```ts
+createAgent({ …, dryRun: ({ request }) => isPreview(request) });
+```
+
 ## Behavior and limits
 
 - Only operations in `allow` are exposed. Anything not listed is denied. Entries are operation ids or `tag:<name>`.

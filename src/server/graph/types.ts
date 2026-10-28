@@ -5,6 +5,8 @@ export interface RunContext {
   context?: unknown;
   /** Host decision for this request (exposeKnowledge); never taken from the request body. */
   exposeKnowledge?: boolean;
+  /** Host decision for this request (dryRun): writes are approved but not sent. */
+  dryRun?: boolean;
 }
 
 /** What the graph interrupts with when a call needs the user's approval. */
