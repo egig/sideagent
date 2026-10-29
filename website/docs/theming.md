@@ -3,7 +3,7 @@ sidebar_position: 5
 title: Theming
 ---
 
-Neutral by default (grayscale, host font, 10px radius). `theme="auto"` (or `"system"`) follows the OS and a host `.dark` / `data-theme="dark"` / `data-bs-theme="dark"`; pass `"light"` or `"dark"` to force one. Match your design system with CSS variables on `:root`:
+Neutral by default (grayscale, host font, 10px radius). `theme="auto"` (or `"system"`) follows the OS (unless a host `.light` / `data-theme="light"` / `data-bs-theme="light"` is set) and a host `.dark` / `data-theme="dark"` / `data-bs-theme="dark"`; pass `"light"` or `"dark"` to force one. Match your design system with CSS variables on `:root`:
 
 ```css
 :root {

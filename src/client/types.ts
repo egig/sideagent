@@ -50,7 +50,7 @@ export interface AgentChatProps {
   headerActions?: ReactNode;
   /** Custom result views per operationId. Anything not listed gets the built-in table / fields view. */
   resultRenderers?: Record<string, (e: { operationId: string; args: unknown; result: unknown }) => ReactNode>;
-  /** "auto" (alias "system") follows the OS and host `.dark` / `data-theme=dark`. Colors are overridable via --sideagent-* CSS variables. */
+  /** "auto" (alias "system") follows the OS and host `.dark` / `data-theme=dark`; a host `.light` / `data-theme=light` wins over a dark OS. Colors are overridable via --sideagent-* CSS variables. */
   theme?: "auto" | "system" | "light" | "dark";
   /** Set false to hide the layout switcher. */
   allowModeSwitch?: boolean;

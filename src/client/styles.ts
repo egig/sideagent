@@ -17,7 +17,7 @@ export const CSS = `
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){
-  .sa-root[data-theme=auto]{
+  .sa-root[data-theme=auto]:not(:is(.light,[data-theme=light],[data-bs-theme=light]) *){
     --sa-bg:var(--sideagent-bg,#171717);--sa-fg:var(--sideagent-fg,#f5f5f5);--sa-muted:var(--sideagent-muted,#a3a3a3);
     --sa-border:var(--sideagent-border,#2e2e2e);--sa-surface:var(--sideagent-surface,#262626);
     --sa-accent:var(--sideagent-accent,#f5f5f5);--sa-accent-fg:var(--sideagent-accent-fg,#171717);color-scheme:dark}
