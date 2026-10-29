@@ -5,7 +5,7 @@ import { checkOrigin, preflight } from "../security/origin.js";
 import { json } from "./json.js";
 import { readChatBody } from "./request.js";
 import { handleThreadAction } from "./thread-routes.js";
-import { runTurn } from "./turn.js";
+import { runTurn, type TurnErrorContext } from "./turn.js";
 
 export interface AuthResult {
   /** Stable identity of the signed-in user. Threads are bound to it. */
@@ -23,6 +23,7 @@ export interface HandlerDeps {
   beforeTurn?: (ctx: { request: Request; userId: string }) => void | Promise<void>;
   exposeKnowledge?: (ctx: { request: Request; userId: string }) => boolean | Promise<boolean>;
   dryRun?: (ctx: { request: Request; userId: string }) => boolean | Promise<boolean>;
+  onError?: (ctx: TurnErrorContext) => void | Promise<void>;
 }
 
 /** The agent endpoint. Each step either rejects the request or narrows what the next step may assume. */

@@ -268,6 +268,7 @@ export class ChatWorkersAI extends BaseChatModel<WorkersAiCallOptions> {
     // Tool-call deltas arrive in pieces keyed by index; they are assembled and emitted once at the end.
     const partial = new Map<number, { id?: string; name: string; args: string }>();
     const whole: ToolCall[] = [];
+    let spoke = false;
     for await (const ev of sseEvents(res)) {
       options.signal?.throwIfAborted();
       if (!isObj(ev)) continue;
@@ -296,7 +297,10 @@ export class ChatWorkersAI extends BaseChatModel<WorkersAiCallOptions> {
         });
       }
       if (Array.isArray(ev.tool_calls)) whole.push(...parseWorkersAiResponse({ tool_calls: ev.tool_calls }).toolCalls);
-      if (delta) yield* this.emit({ text: delta, toolCalls: [] }, runManager);
+      if (delta) {
+        spoke = true;
+        yield* this.emit({ text: delta, toolCalls: [] }, runManager);
+      }
     }
     const toolCalls = [...whole];
     for (const p of partial.values()) {
@@ -304,6 +308,14 @@ export class ChatWorkersAI extends BaseChatModel<WorkersAiCallOptions> {
       toolCalls.push({ id: p.id ?? newId(), name: p.name, args: parseArgs(p.args) });
     }
     if (toolCalls.length) yield* this.emit({ text: "", toolCalls }, runManager);
+    else if (!spoke) {
+      // gpt-oss sometimes streams only reasoning and ends on its tool-call token, and the stream carries no call.
+      // The plain reply for the same input does carry it, so ask once more without streaming.
+      yield* this.emit(
+        parseWorkersAiResponse(await this.run(this.input(messages, options, false), options.signal)),
+        runManager,
+      );
+    }
   }
 
   private async *emit(

@@ -5,6 +5,7 @@ export { assertAllowedUrl } from "./security/url-guard.js";
 export { createAgent } from "./create-agent.js";
 export type { Agent, CreateAgentOptions, AuthResult, DoctorReport, EmbeddingsLike } from "./create-agent.js";
 export type { AuditEvent } from "./security/policy.js";
+export type { TurnErrorContext } from "./http/turn.js";
 export { nextRoute, honoHandler, expressHandler } from "./adapters/index.js";
 export { MemoryThreadStore, LangGraphThreadStore } from "./threads.js";
 export type { ThreadStore } from "./threads.js";

@@ -8,11 +8,20 @@ import { threadPrefix, titleFrom, type ThreadStore } from "../threads.js";
 import { json } from "./json.js";
 import type { TurnBody } from "./request.js";
 
+export interface TurnErrorContext {
+  /** What the browser is told: `error` for any failure it gets no detail on. */
+  code: "error" | "step_limit" | "timeout";
+  error: unknown;
+  userId: string;
+  threadId: string;
+}
+
 export interface TurnDeps {
   config: AgentConfig;
   graph: AgentGraph;
   threads: ThreadStore;
   secret: string;
+  onError?: (ctx: TurnErrorContext) => void | Promise<void>;
   /** Turns in flight per user; incremented here, decremented when the stream ends. */
   active: Map<string, number>;
 }
@@ -32,7 +41,7 @@ export async function runTurn(
   deps: TurnDeps,
   cors: Record<string, string>,
 ): Promise<Response> {
-  const { config, graph, threads, secret, active } = deps;
+  const { config, graph, threads, secret, active, onError } = deps;
   const { userId } = auth;
   const threadId = body.threadId ?? `${threadPrefix(userId)}${crypto.randomUUID()}`;
   const runCfg = {
@@ -111,6 +120,12 @@ export async function runTurn(
         const code = e instanceof GraphRecursionError ? "step_limit" : timedOut ? "timeout" : "error";
         const message = code === "step_limit" ? (e as Error).message : timedOut ? "turn timed out" : undefined;
         send({ type: "error", code, message: message ?? "The agent failed. Try again." });
+        // A client that went away is not a failure.
+        if (!request.signal.aborted) {
+          void Promise.resolve()
+            .then(() => onError?.({ code, error: e, userId, threadId }))
+            .catch(() => {});
+        }
       } finally {
         clearTimeout(timer);
         active.set(userId, Math.max(0, (active.get(userId) ?? 1) - 1));

@@ -164,6 +164,26 @@ describe("workersAiChatModel", () => {
     expect(out.content).toBe("whole");
   });
 
+  it("asks again without streaming when the stream carries neither text nor a call", async () => {
+    const reasoningOnly = sse(
+      { choices: [{ delta: { reasoning_content: "I should search" } }] },
+      { choices: [{ delta: {}, finish_reason: "stop" }] },
+      "[DONE]",
+    );
+    const { ai, calls } = fake([
+      reasoningOnly,
+      {
+        choices: [
+          { message: { content: "", tool_calls: [{ id: "c1", function: { name: "listInvoices", arguments: "{}" } }] } },
+        ],
+      },
+    ]);
+    const chunks: AIMessageChunk[] = [];
+    for await (const c of await workersAiChatModel(ai, "m").bindTools!([tool]).stream("list")) chunks.push(c);
+    expect(calls.map((c) => c.input.stream)).toEqual([true, undefined]);
+    expect(chunks.flatMap((c) => c.tool_calls ?? []).map((t) => t.name)).toEqual(["listInvoices"]);
+  });
+
   it("rejects a malformed stream event", async () => {
     await expect(
       (async () => {

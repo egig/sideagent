@@ -5,6 +5,7 @@ import { parseConfig, type AgentConfig, type AgentConfigInput } from "./config.j
 import { runDoctor } from "./doctor.js";
 import { buildGraph } from "./graph/index.js";
 import { createHandler, type AuthResult } from "./http/handler.js";
+import type { TurnErrorContext } from "./http/turn.js";
 import { KnowledgeBase, SEARCH_TOOL, type VectorStore } from "./knowledge/index.js";
 import { createChatModel, createEmbeddings, type EmbeddingsLike } from "./model.js";
 import { loadOperations, type Operation } from "./openapi.js";
@@ -36,6 +37,11 @@ export interface CreateAgentOptions extends AgentConfigInput {
    */
   dryRun?: (ctx: { request: Request; userId: string }) => boolean | Promise<boolean>;
   onAudit?: (event: AuditEvent) => void | Promise<void>;
+  /**
+   * Called when a turn fails, with the real error. The browser only sees "The agent failed" (or the step limit
+   * or timeout message), so use this to log the cause. Fire-and-forget; errors thrown here are swallowed.
+   */
+  onError?: (ctx: TurnErrorContext) => void | Promise<void>;
   checkpointer?: BaseCheckpointSaver;
   /** Index of each user's conversations (history list). Defaults to in-memory. */
   threadStore?: ThreadStore;
@@ -52,6 +58,7 @@ export async function createAgent(options: CreateAgentOptions) {
     exposeKnowledge,
     dryRun,
     onAudit,
+    onError,
     checkpointer,
     threadStore: givenStore,
     vectorStore,
@@ -94,7 +101,17 @@ export async function createAgent(options: CreateAgentOptions) {
     model,
     bindOptions: givenModel ? undefined : { parallel_tool_calls: false },
   });
-  const handler = createHandler({ config, graph, threads, secret, getAuth, beforeTurn, exposeKnowledge, dryRun });
+  const handler = createHandler({
+    config,
+    graph,
+    threads,
+    secret,
+    getAuth,
+    beforeTurn,
+    exposeKnowledge,
+    dryRun,
+    onError,
+  });
 
   return {
     handler,
