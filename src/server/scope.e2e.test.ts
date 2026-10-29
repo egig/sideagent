@@ -17,7 +17,11 @@ let srv: Server;
 let docsOnly: Agent;
 let withOps: Agent;
 let owner: Agent;
+let natural: Agent;
+let naturalNoRetry: Agent;
 let chatCalls = 0;
+let lastChatBody = "";
+let failChat = false;
 const port = () => (srv.address() as AddressInfo).port;
 
 beforeAll(async () => {
@@ -25,7 +29,14 @@ beforeAll(async () => {
     let body = "";
     for await (const c of req) body += c;
     const handler = req.url?.endsWith("/embeddings") ? mockEmbeddingsHandler : mockLlmHandler;
-    if (req.url?.endsWith("/chat/completions")) chatCalls++;
+    if (req.url?.endsWith("/chat/completions")) {
+      chatCalls++;
+      lastChatBody = body;
+      if (failChat) {
+        res.writeHead(500).end("boom");
+        return;
+      }
+    }
     const out = await handler(
       new Request("http://x", { method: "POST", body, headers: { "content-type": "application/json" } }),
     );
@@ -49,6 +60,9 @@ beforeAll(async () => {
   };
   docsOnly = await createAgent({ ...base, allow: [] });
   owner = await createAgent({ ...base, allow: [], exposeKnowledge: () => true });
+  const naturalBase = { ...base, scope: { ...base.scope, naturalReply: true }, allow: [] };
+  natural = await createAgent(naturalBase);
+  naturalNoRetry = await createAgent({ ...naturalBase, llm: { ...base.llm, maxRetries: 0 } });
   withOps = await createAgent({ ...base, spec, baseUrl: "https://api.example.com", allow: ["listInvoices"] });
 });
 afterAll(() => srv.close());
@@ -85,6 +99,35 @@ describe("scope: knowledge-only agent", () => {
     expect(chatCalls).toBeGreaterThan(before);
     expect(text).not.toBe(OFF_TOPIC);
     expect(text).toContain("Done.");
+  });
+});
+
+describe("scope: naturalReply", () => {
+  it("has the model write the decline from the last message only, with no tools", async () => {
+    const before = chatCalls;
+    const { text } = await chat(natural, "what is 2+2");
+    expect(chatCalls).toBe(before + 1);
+    expect(text).toBe("Hello from the mock model.");
+    expect(text).not.toBe(OFF_TOPIC);
+    const sent = JSON.parse(lastChatBody) as { tools?: unknown; messages: { role: string; content: string }[] };
+    expect(sent.tools).toBeUndefined();
+    expect(sent.messages.map((m) => m.role)).toEqual(["system", "user"]);
+    expect(sent.messages[0]!.content).toContain("never answer it");
+  });
+
+  it("keeps answering a question the documentation backs", async () => {
+    const { text } = await chat(natural, "refund within thirty days");
+    expect(text).toContain("Done.");
+  });
+
+  it("falls back to the fixed reply when the model call fails", async () => {
+    failChat = true;
+    try {
+      const { text } = await chat(naturalNoRetry, "what is 2+2");
+      expect(text).toBe(OFF_TOPIC);
+    } finally {
+      failChat = false;
+    }
   });
 });
 

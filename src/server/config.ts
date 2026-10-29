@@ -72,6 +72,12 @@ export const configSchema = z
           .default(
             "I can only answer questions about this product's documentation. Try asking about how it works or how to set it up.",
           ),
+        /**
+         * Have the model write the off-topic reply, in the user's language, instead of sending `offTopic`. The
+         * model sees only the last user message, with no tools or passages. `offTopic` stays the fallback. Costs
+         * one model call per off-topic turn.
+         */
+        naturalReply: z.boolean().default(false),
       })
       .strict()
       .optional(),

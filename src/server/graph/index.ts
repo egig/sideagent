@@ -9,6 +9,7 @@ import { messageText } from "../message-text.js";
 import type { Operation } from "../openapi.js";
 import { buildSystemPrompt, redact, type AuditEvent } from "../security/policy.js";
 import { toolResult, type ToolContext } from "./tools/context.js";
+import { declineReply } from "./decline.js";
 import { runOperation } from "./tools/operation.js";
 import { runSearch, SEARCH_TOOL_DEF } from "./tools/search.js";
 import { forModel, isSummary, summarize } from "./summarize.js";
@@ -102,15 +103,18 @@ export function buildGraph({
         // Nothing backs this turn. Without operations the model is not called. With them it may still call one;
         // its text is never shown, because the gate decides the answer. The fixed reply is written to the stream
         // here: a message returned from middleware is not emitted in "messages" mode.
-        const offTopic = () => {
-          writer?.({ type: "text.delta", text: scope.offTopic });
-          return new AIMessage(scope.offTopic);
+        const offTopic = async () => {
+          const text = scope.naturalReply
+            ? await declineReply(model, lastQuestion(request.messages), scope.offTopic, signal)
+            : scope.offTopic;
+          writer?.({ type: "text.delta", text });
+          return new AIMessage(text);
         };
-        if (ops.length === 0) return offTopic();
+        if (ops.length === 0) return await offTopic();
         // Called directly, not through handler(): the node's call config would drop the nostream tag.
         const quiet = model.bindTools!(tools, bindOptions).withConfig({ tags: ["langsmith:nostream"] });
         const reply = await quiet.invoke([systemMessage, ...forModel(request.messages)], { signal });
-        return reply.tool_calls?.length ? reply : offTopic();
+        return reply.tool_calls?.length ? reply : await offTopic();
       }
       return handler({
         ...request,
@@ -159,6 +163,13 @@ export function buildGraph({
     middleware: config.summarize ? [summarize(model, config.summarize), sideagent] : [sideagent],
     checkpointer: checkpointer ?? new MemorySaver(),
   }).graph;
+}
+
+/** The text of the user's last message, summaries excluded. */
+function lastQuestion(messages: BaseMessage[]): string {
+  let at = messages.length - 1;
+  while (at >= 0 && (messages[at]!.getType() !== "human" || isSummary(messages[at]!))) at--;
+  return at >= 0 ? messageText(messages[at]!.content).trim() : "";
 }
 
 /**
