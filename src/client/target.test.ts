@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { publishableKey } from "../keys";
 import { resolveTarget } from "./target";
 
-const key = publishableKey("live", "cloud.example.com", "agt_abcdefghijkmnpqr");
+const key = publishableKey("cloud.example.com", "agt_abcdefghijkmnpqr");
 
 describe("resolveTarget", () => {
   it("keeps a plain endpoint and sends no key header", () => {
@@ -33,7 +33,7 @@ describe("resolveTarget", () => {
   });
 
   it("throws on a malformed key or when neither prop is set", () => {
-    expect(() => resolveTarget({ publishableKey: "pk_live_nope" })).toThrow("sideagent: invalid publishableKey");
+    expect(() => resolveTarget({ publishableKey: "pk_nope" })).toThrow("sideagent: invalid publishableKey");
     expect(() => resolveTarget({ publishableKey: "" })).toThrow("sideagent: invalid publishableKey");
     expect(() => resolveTarget({})).toThrow("sideagent: pass endpoint or publishableKey");
   });

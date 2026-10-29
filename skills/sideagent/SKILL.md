@@ -43,7 +43,7 @@ Do them in order. Do not skip the review in step 7.
      <App />
    </AgentProvider>
    ```
-   Use `<AgentChat endpoint="/agent" />` for a floating chat without docking. Different origin plus cookies: add `credentials="include"`. For an agent hosted on sideagent Cloud, pass `publishableKey="pk_live_…"` instead of `endpoint`.
+   Use `<AgentChat endpoint="/agent" />` for a floating chat without docking. Different origin plus cookies: add `credentials="include"`. For an agent hosted on sideagent Cloud, pass `publishableKey="pk_…"` instead of `endpoint`.
 6. **Env vars.** Add `LLM_API_KEY`, `APPROVAL_SECRET`, `APP_ORIGIN`, `API_BASE_URL` to `.env.example`. Never hardcode keys. Never send `LLM_API_KEY` to the browser.
 7. **Verify, then hand over for review.**
    - Run the project's typecheck and tests.

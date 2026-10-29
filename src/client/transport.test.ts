@@ -24,11 +24,11 @@ describe("getHeaders", () => {
     mockFetch();
     let n = 0;
     const getHeaders = async () => ({ authorization: `Bearer t${++n}`, "x-sideagent-key": "forged" });
-    const opts = { endpoint: "/agent", headers: { "x-sideagent-key": "pk_live_x" }, getHeaders };
+    const opts = { endpoint: "/agent", headers: { "x-sideagent-key": "pk_x" }, getHeaders };
     await drain(streamChat({ message: "hi" }, opts));
     await callJson({ action: "threads.list" }, opts);
     expect(sent.map((h) => h.get("authorization"))).toEqual(["Bearer t1", "Bearer t2"]);
-    expect(sent.every((h) => h.get("x-sideagent-key") === "pk_live_x")).toBe(true);
+    expect(sent.every((h) => h.get("x-sideagent-key") === "pk_x")).toBe(true);
     expect(sent[0]!.get("content-type")).toBe("application/json");
   });
 

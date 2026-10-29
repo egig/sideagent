@@ -50,7 +50,7 @@ import { AgentChat } from "sideagent";
 With an agent hosted on sideagent Cloud, pass its publishable key instead of `endpoint`. The key names the agent and its host, so the chat derives the URL (`https://<host>/v1/agents/<agentId>`) and sends the key in the `x-sideagent-key` header on every request. The key is public: it is safe in the browser and proves nothing on its own.
 
 ```tsx
-<AgentChat publishableKey="pk_live_…" />
+<AgentChat publishableKey="pk_…" />
 ```
 
 Pass `endpoint` as well to send the requests somewhere else, such as a proxy in front of sideagent Cloud. A malformed key, or neither prop, throws during render. `parsePublishableKey` and `publishableEndpoint` are exported from `sideagent/keys`.
@@ -59,7 +59,7 @@ Signed-in users: pass `getHeaders`, which the chat calls before every request, s
 
 ```tsx
 <AgentChat
-  publishableKey="pk_live_…"
+  publishableKey="pk_…"
   getHeaders={async () => ({ Authorization: `Bearer ${await getToken()}` })}
   storageKey={user.id}
 />

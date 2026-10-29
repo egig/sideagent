@@ -6,7 +6,7 @@ import { BusyContext, useAgentBusy } from "./client/context";
 // Here, not in client/: the isolation test forbids any "server" import there, react-dom/server included.
 describe("AgentChat with a publishable key", () => {
   it("throws during render on a malformed key", () => {
-    expect(() => renderToStaticMarkup(<AgentChat publishableKey="pk_live_nope" />)).toThrow(
+    expect(() => renderToStaticMarkup(<AgentChat publishableKey="pk_nope" />)).toThrow(
       "sideagent: invalid publishableKey",
     );
   });
