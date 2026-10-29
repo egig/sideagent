@@ -35,6 +35,20 @@ onAudit: (e) => db.insert("agent_audit", e),
 - `args` are redacted for sensitive-looking keys before the call. Fields: see [Audit log](./deployments.md#audit-log).
 - `search_knowledge` calls are audited as well, with `operationId: "search_knowledge"`.
 
+### `callbacks({ request, userId })`
+
+Returns [LangChain callback handlers](https://js.langchain.com/docs/concepts/callbacks/) for this request's turn, to trace what happens under the hood: each model call, each tool call, token usage and errors. Return `undefined` to skip tracing for a request.
+
+```ts
+callbacks: ({ userId }) => (isOwner(userId) ? [new MyTraceHandler()] : undefined),
+```
+
+- It runs on the server for every request. Nothing in the request body can turn it on.
+- Handlers see the raw prompts, replies, tool arguments and results. They are not redacted, so redact before you store them.
+- A tool call is a span tagged `sideagent:tool` and named after the operation. Handle it in `handleChainStart` and `handleChainEnd`.
+- A callback that throws means the turn runs without tracing. A failing handler does not break the turn.
+- Unlike `onAudit`, it does not cover approval decisions or denied calls. Use both.
+
 ### `onError({ code, error, userId, threadId })`
 
 Called when a turn fails, with the real error. The browser only sees "The agent failed. Try again." (or the step limit or timeout message), so use this to log the cause.

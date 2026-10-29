@@ -1,3 +1,4 @@
+import type { Callbacks } from "@langchain/core/callbacks/manager";
 import type { AgentConfig } from "../config.js";
 import type { AgentGraph } from "../graph/index.js";
 import { ownsThread, type ThreadStore } from "../threads.js";
@@ -23,12 +24,13 @@ export interface HandlerDeps {
   beforeTurn?: (ctx: { request: Request; userId: string }) => void | Promise<void>;
   exposeKnowledge?: (ctx: { request: Request; userId: string }) => boolean | Promise<boolean>;
   dryRun?: (ctx: { request: Request; userId: string }) => boolean | Promise<boolean>;
+  callbacks?: (ctx: { request: Request; userId: string }) => Callbacks | undefined | Promise<Callbacks | undefined>;
   onError?: (ctx: TurnErrorContext) => void | Promise<void>;
 }
 
 /** The agent endpoint. Each step either rejects the request or narrows what the next step may assume. */
 export function createHandler(deps: HandlerDeps) {
-  const { config, graph, threads, getAuth, beforeTurn, exposeKnowledge, dryRun } = deps;
+  const { config, graph, threads, getAuth, beforeTurn, exposeKnowledge, dryRun, callbacks } = deps;
   const active = new Map<string, number>();
 
   return async function handler(request: Request): Promise<Response> {
@@ -84,11 +86,17 @@ export function createHandler(deps: HandlerDeps) {
     } catch {
       dry = true;
     }
+    let traced: Callbacks | undefined;
+    try {
+      traced = await callbacks?.(asked);
+    } catch {
+      /* no tracing */
+    }
 
     return runTurn(
       request,
       body,
-      { userId, headers: auth.headers ?? {}, exposeKnowledge: expose, dryRun: dry },
+      { userId, headers: auth.headers ?? {}, exposeKnowledge: expose, dryRun: dry, callbacks: traced },
       { ...deps, active },
       cors,
     );

@@ -1,6 +1,7 @@
 import { AIMessage, SystemMessage, ToolMessage, type BaseMessage } from "@langchain/core/messages";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { MemorySaver, type BaseCheckpointSaver, type LangGraphRunnableConfig } from "@langchain/langgraph";
+import { RunnableLambda } from "@langchain/core/runnables";
 import { createAgent, createMiddleware, tool } from "langchain";
 import type { AgentConfig } from "../config.js";
 import { SEARCH_TOOL, uniqueSources, type KnowledgeBase } from "../knowledge/index.js";
@@ -14,6 +15,9 @@ import { forModel, isSummary, summarize } from "./summarize.js";
 import type { PendingApproval, RunContext } from "./types.js";
 
 export type { PendingApproval, RunContext } from "./types.js";
+
+/** Tag on the span of a tool call, so a trace handler can tell it from LangChain's own steps. */
+export const TOOL_TAG = "sideagent:tool";
 
 /** The node that calls the model; http/turn.ts streams text only from it. */
 export const MODEL_NODE = "model_request";
@@ -65,6 +69,16 @@ export function buildGraph({
     } catch {
       /* audit must never break a turn */
     }
+  };
+
+  const runTool = async (call: { name: string; args: unknown; id?: string }, ctx: ToolContext) => {
+    const callId = ctx.callId;
+    const op = byName.get(call.name);
+    if (knowledge && call.name === SEARCH_TOOL)
+      return runSearch(knowledge, call.args, config.limits.maxResultBytes, ctx, config.scope?.minScore);
+    if (op) return runOperation(op, call.args, { config, secret }, ctx);
+    audit({ ...ctx.base, args: call.args, status: "denied", approval: "auto", error: "not allowlisted" });
+    return toolResult(callId, `Error: unknown tool "${call.name}".`, { error: "not available" });
   };
 
   const sideagent = createMiddleware({
@@ -129,12 +143,11 @@ export function buildGraph({
         base: { at: Date.now(), userId: run.userId, threadId, operationId: call.name, callId },
       };
 
-      const op = byName.get(call.name);
-      if (knowledge && call.name === SEARCH_TOOL)
-        return runSearch(knowledge, call.args, config.limits.maxResultBytes, ctx, config.scope?.minScore);
-      if (op) return runOperation(op, call.args, { config, secret }, ctx);
-      audit({ ...ctx.base, args: call.args, status: "denied", approval: "auto", error: "not allowlisted" });
-      return toolResult(callId, `Error: unknown tool "${call.name}".`, { error: "not available" });
+      // Tool calls run here, not through LangChain's tool node, so they get their own traced span: callbacks
+      // (the `callbacks` option) see them as a child of the step that made the call.
+      return RunnableLambda.from(() => runTool(call, ctx))
+        .withConfig({ runName: call.name, tags: [TOOL_TAG] })
+        .invoke(call.args);
     },
   });
 

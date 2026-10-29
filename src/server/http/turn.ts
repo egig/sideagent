@@ -1,3 +1,4 @@
+import type { Callbacks } from "@langchain/core/callbacks/manager";
 import { HumanMessage } from "@langchain/core/messages";
 import { Command, GraphRecursionError } from "@langchain/langgraph";
 import type { AgentEvent } from "../../protocol.js";
@@ -31,6 +32,7 @@ export interface TurnAuth {
   headers: Record<string, string>;
   exposeKnowledge?: boolean;
   dryRun?: boolean;
+  callbacks?: Callbacks;
 }
 
 /** Starts (or resumes, after an approval decision) a turn and streams its events as SSE. */
@@ -102,6 +104,7 @@ export async function runTurn(
         const events = await graph.stream(input as any, {
           ...runCfg,
           signal: timeout.signal,
+          ...(auth.callbacks && { callbacks: auth.callbacks }),
           recursionLimit: config.limits.maxSteps * 2 + 2,
           streamMode: ["messages", "custom"],
         });

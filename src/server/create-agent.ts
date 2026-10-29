@@ -9,6 +9,7 @@ import type { TurnErrorContext } from "./http/turn.js";
 import { KnowledgeBase, SEARCH_TOOL, type VectorStore } from "./knowledge/index.js";
 import { createChatModel, createEmbeddings, type EmbeddingsLike } from "./model.js";
 import { loadOperations, type Operation } from "./openapi.js";
+import type { Callbacks } from "@langchain/core/callbacks/manager";
 import type { AuditEvent } from "./security/policy.js";
 import { MemoryThreadStore, type ThreadStore } from "./threads.js";
 
@@ -38,6 +39,13 @@ export interface CreateAgentOptions extends AgentConfigInput {
   dryRun?: (ctx: { request: Request; userId: string }) => boolean | Promise<boolean>;
   onAudit?: (event: AuditEvent) => void | Promise<void>;
   /**
+   * LangChain callback handlers for this request's turn, to trace what happens under the hood: model calls,
+   * tool calls, token usage, errors. Decided here on the server per request; nothing in the request body
+   * can set it. What the handlers see is unredacted (prompts, replies, tool arguments and results), so
+   * redact before storing. A callback that throws means no tracing; a failing handler never breaks the turn.
+   */
+  callbacks?: (ctx: { request: Request; userId: string }) => Callbacks | undefined | Promise<Callbacks | undefined>;
+  /**
    * Called when a turn fails, with the real error. The browser only sees "The agent failed" (or the step limit
    * or timeout message), so use this to log the cause. Fire-and-forget; errors thrown here are swallowed.
    */
@@ -57,6 +65,7 @@ export async function createAgent(options: CreateAgentOptions) {
     beforeTurn,
     exposeKnowledge,
     dryRun,
+    callbacks,
     onAudit,
     onError,
     checkpointer,
@@ -110,6 +119,7 @@ export async function createAgent(options: CreateAgentOptions) {
     beforeTurn,
     exposeKnowledge,
     dryRun,
+    callbacks,
     onError,
   });
 

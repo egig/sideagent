@@ -135,6 +135,20 @@ describe("workersAiChatModel", () => {
     ).rejects.toThrow("quota");
   });
 
+  it("reports token usage, for a reply and for a stream", async () => {
+    const reply = fake([{ response: "hi", usage: { prompt_tokens: 7, completion_tokens: 2 } }]);
+    const out = (await workersAiChatModel(reply.ai, "m", { streaming: false }).invoke("q")) as AIMessage;
+    expect(out.usage_metadata).toEqual({ input_tokens: 7, output_tokens: 2, total_tokens: 9 });
+
+    const streamed = fake([
+      sse({ response: "he" }, { response: "llo" }, { usage: { prompt_tokens: 5, completion_tokens: 3 } }, "[DONE]"),
+    ]);
+    let last: AIMessageChunk | undefined;
+    for await (const c of await workersAiChatModel(streamed.ai, "m").stream("hi")) last = last ? last.concat(c) : c;
+    expect(last!.content).toBe("hello");
+    expect(last!.usage_metadata).toMatchObject({ input_tokens: 5, output_tokens: 3, total_tokens: 8 });
+  });
+
   it("streams text and assembles streamed tool calls", async () => {
     const text = fake([sse({ response: "Hel" }, { response: "lo" }, "[DONE]")]);
     const tokens: string[] = [];

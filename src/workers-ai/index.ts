@@ -36,9 +36,26 @@ interface ToolCall {
   args: Record<string, unknown>;
 }
 
+interface Usage {
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+}
+
 interface Parsed {
   text: string;
   toolCalls: ToolCall[];
+  usage?: Usage;
+}
+
+/** Token counts from a reply or a stream event: OpenAI-style (`prompt_tokens`) or Responses-style (`input_tokens`). */
+function usageOf(v: unknown): Usage | undefined {
+  const u = isObj(v) ? v.usage : undefined;
+  if (!isObj(u)) return undefined;
+  const input = Number(u.prompt_tokens ?? u.input_tokens);
+  const output = Number(u.completion_tokens ?? u.output_tokens);
+  if (!Number.isFinite(input) || !Number.isFinite(output)) return undefined;
+  return { input_tokens: input, output_tokens: output, total_tokens: input + output };
 }
 
 const isObj = (v: unknown): v is Record<string, any> => !!v && typeof v === "object" && !Array.isArray(v);
@@ -145,7 +162,8 @@ export function parseWorkersAiResponse(res: unknown): Parsed {
   }
 
   if (!known) throw new Error("Workers AI returned an unrecognized response");
-  return { text, toolCalls };
+  const usage = usageOf(r);
+  return { text, toolCalls, ...(usage && { usage }) };
 }
 
 /** Yields the JSON payload of each `data:` line of an SSE byte stream. */
@@ -238,12 +256,13 @@ export class ChatWorkersAI extends BaseChatModel<WorkersAiCallOptions> {
   }
 
   async _generate(messages: BaseMessage[], options: this["ParsedCallOptions"]): Promise<ChatResult> {
-    const { text, toolCalls } = parseWorkersAiResponse(
+    const { text, toolCalls, usage } = parseWorkersAiResponse(
       await this.run(this.input(messages, options, false), options.signal),
     );
     const message = new AIMessage({
       content: text,
       tool_calls: toolCalls.map((c) => ({ type: "tool_call" as const, ...c })),
+      ...(usage && { usage_metadata: usage }),
     });
     return { generations: [{ text, message }] };
   }
@@ -269,9 +288,11 @@ export class ChatWorkersAI extends BaseChatModel<WorkersAiCallOptions> {
     const partial = new Map<number, { id?: string; name: string; args: string }>();
     const whole: ToolCall[] = [];
     let spoke = false;
+    let usage: Usage | undefined;
     for await (const ev of sseEvents(res)) {
       options.signal?.throwIfAborted();
       if (!isObj(ev)) continue;
+      usage = usageOf(ev) ?? usageOf(ev.response) ?? usage;
       let delta = "";
       if (typeof ev.response === "string") delta = ev.response;
       const choice = Array.isArray(ev.choices) && isObj(ev.choices[0]) ? ev.choices[0] : undefined;
@@ -307,7 +328,7 @@ export class ChatWorkersAI extends BaseChatModel<WorkersAiCallOptions> {
       if (!p.name) throw new Error("Workers AI returned a malformed tool call");
       toolCalls.push({ id: p.id ?? newId(), name: p.name, args: parseArgs(p.args) });
     }
-    if (toolCalls.length) yield* this.emit({ text: "", toolCalls }, runManager);
+    if (toolCalls.length) yield* this.emit({ text: "", toolCalls, usage }, runManager);
     else if (!spoke) {
       // gpt-oss sometimes streams only reasoning and ends on its tool-call token, and the stream carries no call.
       // The plain reply for the same input does carry it, so ask once more without streaming.
@@ -315,11 +336,11 @@ export class ChatWorkersAI extends BaseChatModel<WorkersAiCallOptions> {
         parseWorkersAiResponse(await this.run(this.input(messages, options, false), options.signal)),
         runManager,
       );
-    }
+    } else if (usage) yield* this.emit({ text: "", toolCalls: [], usage }, runManager);
   }
 
   private async *emit(
-    { text, toolCalls }: Parsed,
+    { text, toolCalls, usage }: Parsed,
     runManager?: CallbackManagerForLLMRun,
   ): AsyncGenerator<ChatGenerationChunk> {
     const chunk = new ChatGenerationChunk({
@@ -333,6 +354,7 @@ export class ChatWorkersAI extends BaseChatModel<WorkersAiCallOptions> {
           name: c.name,
           args: JSON.stringify(c.args),
         })),
+        ...(usage && { usage_metadata: usage }),
       }),
     });
     yield chunk;
