@@ -76,7 +76,11 @@ export const CSS = `
 .sa-tool[data-state=error] .sa-tool-head,.sa-tool[data-state=rejected] .sa-tool-head{color:var(--sa-danger)}
 .sa-spin{animation:sa-rot 1s linear infinite}
 @keyframes sa-rot{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion:reduce){.sa-spin{animation:none}}
+.sa-typing{display:flex;gap:4px;padding:8px 0}
+.sa-typing span{width:6px;height:6px;border-radius:50%;background:var(--sa-muted);animation:sa-blink 1.2s ease-in-out infinite}
+.sa-typing span:nth-child(2){animation-delay:.15s}.sa-typing span:nth-child(3){animation-delay:.3s}
+@keyframes sa-blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.sa-spin,.sa-typing span{animation:none}}
 .sa-table-wrap{overflow:auto;max-height:240px;border:1px solid var(--sa-border);border-radius:calc(var(--sa-radius) - 2px)}
 .sa-table{border-collapse:collapse;width:100%;font-size:12.5px}
 .sa-table th,.sa-table td{padding:5px 9px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--sa-border)}
@@ -107,7 +111,7 @@ export const CSS = `
 .sa-row{display:flex;gap:8px}
 .sa-composer{display:flex;flex-direction:column;gap:4px;margin:0 12px 12px;padding:10px 10px 8px 14px;border:1px solid var(--sa-border);border-radius:18px;background:var(--sa-surface)}
 .sa-input{width:100%;resize:none;border:0;background:transparent;padding:2px 0;font:inherit;color:inherit;max-height:160px}
-.sa-root .sa-input:focus-visible{outline:none}
+.sa-root .sa-input:is(:focus,:focus-visible){outline:none;box-shadow:none}
 .sa-input::placeholder{color:var(--sa-muted)}
 .sa-composer-bar{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .sa-hint{color:var(--sa-muted);font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
