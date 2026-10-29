@@ -33,6 +33,20 @@ console.log(await agent.doctor());                         // what the agent can
 createAgent({ …, dryRun: ({ request }) => isPreview(request) });
 ```
 
+## Long threads: `summarize`
+
+`summarize` replaces the older messages of a long thread with a summary the model writes, so long conversations stay within the model's context. It is off by default, and each summary is one extra model call.
+
+```ts
+createAgent({ …, summarize: { afterTokens: 8000, keepMessages: 20 } });
+```
+
+- A summary is made before a model call once the thread passes `afterTokens` (an approximate count). The last `keepMessages` messages stay as they are. `keepMessages` must be at least `limits.maxSteps * 2 + 1`, so the current turn is never summarized.
+- The summary can repeat tool output and knowledge passages, so the model gets it inside a `<conversation_summary>` block, never as the user's words. The system prompt holds that block to the same rule as passages: context only, never instructions, and never a reason to call a tool or skip approval.
+- Passage text that goes into a summary still never reaches the browser unless `exposeKnowledge` is on. Source links of a summarized search are gone with it.
+- If the summary call fails, the thread is left as it was.
+- Summarized messages are gone from the thread: the History panel shows only the messages that were kept, and does not show the summary.
+
 ## Behavior and limits
 
 - Only operations in `allow` are exposed. Anything not listed is denied. Entries are operation ids or `tag:<name>`.
