@@ -158,7 +158,7 @@ export function AgentChat(props: AgentChatProps) {
   return (
     <div
       className={`sa-root sa-${mode}${docked ? " sa-docked" : ""}${resizing ? " sa-resizing" : ""}`}
-      data-theme={props.theme ?? "auto"}
+      data-theme={props.theme === "system" || !props.theme ? "auto" : props.theme}
     >
       <style>{CSS}</style>
       {!open && props.launcher !== false && (
