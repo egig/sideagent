@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { threadKey } from "./storage";
-import { callJson, fetchAgentName, streamChat } from "./transport";
+import { callJson, fetchAgentInfo, streamChat } from "./transport";
 
 const sent: Headers[] = [];
 afterEach(() => {
@@ -56,26 +56,31 @@ describe("storageKey", () => {
   });
 });
 
-describe("fetchAgentName", () => {
+describe("fetchAgentInfo", () => {
   const reply = (status: number, body: unknown) =>
     vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response(JSON.stringify(body), { status }));
 
   it("returns the name and asks once per endpoint", async () => {
     const f = reply(200, { name: "Billing helper" });
-    expect(await fetchAgentName({ endpoint: "/a" })).toBe("Billing helper");
-    expect(await fetchAgentName({ endpoint: "/a" })).toBe("Billing helper");
+    expect(await fetchAgentInfo({ endpoint: "/a" })).toEqual({ name: "Billing helper", available: true });
+    expect(await fetchAgentInfo({ endpoint: "/a" })).toEqual({ name: "Billing helper", available: true });
     expect(f).toHaveBeenCalledTimes(1);
     expect(JSON.parse(f.mock.calls[0]![1]!.body as string)).toEqual({ action: "agent.info" });
   });
 
+  it("reports an agent that says it is unavailable", async () => {
+    reply(200, { name: "Docs", available: false });
+    expect(await fetchAgentInfo({ endpoint: "/c" })).toEqual({ name: "Docs", available: false });
+  });
+
   it("is null for an error, an empty name or a network failure, and retries after", async () => {
     reply(400, { error: "invalid request" });
-    expect(await fetchAgentName({ endpoint: "/b" })).toBeNull();
+    expect(await fetchAgentInfo({ endpoint: "/b" })).toBeNull();
     reply(200, { name: "  " });
-    expect(await fetchAgentName({ endpoint: "/b" })).toBeNull();
+    expect(await fetchAgentInfo({ endpoint: "/b" })).toBeNull();
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
-    expect(await fetchAgentName({ endpoint: "/b" })).toBeNull();
+    expect(await fetchAgentInfo({ endpoint: "/b" })).toBeNull();
     reply(200, { name: "Back" });
-    expect(await fetchAgentName({ endpoint: "/b" })).toBe("Back");
+    expect(await fetchAgentInfo({ endpoint: "/b" })).toEqual({ name: "Back", available: true });
   });
 });

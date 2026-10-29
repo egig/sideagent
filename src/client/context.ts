@@ -7,6 +7,8 @@ export const DockContext = createContext(false);
 export interface AgentControls {
   open: boolean;
   setOpen: (open: boolean) => void;
+  /** False when the server says the agent refuses every message now (a usage cap), so the chat is hidden. */
+  available: boolean;
 }
 
 export const AgentContext = createContext<AgentControls | null>(null);
@@ -17,6 +19,9 @@ export function useAgent(): AgentControls {
   if (!ctx) throw new Error("useAgent must be used inside <AgentProvider>");
   return ctx;
 }
+
+/** Lets the chat report that the agent is unavailable. A no-op outside AgentProvider. */
+export const SetAvailableContext = createContext<((available: boolean) => void) | null>(null);
 
 /** Whether an operation is running. Set by AgentProvider; null outside it. */
 export const BusyContext = createContext<boolean | null>(null);

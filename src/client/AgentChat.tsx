@@ -18,12 +18,12 @@ import {
 } from "react";
 import type { ThreadResponse } from "../protocol.js";
 import { Chat } from "./Chat.js";
-import { AgentContext, DockContext } from "./context.js";
+import { AgentContext, DockContext, SetAvailableContext } from "./context.js";
 import { HistoryList } from "./HistoryList.js";
 import { MODE_KEY, readMode, storeGet, storeSet, threadKey, WIDTH_KEY } from "./storage.js";
 import { CSS } from "./styles.js";
 import { resolveTarget } from "./target.js";
-import { callJson, fetchAgentName } from "./transport.js";
+import { callJson, fetchAgentInfo } from "./transport.js";
 import type { AgentChatMode, AgentChatProps, Session } from "./types.js";
 
 export type { AgentChatMode, AgentChatProps } from "./types.js";
@@ -62,18 +62,26 @@ export function AgentChat(props: AgentChatProps) {
     getHeaders: props.getHeaders,
   };
 
-  // Only Cloud agents (publishableKey) have a name to show; an explicit `title` always wins.
+  // Only Cloud agents (publishableKey) have a name to show and can say they are unavailable; an explicit
+  // `title` always wins. An agent over a usage cap hides the whole chat, launcher included.
   const [agentName, setAgentName] = useState<string | null>(null);
-  const wantName = props.title === undefined && props.publishableKey !== undefined;
+  const [available, setAvailable] = useState(true);
+  const reportAvailable = useContext(SetAvailableContext);
+  const wantInfo = props.publishableKey !== undefined;
   useEffect(() => {
-    if (!wantName) return;
+    if (!wantInfo) return;
     let live = true;
-    void fetchAgentName(opts).then((n) => live && setAgentName(n));
+    void fetchAgentInfo(opts).then((info) => {
+      if (!live || !info) return;
+      setAgentName(info.name);
+      setAvailable(info.available);
+      reportAvailable?.(info.available);
+    });
     return () => {
       live = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wantName, target.endpoint]);
+  }, [wantInfo, target.endpoint]);
   const title = props.title ?? agentName ?? "Assistant";
 
   const setMode = useCallback((m: AgentChatMode) => {
@@ -154,6 +162,8 @@ export function AgentChat(props: AgentChatProps) {
     const last = storeGet(key);
     if (last) void openThread(last);
   }, [visible, key, openThread, remember]);
+
+  if (!available) return null;
 
   return (
     <div

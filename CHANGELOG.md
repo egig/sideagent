@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.0
+
+- A Cloud agent can say it is unavailable: `agent.info` may answer `{ "name": "…", "available": false }` when the agent will refuse every message (a usage cap is reached). `AgentChat` then renders nothing, launcher included, and `useAgent()` returns `available: false` so an app can hide its own "ask" button. Checked once per page load; a cap reached mid-conversation still shows as an error in the chat.
+- Wire format (`src/protocol.ts`): adds the optional `available` field to the `agent.info` answer. Old clients ignore it; old servers never send it.
+
 ## 0.7.0
 
 - New client hooks `onOperationStart` and `onOperationAbort`. Each started operation ends in exactly one `onAnyOperation` or `onOperationAbort`, so an app can block input while a call runs and never stay blocked after a new chat, a thread switch or a lost connection.
