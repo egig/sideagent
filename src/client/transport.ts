@@ -85,18 +85,33 @@ export async function callJson<T>(
   return { status: res.status, data };
 }
 
-const names = new Map<string, Promise<string | null>>();
+export interface AgentSummary {
+  name: string;
+  available: boolean;
+}
 
-/** The agent's display name from sideagent Cloud (`agent.info`), or null if the server does not give one. Cached per endpoint. */
-export function fetchAgentName(opts: Omit<TransportOptions, "signal">): Promise<string | null> {
-  let name = names.get(opts.endpoint);
-  if (!name) {
-    name = callJson<AgentInfo>({ action: "agent.info" }, opts)
-      .then((r) => (r.status === 200 && typeof r.data?.name === "string" && r.data.name.trim() ? r.data.name : null))
+const infos = new Map<string, Promise<AgentSummary | null>>();
+
+/**
+ * The agent's display name and availability from sideagent Cloud (`agent.info`), or null if the server does
+ * not give a name. Cached per endpoint, so a cap reached later shows on the next page load.
+ */
+export function fetchAgentInfo(opts: Omit<TransportOptions, "signal">): Promise<AgentSummary | null> {
+  let info = infos.get(opts.endpoint);
+  if (!info) {
+    info = callJson<AgentInfo>({ action: "agent.info" }, opts)
+      .then((r) =>
+        r.status === 200 && typeof r.data?.name === "string" && r.data.name.trim()
+          ? {
+              name: r.data.name,
+              available: r.data.available !== false,
+            }
+          : null,
+      )
       .catch(() => null);
-    names.set(opts.endpoint, name);
+    infos.set(opts.endpoint, info);
     // A failure (signed out, offline) is retried on the next mount.
-    void name.then((n) => n === null && names.delete(opts.endpoint));
+    void info.then((i) => i === null && infos.delete(opts.endpoint));
   }
-  return name;
+  return info;
 }

@@ -44,9 +44,14 @@ export type ChatRequest =
   | { action: "threads.get"; threadId: string }
   | { action: "threads.delete"; threadId: string };
 
-/** Answer to `agent.info`. Only sideagent Cloud serves it; the chat title falls back to "Assistant" without it. */
+/**
+ * Answer to `agent.info`. Only sideagent Cloud serves it; the chat title falls back to "Assistant" without it.
+ * `available: false` means the agent will refuse every message right now (a usage cap is reached), so the
+ * chat hides itself. Absent or `true`: show it.
+ */
 export interface AgentInfo {
   name: string;
+  available?: boolean;
 }
 
 export interface ThreadMeta {

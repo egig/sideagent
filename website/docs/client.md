@@ -25,6 +25,10 @@ Pass `endpoint` as well to send the requests somewhere else, such as a proxy in 
 
 The panel title is the agent's name from the Cloud dashboard. The chat asks for it once with `{ "action": "agent.info" }` and shows "Assistant" until it answers, or if the request fails. Pass `title` to use your own text. Without a `publishableKey` the title is "Assistant" and nothing is asked.
 
+The same answer can carry `"available": false`, when the agent would refuse every message because a usage cap is reached (sideagent Cloud does this for anonymous visitors). The chat then renders nothing, launcher included, until the next page load.
+
+Under `AgentProvider`, `useAgent().available` is `false` too, so hide your own "ask" button.
+
 Signed-in users: pass `getHeaders`, which the chat calls before every request, so a login token that expires is fetched fresh each time. Pass `storageKey` (the user's ID) so the last conversation the chat remembers in `localStorage` belongs to that user; on a shared browser another user starts from their own.
 
 ```tsx
@@ -53,7 +57,7 @@ import { AgentProvider } from "sideagent";
 
 `AgentProvider` fills the viewport height (`100dvh`); override with the `className` or `style` props.
 
-Anything under `AgentProvider` can call `useAgent()` to get `{ open, setOpen }`, e.g. an "Ask assistant" button in your toolbar, and `useAgentBusy()` to know whether one of the agent's operations is running, e.g. to disable a form that would race it. See [Hooks](./hooks.md#blocking-the-app-while-an-operation-runs).
+Anything under `AgentProvider` can call `useAgent()` to get `{ open, setOpen, available }`, e.g. an "Ask assistant" button in your toolbar, and `useAgentBusy()` to know whether one of the agent's operations is running, e.g. to disable a form that would race it. See [Hooks](./hooks.md#blocking-the-app-while-an-operation-runs).
 
 ## Small screens
 
