@@ -2,10 +2,19 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { createAgent } from "../src/server/index.js";
 import { mockEmbeddingsHandler, mockLlmHandler } from "../src/testing/mock-llm.js";
+import { PgVectorStore } from "./pg-vector-store.js";
 
-const PORT = 8787;
+const PORT = Number(process.env.PORT ?? 8787);
+const DATABASE_URL = process.env.DATABASE_URL;
+// Origins allowed to call /agent. Docker serves the UI on :8080; `pnpm demo` on :5173.
+const origins = (process.env.DEMO_ORIGINS ?? `http://localhost:5173,http://localhost:${PORT},http://localhost:8080`)
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 const app = new Hono();
+
+app.get("/healthz", (c) => c.text("ok"));
 
 // Scripted fake LLM so the demo works without a key. Set LLM_API_KEY to use a real one.
 app.post("/mock/v1/chat/completions", (c) => mockLlmHandler(c.req.raw));
@@ -27,6 +36,10 @@ app.on(["POST", "OPTIONS"], "/agent", (c) =>
 await new Promise<void>((resolve) => serve({ fetch: app.fetch, port: PORT }, () => resolve()));
 
 const real = !!process.env.LLM_API_KEY;
+// Postgres + pgvector when DATABASE_URL is set (docker compose); in-memory otherwise.
+const store = DATABASE_URL
+  ? new PgVectorStore({ connectionString: DATABASE_URL, table: process.env.PG_VECTOR_TABLE })
+  : undefined;
 const agent = await createAgent({
   allowPrivateNetworks: true, // the docs page is on localhost
   llm: {
@@ -34,7 +47,7 @@ const agent = await createAgent({
     apiKey: process.env.LLM_API_KEY ?? "mock",
     model: process.env.LLM_MODEL ?? "gpt-4o-mini",
   },
-  allowedOrigins: ["http://localhost:5173", `http://localhost:${PORT}`],
+  allowedOrigins: origins,
   instructions: "You answer questions about the invoicing product from its documentation.",
   knowledge: {
     embeddings: { model: process.env.EMBEDDING_MODEL ?? (real ? "text-embedding-3-small" : "mock-embedding") },
@@ -49,9 +62,12 @@ const agent = await createAgent({
     urls: [{ url: `http://localhost:${PORT}/docs/payment-terms`, title: "Payment terms" }],
   },
   anonymous: true, // the demo has no sign-in; use getAuth in a real app
+  vectorStore: store,
 });
 
 agentHandler = agent.handler; // routes POST/OPTIONS /agent (OPTIONS = CORS preflight); honoHandler(agent) does the same in a plain Hono app
 
-console.log(`demo api + agent on http://localhost:${PORT} (${real ? "real LLM" : "mock LLM"})`);
+console.log(
+  `demo api + agent on http://localhost:${PORT} (${real ? "real LLM" : "mock LLM"}, vectors: ${store ? "postgres" : "memory"})`,
+);
 console.log(JSON.stringify(await agent.doctor(), null, 2));

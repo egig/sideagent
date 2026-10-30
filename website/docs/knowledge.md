@@ -19,6 +19,24 @@ createAgent({
 
 The model gets a `search_knowledge` tool. It is the agent's only tool. Answers show a "Sources" card, with links only for your configured URLs.
 
+## Hybrid retrieval
+
+Search fuses two rankings with reciprocal rank fusion: the vector search, and a BM25 keyword search over the same chunks. A passage that uses the user's exact words is found even when the embedding ranks it just outside the vector cut. Turn it off with `knowledge.hybrid: false`.
+
+The in-memory store supports this out of the box. A custom `vectorStore` opts in by implementing `keywordSearch(query, k): Promise<[Document, number][]>` over the same ids `addVectors` uses; without it, search is vector-only. Keyword scores may use any scale. The `score` reported for a passage is the stronger of its cosine similarity and its keyword score, clamped to `[0, 1]`, which is what `scope.minScore` compares against.
+
+## Semantic cache
+
+Repeated or slightly reworded questions reuse the previous result set instead of searching again. Query embeddings are compared per agent: at `minScore` cosine similarity (default 0.97), the cached hits are returned. Entries expire after `ttlMs` (default 5 minutes, bounded to `maxEntries`) and are cleared whenever a source is ingested or refreshed, so knowledge updates are visible at once.
+
+```ts
+knowledge: {
+  cache: { enabled: true, minScore: 0.97, maxEntries: 100, ttlMs: 300_000 },
+}
+```
+
+The cache is per `KnowledgeBase` instance and only stores hits, never model answers or anything specific to a user.
+
 ## Showing passages to the host's own user
 
 By default the browser gets source titles only, never passage text. To let a trusted user (for example an owner previewing their agent) see what was retrieved, pass `exposeKnowledge`:

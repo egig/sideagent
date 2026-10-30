@@ -1,3 +1,4 @@
+import { Document } from "@langchain/core/documents";
 import { describe, expect, it, vi } from "vitest";
 import { mockEmbed } from "../../testing/mock-llm.js";
 import {
@@ -229,5 +230,48 @@ describe("KnowledgeBase", () => {
     await kb.refresh();
     expect(kb.status()[0]!.error).toMatch(/500/);
     expect((await kb.search("refund")).length).toBeGreaterThan(0);
+  });
+
+  it("fuses keyword results the vector search did not return", async () => {
+    const store = new MemoryVectorStore(embed);
+    const a = new Document({ pageContent: "refund policy", metadata: { sourceId: "a", title: "A" } });
+    const b = new Document({ pageContent: "refund and returns", metadata: { sourceId: "b", title: "B" } });
+    vi.spyOn(store, "similaritySearchVectorWithScore").mockResolvedValue([[a, 0.9]]);
+    vi.spyOn(store, "keywordSearch").mockResolvedValue([[b, 0.8]]);
+    const kb = new KnowledgeBase(opts({ topK: 2 }), { ...embed, store });
+    const hits = await kb.search("refund");
+    expect(store.keywordSearch).toHaveBeenCalledWith("refund", expect.any(Number));
+    expect(hits.map((h) => h.meta.sourceId).sort()).toEqual(["a", "b"]);
+  });
+
+  it("skips keyword search when hybrid is off", async () => {
+    const store = new MemoryVectorStore(embed);
+    const keyword = vi.spyOn(store, "keywordSearch");
+    const kb = new KnowledgeBase(opts({ topK: 2, hybrid: false }), { ...embed, store });
+    await kb.search("refund");
+    expect(keyword).not.toHaveBeenCalled();
+  });
+
+  it("reuses a cached search until a source changes", async () => {
+    let body = "# Refunds\n\nrefund within thirty days";
+    const fetchMock = vi.fn(
+      async () => new Response(body, { headers: { "content-type": "text/markdown" } }),
+    ) as unknown as typeof fetch;
+    const store = new MemoryVectorStore(embed);
+    const search = vi.spyOn(store, "similaritySearchVectorWithScore");
+    const kb = new KnowledgeBase(opts({ urls: ["https://docs.example.com/a"] }), {
+      ...embed,
+      store,
+      fetch: fetchMock,
+    });
+    await kb.load();
+    await kb.search("refund");
+    await kb.search("refund");
+    expect(search).toHaveBeenCalledTimes(1);
+
+    body = "# Refunds\n\nrefund within sixty days";
+    await kb.refresh();
+    expect((await kb.search("refund"))[0]!.text).toContain("sixty");
+    expect(search).toHaveBeenCalledTimes(2);
   });
 });

@@ -148,6 +148,8 @@ createAgent({
 
 The model gets a `search_knowledge` tool; answers show a "Sources" card (links only for your configured URLs). Passages reach the model as labelled untrusted data and never reach the browser, unless your server opts in per request with `exposeKnowledge`. URLs come only from config, must be public http(s) (private ranges need `allowPrivateNetworks`, metadata addresses never), follow only same-host redirects, and are capped by `maxSourceBytes`. URL sources refresh in the background after `ttlMs` (default 1h) or on `agent.knowledge.refresh()`. A source that fails to load is skipped with a warning and shown in `doctor()`.
 
+Search is hybrid: a BM25 keyword ranking is fused with vector search (`knowledge.hybrid`, default on), and a custom `vectorStore` opts in with `keywordSearch(query, k)`. A semantic cache reuses hits for a near-identical query embedding (`knowledge.cache`, default on, cleared whenever knowledge changes).
+
 With the default in-memory store, every start re-embeds all sources (embedding cost). Use a persistent `vectorStore` for large knowledge.
 
 ## Cloudflare Workers

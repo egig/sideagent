@@ -38,4 +38,13 @@ describe("parseConfig", () => {
   it("fills in scope defaults", () => {
     expect(parseConfig({ ...base, scope: {} }, true).scope?.minScore).toBe(0.45);
   });
+  it("fills in hybrid and cache defaults", () => {
+    const knowledge = parseConfig(base, true).knowledge;
+    expect(knowledge.hybrid).toBe(true);
+    expect(knowledge.cache).toEqual({ enabled: true, minScore: 0.97, maxEntries: 100, ttlMs: 300_000 });
+  });
+  it("rejects unknown hybrid and cache options", () => {
+    expect(() => parseConfig({ ...base, knowledge: { ...base.knowledge, hybrid: "yes" } }, true)).toThrow();
+    expect(() => parseConfig({ ...base, knowledge: { ...base.knowledge, cache: { nope: 1 } } }, true)).toThrow();
+  });
 });

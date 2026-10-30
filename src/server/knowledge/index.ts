@@ -1,6 +1,8 @@
 import { chunkText } from "./chunk.js";
 import { fetchPage } from "./fetch-page.js";
 import { Document } from "@langchain/core/documents";
+import { SemanticCache, type SemanticCacheOptions } from "./cache.js";
+import { mergeRankings } from "./hybrid.js";
 import { MemoryVectorStore, type ChunkMeta, type Hit, type VectorStore } from "./vector-store.js";
 
 export { chunkText } from "./chunk.js";
@@ -8,6 +10,7 @@ export { htmlToText } from "./html.js";
 export { uniqueSources, wrapKnowledge } from "./format.js";
 export { MemoryVectorStore } from "./vector-store.js";
 export type { ChunkMeta, Hit, VectorStore } from "./vector-store.js";
+export type { SemanticCacheOptions } from "./cache.js";
 
 export const SEARCH_TOOL = "search_knowledge";
 
@@ -29,6 +32,10 @@ export interface KnowledgeOptions {
   maxSourceBytes: number;
   maxChunks: number;
   chunkSize: number;
+  /** Fuse a keyword ranking with vector search when the store offers `keywordSearch`. Default: on. */
+  hybrid?: boolean;
+  /** Reuse hits for a semantically similar query. Default: on. */
+  cache?: Partial<SemanticCacheOptions> & { enabled?: boolean };
 }
 
 export interface SourceStatus {
@@ -57,6 +64,7 @@ export class KnowledgeBase {
   private refreshing: Promise<void> | null = null;
   private lastRefresh = 0;
   private totalChunks = 0;
+  private cache: SemanticCache | null;
 
   constructor(
     private opts: KnowledgeOptions,
@@ -65,6 +73,15 @@ export class KnowledgeBase {
     this.store =
       deps.store ??
       new MemoryVectorStore({ embedDocuments: (t) => deps.embedDocuments(t), embedQuery: (t) => deps.embedQuery(t) });
+    const cache = opts.cache;
+    this.cache =
+      cache?.enabled === false
+        ? null
+        : new SemanticCache({
+            minScore: cache?.minScore ?? 0.97,
+            maxEntries: cache?.maxEntries ?? 100,
+            ttlMs: cache?.ttlMs ?? 300_000,
+          });
   }
 
   private now = () => (this.deps.now ?? Date.now)();
@@ -129,6 +146,7 @@ export class KnowledgeBase {
       if (stale.length) await this.store.delete({ ids: stale });
       this.chunkIds.set(id, ids);
       this.totalChunks = others + texts.length;
+      this.cache?.clear();
       this.statuses.set(id, { id, title, ...(url ? { url } : {}), chunks: texts.length, loadedAt: this.now() });
     } catch (e) {
       const prev = this.statuses.get(id);
@@ -154,7 +172,20 @@ export class KnowledgeBase {
     // stale-while-revalidate: answer from the current index, refresh in the background
     if (this.opts.urls.length && this.now() - this.lastRefresh > this.opts.ttlMs) void this.refresh().catch(() => {});
     const vector = await this.deps.embedQuery(query);
-    const found = await this.store.similaritySearchVectorWithScore(vector, this.opts.topK);
-    return found.map(([doc, score]) => ({ text: doc.pageContent, score, meta: doc.metadata as ChunkMeta }));
+    const cached = this.cache?.get(vector, this.now());
+    if (cached) return cached;
+
+    const hybrid = this.opts.hybrid !== false && typeof this.store.keywordSearch === "function";
+    // Hybrid ranks a wider candidate pool on each side before keeping topK, so a strong keyword match the
+    // embedding ranked just outside the cut still makes it in.
+    const limit = hybrid ? Math.min(Math.max(this.opts.topK * 4, 12), 50) : this.opts.topK;
+    const found = await this.store.similaritySearchVectorWithScore(vector, limit);
+    const hits = hybrid
+      ? mergeRankings(found, await this.store.keywordSearch!(query, limit).catch(() => []), this.opts.topK)
+      : found
+          .slice(0, this.opts.topK)
+          .map(([doc, score]) => ({ text: doc.pageContent, score, meta: doc.metadata as ChunkMeta }));
+    this.cache?.set(vector, hits, this.now());
+    return hits;
   }
 }

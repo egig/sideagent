@@ -73,10 +73,12 @@
   "devDependencies": {
     "@hono/node-server": "^1.14.0",
     "@types/node": "^22.0.0",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^5.0.0",
     "hono": "^4.9.0",
+    "pg": "^8.23.1",
     "prettier": "^3.9.10",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

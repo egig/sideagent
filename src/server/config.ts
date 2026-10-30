@@ -27,6 +27,18 @@ const knowledgeSchema = z
     maxSourceBytes: z.number().int().positive().default(200_000),
     maxChunks: z.number().int().positive().default(2000),
     chunkSize: z.number().int().min(200).max(4000).default(800),
+    /** Fuse keyword search with vector search when the vectorStore implements keywordSearch. */
+    hybrid: z.boolean().default(true),
+    /** Reuse hits for a query embedding close to one already searched. */
+    cache: z
+      .object({
+        enabled: z.boolean().default(true),
+        minScore: z.number().min(0).max(1).default(0.97),
+        maxEntries: z.number().int().min(1).max(1000).default(100),
+        ttlMs: z.number().int().positive().default(300_000),
+      })
+      .strict()
+      .default({ enabled: true, minScore: 0.97, maxEntries: 100, ttlMs: 300_000 }),
   })
   .strict()
   .refine((k) => k.sources.length + k.urls.length > 0, { message: "knowledge needs at least one source or url" });
