@@ -81,18 +81,7 @@ export const CSS = `
 .sa-typing span:nth-child(2){animation-delay:.15s}.sa-typing span:nth-child(3){animation-delay:.3s}
 @keyframes sa-blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
 @media (prefers-reduced-motion:reduce){.sa-spin,.sa-typing span{animation:none}}
-.sa-table-wrap{overflow:auto;max-height:240px;border:1px solid var(--sa-border);border-radius:calc(var(--sa-radius) - 2px)}
-.sa-table{border-collapse:collapse;width:100%;font-size:12.5px}
-.sa-table th,.sa-table td{padding:5px 9px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--sa-border)}
-.sa-table th{position:sticky;top:0;background:var(--sa-surface);font-weight:600;color:var(--sa-muted)}
-.sa-table tr:last-child td{border-bottom:0}
-.sa-table .sa-num{text-align:right;font-variant-numeric:tabular-nums}
 .sa-more{color:var(--sa-muted);font-size:12px;margin-top:4px}
-.sa-fields{margin:0;display:grid;gap:4px}
-.sa-field{display:grid;grid-template-columns:minmax(80px,35%) 1fr;gap:8px}
-.sa-field dt{color:var(--sa-muted)}
-.sa-field dd{margin:0;word-break:break-word}
-.sa-list{margin:0;padding-left:18px}
 .sa-sources{margin:0;padding:0;list-style:none;display:grid;gap:4px}
 .sa-sources li{display:flex;align-items:center;gap:6px}
 .sa-sources svg{flex:none;color:var(--sa-muted)}
@@ -102,13 +91,6 @@ export const CSS = `
 .sa-details summary::-webkit-details-marker{display:none}
 .sa-details[open] summary svg{transform:rotate(90deg)}
 .sa-details pre{margin:6px 0 0;white-space:pre-wrap;word-break:break-word;max-height:160px;overflow:auto;font-size:11.5px}
-.sa-approval-title{display:flex;align-items:center;gap:6px}
-.sa-approval{margin:0 12px 8px;border:1px solid var(--sa-fg);border-radius:var(--sa-radius);padding:10px;background:var(--sa-surface)}
-.sa-approval pre{margin:6px 0;white-space:pre-wrap;word-break:break-word;max-height:120px;overflow:auto;font-size:12px}
-.sa-approval-text{margin:6px 0}
-.sa-approval .sa-fields{margin:0 0 6px}
-.sa-approval .sa-row{margin-top:8px}
-.sa-row{display:flex;gap:8px}
 .sa-composer{display:flex;flex-direction:column;gap:4px;margin:0 12px 12px;padding:10px 10px 8px 14px;border:1px solid var(--sa-border);border-radius:18px;background:var(--sa-surface)}
 .sa-input{width:100%;resize:none;border:0;background:transparent;padding:2px 0;font:inherit;color:inherit;max-height:160px}
 .sa-root .sa-input:is(:focus,:focus-visible){outline:none;box-shadow:none}
@@ -135,7 +117,6 @@ export const CSS = `
   .sa-input{font-size:16px}
   .sa-msg{max-width:100%}
   .sa-user{max-width:85%}
-  .sa-approval{max-height:55dvh;overflow-y:auto}
 }
 @media (pointer:coarse){
   .sa-btn{min-height:36px}

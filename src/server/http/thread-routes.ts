@@ -1,5 +1,5 @@
 import { toHistory } from "../history.js";
-import { pendingApprovalOf, type AgentGraph } from "../graph/index.js";
+import type { AgentGraph } from "../graph/index.js";
 import { ownsThread, type ThreadStore } from "../threads.js";
 import { json } from "./json.js";
 import type { ThreadAction } from "./request.js";
@@ -20,13 +20,5 @@ export async function handleThreadAction(
     return json(200, { ok: true }, cors);
   }
   const snap = await graph.getState({ configurable: { thread_id: body.threadId } });
-  const waiting = pendingApprovalOf(snap);
-  return json(
-    200,
-    {
-      messages: toHistory(snap.values.messages ?? []),
-      ...(waiting ? { pending: { type: "approval.request", ...waiting } } : {}),
-    },
-    cors,
-  );
+  return json(200, { messages: toHistory(snap.values.messages ?? []) }, cors);
 }

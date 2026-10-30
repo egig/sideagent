@@ -1,6 +1,6 @@
 {
   "name": "sideagent",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "license": "MIT",
   "type": "module",
   "exports": {
@@ -56,7 +56,6 @@
     "@langchain/openai": "^1.7.0",
     "@langchain/textsplitters": "^1.0.2",
     "@radix-ui/react-icons": "^1.3.2",
-    "@scalar/openapi-parser": "^0.29.16",
     "htmlparser2": "^12.0.0",
     "langchain": "^1.6.0",
     "react-markdown": "^10.1.0",

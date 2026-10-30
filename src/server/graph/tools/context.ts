@@ -1,19 +1,13 @@
 import { ToolMessage } from "@langchain/core/messages";
 import type { AgentEvent } from "../../../protocol.js";
-import type { AuditEvent } from "../../security/policy.js";
 import type { RunContext } from "../types.js";
 
 export interface ToolContext {
   callId: string;
-  threadId: string;
   run: RunContext;
   signal?: AbortSignal;
   /** Streams an event to the browser. */
   write: (e: AgentEvent) => void;
-  /** Never throws; args are redacted before they reach onAudit. */
-  audit: (e: AuditEvent) => void;
-  /** Audit fields shared by every outcome of this call. */
-  base: Pick<AuditEvent, "at" | "userId" | "threadId" | "operationId" | "callId">;
 }
 
 /**

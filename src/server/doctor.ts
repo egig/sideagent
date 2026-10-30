@@ -1,13 +1,11 @@
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { AgentConfig } from "./config.js";
 import type { KnowledgeBase } from "./knowledge/index.js";
-import type { Operation } from "./openapi.js";
 
 export interface DoctorReport {
   ok: boolean;
   checks: { name: string; ok: boolean; detail: string }[];
-  tools: { operationId: string; method: string; path: string; approval: "required" | "auto" }[];
-  knowledge?: { id: string; title: string; url?: string; chunks: number; error?: string }[];
+  knowledge: { id: string; title: string; url?: string; chunks: number; error?: string }[];
 }
 
 type Check = DoctorReport["checks"][number];
@@ -51,36 +49,24 @@ async function checkHttpLlm(cfg: NonNullable<AgentConfig["llm"]>): Promise<Check
 
 export interface DoctorDeps {
   config: AgentConfig;
-  ops: Operation[];
   /** The model passed to createAgent, if any; otherwise config.llm is probed over HTTP. */
   givenModel?: BaseChatModel;
-  knowledge?: KnowledgeBase;
+  knowledge: KnowledgeBase;
 }
 
-export async function runDoctor({ config, ops, givenModel, knowledge }: DoctorDeps): Promise<DoctorReport> {
+export async function runDoctor({ config, givenModel, knowledge }: DoctorDeps): Promise<DoctorReport> {
   const checks: Check[] = [];
-  checks.push({ name: "spec", ok: true, detail: `${ops.length} operation(s) exposed` });
-  if (config.approvalSecret) checks.push({ name: "approvalSecret", ok: true, detail: "set" });
-  else checks.push({ name: "approvalSecret", ok: false, detail: "not set; random per instance" });
   checks.push(await (givenModel ? checkInjectedModel(givenModel) : checkHttpLlm(config.llm!)));
-  if (knowledge) {
-    const st = knowledge.status();
-    const bad = st.filter((x) => x.error);
-    checks.push({
-      name: "knowledge",
-      ok: bad.length === 0 && st.some((x) => x.chunks > 0),
-      detail: `${st.reduce((n, x) => n + x.chunks, 0)} chunk(s) from ${st.length} source(s)${bad.length ? `; failed: ${bad.map((b) => b.id).join(", ")}` : ""}`,
-    });
-  }
+  const st = knowledge.status();
+  const bad = st.filter((x) => x.error);
+  checks.push({
+    name: "knowledge",
+    ok: bad.length === 0 && st.some((x) => x.chunks > 0),
+    detail: `${st.reduce((n, x) => n + x.chunks, 0)} chunk(s) from ${st.length} source(s)${bad.length ? `; failed: ${bad.map((b) => b.id).join(", ")}` : ""}`,
+  });
   return {
     ok: checks.every((c) => c.ok),
     checks,
-    knowledge: knowledge?.status().map(({ id, title, url, chunks, error }) => ({ id, title, url, chunks, error })),
-    tools: ops.map((o) => ({
-      operationId: o.operationId,
-      method: o.method.toUpperCase(),
-      path: o.path,
-      approval: o.needsApproval ? "required" : "auto",
-    })),
+    knowledge: st.map(({ id, title, url, chunks, error }) => ({ id, title, url, chunks, error })),
   };
 }

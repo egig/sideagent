@@ -1,6 +1,6 @@
 # sideagent
 
-Embed a chat agent in your app. You give it an OpenAPI spec and an OpenAI-compatible host and key. It gives you a secure agent endpoint and a React chat UI.
+Embed a docs chat agent in your app. You give it your documentation (markdown and URLs) and an OpenAI-compatible host and key. It gives you a secure agent endpoint and a React chat UI that answers from your docs and shows its sources.
 
 ```
 npm i sideagent
@@ -14,24 +14,21 @@ Docs: https://egig.github.io/sideagent/
 import { createAgent, honoHandler } from "sideagent/server";
 
 const agent = await createAgent({
-  spec: "https://api.example.com/openapi.json", // or an object / JSON string
-  baseUrl: "https://api.example.com",           // pinned; the spec's `servers` is ignored
   llm: { baseUrl: "https://api.openai.com/v1", apiKey: process.env.LLM_API_KEY!, model: "gpt-4o-mini" },
-  allow: ["listInvoices", "createInvoice", "tag:reports"], // default-deny allowlist
+  knowledge: {
+    embeddings: { model: "text-embedding-3-small" }, // OpenAI-compatible /embeddings; baseUrl/apiKey default to llm's
+    sources: [{ id: "guide", title: "Invoicing guide", content: markdownString }], // pass strings: no filesystem on the edge
+    urls: ["https://docs.example.com/payment-terms"], // fetched by the server only
+  },
   allowedOrigins: ["https://app.example.com"],
-  approvalSecret: process.env.APPROVAL_SECRET,   // set on serverless / multi-instance
-  getAuth: (req) => ({ userId: "…", headers: { authorization: req.headers.get("authorization")! } }),
+  getAuth: (req) => ({ userId: "…" }), // or anonymous: true
 });
 
 app.on(["POST", "OPTIONS"], "/agent", honoHandler(agent)); // also: nextRoute, expressHandler
-console.log(await agent.doctor());                         // what the agent can do + LLM check
+console.log(await agent.doctor());                         // LLM check + what was indexed
 ```
 
-Secure by default: allowlisted operations only, the end user's own credentials forwarded, non-GET calls need
-server-verified approval bound to the exact arguments, pinned `baseUrl` with SSRF guards, size/step/time limits,
-origin checks, threads bound to the user, redacted audit events.
-
-Per-operation hints go in the spec as `x-agent`: `{ approval, description, invalidates: ["tag"], responseFields: ["id"] }`.
+Secure by default: origin checks, threads bound to the user, size/step/time limits, SSRF guards on the pages the server fetches, passages given to the model as untrusted data and kept from the browser. The agent has one tool, `search_knowledge`, and cannot call your API or change anything.
 
 ## Client (`sideagent`)
 
@@ -41,7 +38,7 @@ import { AgentChat } from "sideagent";
 <AgentChat
   endpoint="/agent"
   mode="floating"            // "floating" | "sidebar"; the user can switch
-  hooks={{ onInvalidate: (tag) => tag === "invoices" && refetchInvoices() }}
+  hooks={{ onTurnEnd: () => track("agent_turn") }}
 />
 ```
 
@@ -83,15 +80,15 @@ import { AgentProvider } from "sideagent";
 
 `AgentProvider` fills the viewport height (`100dvh`); override with the `className` or `style` props.
 
-Anything under `AgentProvider` can call `useAgent()` to get `{ open, setOpen }`, e.g. an "Ask assistant" button in your toolbar, and `useAgentBusy()` to know whether one of the agent's operations is running, e.g. to disable a form that would race it.
+Anything under `AgentProvider` can call `useAgent()` to get `{ open, setOpen, available }`, e.g. an "Ask assistant" button in your toolbar.
 
 ## Try the demo (no API key needed)
 
 ```
 pnpm install
-pnpm demo       # fake invoices API + agent + mock LLM on :8787, UI on http://localhost:5173
+pnpm demo       # docs agent + mock LLM on :8787, UI on http://localhost:5173
 ```
-The demo has a dark mode toggle and uses `AgentProvider`. Run `pnpm demo:api` alone for just the API.
+The demo has a dark mode toggle and uses `AgentProvider`. Run `pnpm demo:api` alone for just the agent.
 Set `LLM_API_KEY` (and optionally `LLM_BASE_URL`, `LLM_MODEL`) to use a real model.
 
 ## Development
@@ -120,24 +117,20 @@ Neutral by default (grayscale, host font, 10px radius). `theme="auto"` follows t
 }
 ```
 
-## Results and icons
+## Sources and icons
 
-Tool results render as readable views: arrays of objects become tables (up to 50 rows and 8 columns, numbers right-aligned, dates and booleans formatted), objects become labelled fields, errors and rejections get their own state. Raw JSON stays under "Details". Tool results are plain text, never HTML. Assistant replies render as Markdown (GFM); raw HTML is dropped. Override per operation:
-
-```tsx
-<AgentChat resultRenderers={{ listInvoices: ({ result }) => <MyInvoiceTable rows={result as any[]} /> }} />
-```
+A search shows as a "Sources" card: the titles of the sources the answer came from, linked only for the URLs in your config. Raw arguments stay under "Details". Assistant replies render as Markdown (GFM); raw HTML is dropped.
 
 Icons come from [Radix Icons](https://github.com/radix-ui/icons) (MIT).
 
 ## Chat history
 
-`AgentChat` has a History button (list, open, delete), reopens the last conversation after a refresh, and restores a pending approval. Messages live in your LangGraph `checkpointer`; the list lives in a `threadStore` (in-memory by default). Both must be persistent in production:
+`AgentChat` has a History button (list, open, delete) and reopens the last conversation after a refresh. Messages live in your LangGraph `checkpointer`; the list lives in a `threadStore` (in-memory by default). Both must be persistent in production:
 
 ```ts
 createAgent({ …, checkpointer: new PostgresSaver(…), threadStore: myThreadStore }); // ThreadStore: list / has / touch / delete
 ```
-History is only ever shown from the user's own index, and tool results are rebuilt from the already-filtered copies.
+History is only ever shown from the user's own index, and search results are rebuilt from the already-filtered copies.
 
 ## Knowledge (markdown and URLs)
 
@@ -153,13 +146,13 @@ createAgent({
 });
 ```
 
-The agent gets a `search_knowledge` tool; answers show a "Sources" card (links only for your configured URLs). Passages reach the model as labelled untrusted data and never reach the browser, unless your server opts in per request with `exposeKnowledge`. URLs come only from config, must be public http(s) (private ranges need `allowPrivateNetworks`, metadata addresses never), follow only same-host redirects, and are capped by `maxSourceBytes`. URL sources refresh in the background after `ttlMs` (default 1h) or on `agent.knowledge.refresh()`. A source that fails to load is skipped with a warning and shown in `doctor()`.
+The model gets a `search_knowledge` tool; answers show a "Sources" card (links only for your configured URLs). Passages reach the model as labelled untrusted data and never reach the browser, unless your server opts in per request with `exposeKnowledge`. URLs come only from config, must be public http(s) (private ranges need `allowPrivateNetworks`, metadata addresses never), follow only same-host redirects, and are capped by `maxSourceBytes`. URL sources refresh in the background after `ttlMs` (default 1h) or on `agent.knowledge.refresh()`. A source that fails to load is skipped with a warning and shown in `doctor()`.
 
 With the default in-memory store, every start re-embeds all sources (embedding cost). Use a persistent `vectorStore` for large knowledge.
 
 ## Cloudflare Workers
 
-`sideagent/server` runs on Workers. Use `nodejs_compat` (or just `nodejs_als`) in `wrangler.jsonc`. LangGraph's approval pause (`interrupt()`) needs `AsyncLocalStorage`, and the Workers build of LangGraph does not register it. sideagent registers it for you when the runtime has it. Without the flag, reads work and the first approval fails (startup logs a warning).
+`sideagent/server` runs on Workers. Use `nodejs_compat` (or just `nodejs_als`) in `wrangler.jsonc`. LangGraph relies on `AsyncLocalStorage`, and the Workers build of LangGraph does not register it. sideagent registers it for you when the runtime has it.
 
 ```jsonc
 { "compatibility_date": "2025-09-01", "compatibility_flags": ["nodejs_compat"] }
@@ -176,11 +169,10 @@ import { workersAiChatModel, workersAiEmbeddings } from "sideagent/workers-ai";
 export default {
   async fetch(request: Request, env: Env) {
     agent ??= await createAgent({
-      spec, baseUrl: env.API_URL, allow: ["listInvoices", "createInvoice"],
-      allowedOrigins: ["https://app.example.com"], approvalSecret: env.APPROVAL_SECRET,
+      allowedOrigins: ["https://app.example.com"],
       getAuth,
       model: workersAiChatModel(env.AI, "@cf/openai/gpt-oss-120b"),
-      knowledge: { sources }, // optional
+      knowledge: { sources },
       embeddings: workersAiEmbeddings(env.AI, "@cf/baai/bge-m3"), // replaces knowledge.embeddings
     });
     return agent.handler(request);

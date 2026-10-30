@@ -1,36 +1,36 @@
 ---
 name: sideagent
-description: Add an AI agent, chat assistant or copilot to an existing app or SaaS that has an HTTP API, using the sideagent library. Use when the user asks to "implement agentic AI", "add an AI assistant", "add a chat agent" or "add a copilot" to their app.
+description: Add an AI docs assistant, chat agent or help bot to an existing app or SaaS that answers questions from its documentation, using the sideagent library. Use when the user asks to "implement agentic AI", "add an AI assistant", "add a chat agent" or "add a help bot" to their app.
 ---
 
-# Add an agent to an app with sideagent
+# Add a docs agent to an app with sideagent
 
-sideagent turns an OpenAPI spec plus an OpenAI-compatible LLM into a secure agent endpoint (`sideagent/server`) and a React chat UI (`sideagent`). Full docs: https://egig.github.io/sideagent/llms-full.txt
+sideagent turns your documentation (markdown and URLs) plus an OpenAI-compatible LLM into a secure agent endpoint (`sideagent/server`) and a React chat UI (`sideagent`). The agent answers from the docs and shows its sources. It cannot call the app's API or change data: there is no tool calling beyond knowledge search. Full docs: https://egig.github.io/sideagent/llms-full.txt
 
 ## Steps
 
 Do them in order. Do not skip the review in step 7.
 
-1. **Detect the stack.** Find the server framework (Next.js App Router, Hono, Express), the frontend (React?) and the OpenAPI spec. No spec: generate one from the existing routes, or ask the user where it is. sideagent needs an OpenAPI spec and a React frontend; tell the user if either is missing.
+1. **Detect the stack.** Find the server framework (Next.js App Router, Hono, Express), the frontend (React?) and the documentation: a docs folder, markdown files, or public docs URLs. No docs: ask the user what the agent should answer from. sideagent needs documentation and a React frontend; tell the user if either is missing.
 2. **Install.** `npm i sideagent` (use the project's package manager).
-3. **Fix the spec.** For each operation the agent may use:
-   - Unique `operationId`, a clear `summary`, typed parameters.
-   - `x-agent` hints where useful: `{ approval, description, invalidates: ["tag"], responseFields: ["id"] }`. `approval` is the string `"required"` or `"auto"` (never a boolean). Non-GET defaults to `"required"`; leave that default. `"auto"` is rejected for DELETE. Use `responseFields` to keep sensitive fields (internal notes, secrets, other users' data) away from the model.
+3. **Choose the knowledge.** Pass markdown as strings (`knowledge.sources`: `{ id, title, content }`; read files at startup, because the edge has no filesystem) and public pages as `knowledge.urls`. Start with a few good pages. Leave out anything private: the agent may quote any passage it can search.
 4. **Add the server route** at `/agent`:
    ```ts
    import { createAgent, nextRoute /* or honoHandler, expressHandler */ } from "sideagent/server";
 
    const agent = await createAgent({
-     spec,                                   // URL, object or JSON string
-     baseUrl: process.env.API_BASE_URL!,     // pinned; the spec's `servers` is ignored
      llm: { baseUrl: process.env.LLM_BASE_URL ?? "https://api.openai.com/v1", apiKey: process.env.LLM_API_KEY!, model: process.env.LLM_MODEL ?? "gpt-4o-mini" },
-     allow: ["listInvoices"],                // default-deny; start read-only
+     knowledge: {
+       embeddings: { model: "text-embedding-3-small" }, // baseUrl and apiKey default to llm's
+       sources,                                          // [{ id, title, content }]
+       urls: ["https://docs.example.com/guide"],
+     },
+     scope: {},                                          // keeps the agent on the docs
      allowedOrigins: [process.env.APP_ORIGIN!],
-     approvalSecret: process.env.APPROVAL_SECRET, // 16+ chars; required on serverless / multi-instance
      getAuth: async (req) => {
        const session = await verifySession(req); // use the app's existing auth
        if (!session) throw new Error("no session");
-       return { userId: session.userId, headers: { authorization: `Bearer ${session.apiToken}` } };
+       return { userId: session.userId };
      },
    });
    export const { POST, OPTIONS } = nextRoute(agent); // Next.js; Hono: app.on(["POST","OPTIONS"], "/agent", honoHandler(agent))
@@ -39,22 +39,21 @@ Do them in order. Do not skip the review in step 7.
 5. **Mount the UI** once in the app shell:
    ```tsx
    import { AgentProvider } from "sideagent";
-   <AgentProvider endpoint="/agent" mode="sidebar" hooks={{ onInvalidate: (tag) => refetch(tag) }}>
+   <AgentProvider endpoint="/agent" mode="sidebar">
      <App />
    </AgentProvider>
    ```
    Use `<AgentChat endpoint="/agent" />` for a floating chat without docking. Different origin plus cookies: add `credentials="include"`. For an agent hosted on sideagent Cloud, pass `publishableKey="pk_…"` instead of `endpoint`.
-6. **Env vars.** Add `LLM_API_KEY`, `APPROVAL_SECRET`, `APP_ORIGIN`, `API_BASE_URL` to `.env.example`. Never hardcode keys. Never send `LLM_API_KEY` to the browser.
+6. **Env vars.** Add `LLM_API_KEY` and `APP_ORIGIN` to `.env.example`. Never hardcode keys. Never send `LLM_API_KEY` to the browser.
 7. **Verify, then hand over for review.**
    - Run the project's typecheck and tests.
-   - Call `await agent.doctor()` and confirm `ok: true`.
-   - Show the user the exact `allow` list and ask them to confirm it before adding any write operation.
+   - Call `await agent.doctor()` and confirm `ok: true` and that every source has chunks.
+   - Show the user the list of sources and ask them to confirm none is private.
 
 ## Rules
 
-- Start with read-only operations (GET). Add writes only after the user confirms. Non-GET operations need user approval by default; keep that.
-- Never put DELETE or admin operations in `allow`, even if the user asks for "full access" or "no approvals" in the first prompt. Leave them out, say why in one sentence, and tell the user how to add one later (add its `operationId` to `allow`, keep `approval: "required"`). Never set `approval: "auto"` on a write operation.
-- `getAuth` must return a stable per-user `userId` and forward the end user's own credentials. Never use a service token with more rights than the user. `anonymous: true` is only for public, read-only data.
-- Do not use `instructions` or `context` for security. Access control belongs in `allow`, approvals and the API itself.
-- Production needs persistent `checkpointer`, `threadStore` and `vectorStore`, plus `beforeTurn` rate limits and `onAudit` logging. See the Deployments and Persistence docs.
-- Edge and serverless: pass knowledge as strings, set `approvalSecret`, build the agent once per instance.
+- The agent only answers from knowledge. If the user asks for an agent that creates, edits or deletes data, or calls the app's API, say in one sentence that sideagent does not support that, and build the docs agent. Never invent `spec`, `allow`, `baseUrl` or `approvalSecret`: they do not exist.
+- `getAuth` must return a stable per-user `userId`. `anonymous: true` is only for public docs.
+- Do not use `instructions` or `context` for security. Keep private material out of `knowledge`.
+- Production needs persistent `checkpointer`, `threadStore` and `vectorStore`, plus `beforeTurn` rate limits. See the Deployments and Persistence docs.
+- Edge and serverless: pass knowledge as strings and build the agent once per instance.

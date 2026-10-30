@@ -1,6 +1,32 @@
-import { readCapped } from "../executor.js";
 import { assertPublicUrl } from "../security/url-guard.js";
 import { htmlToText } from "./html.js";
+
+async function readCapped(res: Response, max: number): Promise<{ text: string; truncated: boolean }> {
+  if (!res.body) return { text: "", truncated: false };
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  let truncated = false;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > max) {
+      truncated = true;
+      chunks.push(value.subarray(0, value.byteLength - (size - max)));
+      await reader.cancel();
+      break;
+    }
+    chunks.push(value);
+  }
+  const all = new Uint8Array(chunks.reduce((n, c) => n + c.byteLength, 0));
+  let off = 0;
+  for (const c of chunks) {
+    all.set(c, off);
+    off += c.byteLength;
+  }
+  return { text: new TextDecoder().decode(all), truncated };
+}
 
 const MAX_REDIRECTS = 3;
 const FETCH_TIMEOUT_MS = 15_000;

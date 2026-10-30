@@ -4,7 +4,7 @@ import { isSummary } from "./graph/summarize.js";
 import { messageText } from "./message-text.js";
 
 /**
- * Rebuilds what the user saw from stored messages. Tool results come from the structured
+ * Rebuilds what the user saw from stored messages. Search results come from the structured
  * `artifact` (already filtered), never from the wrapped text the model saw.
  */
 export function toHistory(messages: BaseMessage[]): HistoryMessage[] {
@@ -23,7 +23,7 @@ export function toHistory(messages: BaseMessage[]): HistoryMessage[] {
     } else if (type === "ai") {
       const a = assistant();
       for (const tc of (m as any).tool_calls ?? []) {
-        a.parts.push({ type: "tool", callId: tc.id, operationId: tc.name, args: tc.args });
+        a.parts.push({ type: "tool", callId: tc.id, tool: tc.name, args: tc.args });
       }
       const text = messageText(m.content);
       if (text) a.parts.push({ type: "text", text });

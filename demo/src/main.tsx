@@ -1,12 +1,10 @@
-import { StrictMode, useCallback, useEffect, useState } from "react";
+import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { AgentProvider } from "../../src/index.js";
 import "./app.css";
 
-const AUTH = { authorization: "Bearer demo-token" };
 const THEME_KEY = "demo:theme";
 type Theme = "light" | "dark";
-type Invoice = { id: string; customer: string; amount: number };
 
 function initialTheme(): Theme {
   try {
@@ -33,30 +31,18 @@ function useTheme() {
 
 function App() {
   const [theme, toggleTheme] = useTheme();
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const load = useCallback(
-    () =>
-      fetch("/api/invoices", { headers: AUTH })
-        .then((r) => r.json())
-        .then(setInvoices),
-    [],
-  );
-  useEffect(() => void load(), [load]);
-
   return (
     <AgentProvider
       endpoint="/agent"
       mode="sidebar"
       defaultOpen
       theme={theme}
-      title="Invoice assistant"
-      headers={AUTH}
-      context={() => ({ page: "invoices", visibleCount: invoices.length })}
-      hooks={{ onInvalidate: (tag) => tag === "invoices" && load() }}
+      title="Docs assistant"
+      context={() => ({ page: "invoicing guide" })}
     >
       <main className="page">
         <header className="page-head">
-          <h1>Invoices</h1>
+          <h1>Invoicing guide</h1>
           <button
             className="theme-toggle"
             onClick={toggleTheme}
@@ -66,14 +52,7 @@ function App() {
             {theme === "dark" ? "☀ Light" : "☾ Dark"}
           </button>
         </header>
-        <p>Try: “list my invoices” or “create an invoice”. The list below refreshes through a UI hook.</p>
-        <ul>
-          {invoices.map((i) => (
-            <li key={i.id}>
-              #{i.id} {i.customer}: ${i.amount}
-            </li>
-          ))}
-        </ul>
+        <p>Try: “what is your refund policy?” or “how long do I have to dispute an invoice?”</p>
       </main>
     </AgentProvider>
   );

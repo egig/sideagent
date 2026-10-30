@@ -4,10 +4,6 @@ const chatBody = z.union([
   z.object({ action: z.literal("threads.list") }),
   z.object({ action: z.enum(["threads.get", "threads.delete"]), threadId: z.string() }),
   z.object({ threadId: z.string().optional(), message: z.string().min(1).max(8000), context: z.unknown().optional() }),
-  z.object({
-    threadId: z.string(),
-    approval: z.object({ token: z.string(), decision: z.enum(["approve", "reject"]) }),
-  }),
 ]);
 
 export type ChatBody = z.infer<typeof chatBody>;

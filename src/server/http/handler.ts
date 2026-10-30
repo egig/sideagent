@@ -11,26 +11,22 @@ import { runTurn, type TurnErrorContext } from "./turn.js";
 export interface AuthResult {
   /** Stable identity of the signed-in user. Threads are bound to it. */
   userId: string;
-  /** Headers forwarded to your API (e.g. Authorization, Cookie). Never shown to the LLM. */
-  headers?: Record<string, string>;
 }
 
 export interface HandlerDeps {
   config: AgentConfig;
   graph: AgentGraph;
   threads: ThreadStore;
-  secret: string;
   getAuth?: (request: Request) => AuthResult | Promise<AuthResult>;
   beforeTurn?: (ctx: { request: Request; userId: string }) => void | Promise<void>;
   exposeKnowledge?: (ctx: { request: Request; userId: string }) => boolean | Promise<boolean>;
-  dryRun?: (ctx: { request: Request; userId: string }) => boolean | Promise<boolean>;
   callbacks?: (ctx: { request: Request; userId: string }) => Callbacks | undefined | Promise<Callbacks | undefined>;
   onError?: (ctx: TurnErrorContext) => void | Promise<void>;
 }
 
 /** The agent endpoint. Each step either rejects the request or narrows what the next step may assume. */
 export function createHandler(deps: HandlerDeps) {
-  const { config, graph, threads, getAuth, beforeTurn, exposeKnowledge, dryRun, callbacks } = deps;
+  const { config, graph, threads, getAuth, beforeTurn, exposeKnowledge, callbacks } = deps;
   const active = new Map<string, number>();
 
   return async function handler(request: Request): Promise<Response> {
@@ -71,20 +67,14 @@ export function createHandler(deps: HandlerDeps) {
       return json(429, { error: "too many concurrent turns" }, cors);
     }
 
-    // Per-request switches that only the host can flip. A throwing callback means no for exposeKnowledge
-    // and yes for dryRun (the safe side); neither is ever read from the request body.
+    // A per-request switch that only the host can flip. A throwing callback means no; it is never read from
+    // the request body.
     const asked = { request, userId };
     let expose = false;
     try {
       expose = (await exposeKnowledge?.(asked)) === true;
     } catch {
       /* stays false */
-    }
-    let dry = false;
-    try {
-      dry = (await dryRun?.(asked)) === true;
-    } catch {
-      dry = true;
     }
     let traced: Callbacks | undefined;
     try {
@@ -93,12 +83,6 @@ export function createHandler(deps: HandlerDeps) {
       /* no tracing */
     }
 
-    return runTurn(
-      request,
-      body,
-      { userId, headers: auth.headers ?? {}, exposeKnowledge: expose, dryRun: dry, callbacks: traced },
-      { ...deps, active },
-      cors,
-    );
+    return runTurn(request, body, { userId, exposeKnowledge: expose, callbacks: traced }, { ...deps, active }, cors);
   };
 }

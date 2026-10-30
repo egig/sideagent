@@ -1,17 +1,11 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { mockLlmHandler } from "../testing/mock-llm.js";
+import { mockEmbeddings, mockLlmHandler } from "../testing/mock-llm.js";
 import type { AgentEvent } from "../protocol.js";
 import { createAgent } from "./index.js";
 
 const ORIGIN = "https://app.example.com";
-const spec = {
-  openapi: "3.0.3",
-  info: { title: "t", version: "1" },
-  paths: { "/invoices": { get: { operationId: "listInvoices", responses: { "200": { description: "ok" } } } } },
-};
-
 function listen(handler: (req: Request) => Promise<Response>): Promise<Server> {
   return new Promise((resolve) => {
     const s = createServer(async (req, res) => {
@@ -27,13 +21,12 @@ function listen(handler: (req: Request) => Promise<Response>): Promise<Server> {
 }
 const port = (s: Server) => (s.address() as AddressInfo).port;
 
-let api: Server, loopLlm: Server, slowLlm: Server;
+let loopLlm: Server, slowLlm: Server;
 beforeAll(async () => {
-  api = await listen(async () => Response.json([]));
   // Pretends the user keeps asking for a list, so the model never stops calling tools.
   loopLlm = await listen(async (req) => {
     const body = await req.json();
-    body.messages = body.messages.map((m: any) => (m.role === "tool" ? { role: "user", content: "list" } : m));
+    body.messages = body.messages.map((m: any) => (m.role === "tool" ? { role: "user", content: "refund policy" } : m));
     return mockLlmHandler(new Request("http://x", { method: "POST", body: JSON.stringify(body) }));
   });
   slowLlm = await listen(async (req) => {
@@ -42,28 +35,28 @@ beforeAll(async () => {
   });
 });
 afterAll(() => {
-  api.close();
   loopLlm.close();
   slowLlm.close();
 });
 
 async function turn(llm: Server, limits: Record<string, number>) {
   const agent = await createAgent({
-    spec,
-    baseUrl: `http://127.0.0.1:${port(api)}`,
-    allowPrivateNetworks: true,
     llm: { baseUrl: `http://127.0.0.1:${port(llm)}/v1`, apiKey: "test", model: "mock" },
-    allow: ["listInvoices"],
+    knowledge: {
+      sources: [
+        { id: "refunds", title: "Refund policy", content: "Customers can request a refund within thirty days." },
+      ],
+    },
+    embeddings: mockEmbeddings,
     limits,
     allowedOrigins: [ORIGIN],
-    approvalSecret: "test-secret-test-secret",
-    getAuth: () => ({ userId: "u1", headers: {} }),
+    getAuth: () => ({ userId: "u1" }),
   });
   const res = await agent.handler(
     new Request("http://localhost/agent", {
       method: "POST",
       headers: { "content-type": "application/json", origin: ORIGIN },
-      body: JSON.stringify({ message: "list" }),
+      body: JSON.stringify({ message: "refund policy" }),
     }),
   );
   const events: AgentEvent[] = [];
@@ -73,7 +66,7 @@ async function turn(llm: Server, limits: Record<string, number>) {
 }
 
 describe("turn limits", () => {
-  it("reports step_limit when the model keeps calling tools", async () => {
+  it("reports step_limit when the model keeps searching", async () => {
     const errors = await turn(loopLlm, { maxSteps: 1 });
     expect(errors.map((e) => e.code)).toEqual(["step_limit"]);
   });

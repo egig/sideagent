@@ -17,51 +17,33 @@ describe("applyEvent", () => {
   it("starts a new text part after a tool call", () => {
     const parts = run([
       { type: "text.delta", text: "a" },
-      { type: "tool.start", callId: "c1", operationId: "listInvoices" },
+      { type: "tool.start", callId: "c1", tool: "search_knowledge" },
       { type: "text.delta", text: "b" },
     ]);
     expect(parts.map((p) => p.type)).toEqual(["text", "tool-call", "text"]);
   });
 
-  it("updates one tool part from request to completion", () => {
+  it("updates one tool part from start to completion, and reports errors as text", () => {
     const parts = run([
-      {
-        type: "approval.request",
-        callId: "c1",
-        operationId: "createInvoice",
-        method: "POST",
-        path: "/invoices",
-        args: { body: { customer: "x" } },
-        token: "t",
-        expiresAt: 0,
-      },
-      { type: "tool.start", callId: "c1", operationId: "createInvoice" },
+      { type: "tool.start", callId: "c1", tool: "search_knowledge" },
       {
         type: "tool.complete",
         callId: "c1",
-        operationId: "createInvoice",
-        status: 201,
-        args: { body: { customer: "x" } },
-        result: { id: 1 },
-        invalidates: [],
+        tool: "search_knowledge",
+        status: 200,
+        args: { query: "refunds" },
+        result: { sources: [] },
       },
+      { type: "error", code: "timeout", message: "turn timed out" },
     ]);
-    expect(parts).toHaveLength(1);
+    expect(parts).toHaveLength(2);
     expect(parts[0]).toMatchObject({
       type: "tool-call",
       toolCallId: "c1",
-      toolName: "createInvoice",
-      args: { body: { customer: "x" } },
-      result: { id: 1 },
+      toolName: "search_knowledge",
+      args: { query: "refunds" },
+      result: { sources: [] },
     });
-  });
-
-  it("marks rejected calls and reports errors as text", () => {
-    const parts = run([
-      { type: "tool.rejected", callId: "c1", operationId: "deleteInvoice" },
-      { type: "error", code: "timeout", message: "turn timed out" },
-    ]);
-    expect(parts[0]).toMatchObject({ toolName: "deleteInvoice", result: { rejected: true } });
     expect(parts[1]).toEqual({ type: "text", text: "⚠ turn timed out" });
   });
 
@@ -78,16 +60,24 @@ describe("toInitialMessages", () => {
       { role: "user", parts: [{ type: "text", text: "hi" }] },
       {
         role: "assistant",
-        parts: [{ type: "tool", callId: "c1", operationId: "listInvoices", args: { limit: 1 }, result: [] }],
+        parts: [
+          {
+            type: "tool",
+            callId: "c1",
+            tool: "search_knowledge",
+            args: { query: "x" },
+            result: { sources: [] },
+          },
+        ],
       },
     ]);
     expect(user!.content).toEqual([{ type: "text", text: "hi" }]);
     expect(assistant!.content[0]).toMatchObject({
       type: "tool-call",
       toolCallId: "c1",
-      toolName: "listInvoices",
-      args: { limit: 1 },
-      result: [],
+      toolName: "search_knowledge",
+      args: { query: "x" },
+      result: { sources: [] },
     });
   });
 });
@@ -95,15 +85,14 @@ describe("toInitialMessages", () => {
 describe("knowledge.hits", () => {
   it("folds the passages into the search call's result", () => {
     const parts = run([
-      { type: "tool.start", callId: "c1", operationId: "search_knowledge" },
+      { type: "tool.start", callId: "c1", tool: "search_knowledge" },
       {
         type: "tool.complete",
         callId: "c1",
-        operationId: "search_knowledge",
+        tool: "search_knowledge",
         status: 200,
         args: { query: "q" },
         result: { sources: [{ id: "a", title: "A" }] },
-        invalidates: [],
       },
       { type: "knowledge.hits", callId: "c1", query: "q", hits: [{ title: "A", score: 0.9, text: "passage" }] },
     ]);

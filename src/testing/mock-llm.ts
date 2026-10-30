@@ -1,7 +1,7 @@
 /**
  * Scripted OpenAI-compatible /chat/completions endpoint for tests and demos. No API key needed.
  * - "CALL <tool> <json>" in a user message makes the model call that tool (even if not offered).
- * - "list" / "create" / "delete" are shortcuts for the demo invoice tools.
+ * - Questions that mention policy, refunds, terms, docs or warranty call search_knowledge.
  * - After a tool result the model answers with a short text.
  */
 type Msg = { role: string; content?: string | null };
@@ -16,10 +16,6 @@ function script(messages: Msg[], forced?: string): { text?: string; call?: { nam
   if (explicit) return { call: { name: explicit[1]!, args: explicit[2] ? JSON.parse(explicit[2]) : {} } };
   if (/\b(policy|refunds?|terms|docs|warranty)\b/i.test(text))
     return { call: { name: "search_knowledge", args: { query: text } } };
-  if (/\blist\b/i.test(text)) return { call: { name: "listInvoices", args: {} } };
-  if (/\bcreate\b/i.test(text))
-    return { call: { name: "createInvoice", args: { body: { customer: "Acme", amount: 100 } } } };
-  if (/\bdelete\b/i.test(text)) return { call: { name: "deleteInvoice", args: { id: "1" } } };
   return { text: "Hello from the mock model." };
 }
 
@@ -105,6 +101,12 @@ export function mockEmbed(text: string): number[] {
   const n = Math.sqrt(v.reduce((a, b) => a + b * b, 0)) || 1;
   return v.map((x) => x / n);
 }
+
+/** The same embedding as an object, for the `embeddings` option of createAgent when no HTTP endpoint is needed. */
+export const mockEmbeddings = {
+  embedDocuments: async (texts: string[]) => texts.map(mockEmbed),
+  embedQuery: async (text: string) => mockEmbed(text),
+};
 
 /** Scripted OpenAI-compatible /embeddings endpoint for tests and demos. */
 export async function mockEmbeddingsHandler(request: Request): Promise<Response> {

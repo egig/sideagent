@@ -6,11 +6,9 @@ import { runDoctor } from "./doctor.js";
 import { buildGraph } from "./graph/index.js";
 import { createHandler, type AuthResult } from "./http/handler.js";
 import type { TurnErrorContext } from "./http/turn.js";
-import { KnowledgeBase, SEARCH_TOOL, type VectorStore } from "./knowledge/index.js";
+import { KnowledgeBase, type VectorStore } from "./knowledge/index.js";
 import { createChatModel, createEmbeddings, type EmbeddingsLike } from "./model.js";
-import { loadOperations, type Operation } from "./openapi.js";
 import type { Callbacks } from "@langchain/core/callbacks/manager";
-import type { AuditEvent } from "./security/policy.js";
 import { MemoryThreadStore, type ThreadStore } from "./threads.js";
 
 export type { AuthResult } from "./http/handler.js";
@@ -31,13 +29,6 @@ export interface CreateAgentOptions extends AgentConfigInput {
    * server per request; nothing in the request body can turn it on.
    */
   exposeKnowledge?: (ctx: { request: Request; userId: string }) => boolean | Promise<boolean>;
-  /**
-   * Return true to run this request as a dry run: operations that are not plain reads (GET, HEAD) still
-   * ask for approval, but are not sent to your API after it. The model and the user are told so. For
-   * previews and demos. Decided on the server per request; a callback that throws counts as true.
-   */
-  dryRun?: (ctx: { request: Request; userId: string }) => boolean | Promise<boolean>;
-  onAudit?: (event: AuditEvent) => void | Promise<void>;
   /**
    * LangChain callback handlers for this request's turn, to trace what happens under the hood: model calls,
    * tool calls, token usage, errors. Decided here on the server per request; nothing in the request body
@@ -64,9 +55,7 @@ export async function createAgent(options: CreateAgentOptions) {
     getAuth,
     beforeTurn,
     exposeKnowledge,
-    dryRun,
     callbacks,
-    onAudit,
     onError,
     checkpointer,
     threadStore: givenStore,
@@ -77,15 +66,6 @@ export async function createAgent(options: CreateAgentOptions) {
   } = options;
   await ensureAsyncLocalStorage();
   const config = parseConfig(data, !!getAuth, { model: !!givenModel, embeddings: !!givenEmbeddings });
-  const ops =
-    config.spec && config.allow.length ? await loadOperations(config.spec, config.allow, config.limits.maxTools) : [];
-
-  const secret: string = config.approvalSecret ?? crypto.randomUUID() + crypto.randomUUID();
-  if (!config.approvalSecret) {
-    console.warn(
-      "[sideagent] approvalSecret not set: using a random per-instance secret. Set it on serverless/multi-instance deployments.",
-    );
-  }
   const threads: ThreadStore = givenStore ?? new MemoryThreadStore();
   if (checkpointer && !givenStore) {
     console.warn(
@@ -98,49 +78,33 @@ export async function createAgent(options: CreateAgentOptions) {
     );
   }
 
-  const knowledge = config.knowledge ? await startKnowledge(config, ops, givenEmbeddings, vectorStore) : undefined;
+  const knowledge = await startKnowledge(config, givenEmbeddings, vectorStore);
   const model = givenModel ?? createChatModel(config.llm!);
-  const graph = buildGraph({
-    config,
-    ops,
-    secret,
-    checkpointer,
-    onAudit,
-    knowledge,
-    model,
-    bindOptions: givenModel ? undefined : { parallel_tool_calls: false },
-  });
+  const graph = buildGraph({ config, checkpointer, knowledge, model });
   const handler = createHandler({
     config,
     graph,
     threads,
-    secret,
     getAuth,
     beforeTurn,
     exposeKnowledge,
-    dryRun,
     callbacks,
     onError,
   });
 
   return {
     handler,
-    doctor: () => runDoctor({ config, ops, givenModel, knowledge }),
-    tools: ops.map((o) => o.operationId),
+    doctor: () => runDoctor({ config, givenModel, knowledge }),
     knowledge,
   };
 }
 
 async function startKnowledge(
   config: AgentConfig,
-  ops: Operation[],
   givenEmbeddings: EmbeddingsLike | undefined,
   store: VectorStore | undefined,
 ) {
-  if (ops.some((o) => o.operationId === SEARCH_TOOL)) {
-    throw new Error(`An allowlisted operation is named "${SEARCH_TOOL}", which is reserved for knowledge search`);
-  }
-  const k = config.knowledge!;
+  const k = config.knowledge;
   // parseConfig guarantees exactly one of the two sources
   const embedder = givenEmbeddings ?? createEmbeddings(k.embeddings!, config.llm);
   const knowledge = new KnowledgeBase(k, {

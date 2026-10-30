@@ -7,7 +7,7 @@ By default everything is kept in memory and lost on restart. In production, pass
 
 | Option | Holds | Default |
 |---|---|---|
-| `checkpointer` | Chat messages and pending approvals | In-memory |
+| `checkpointer` | Chat messages | In-memory |
 | `threadStore` | History list per user (id, title, updatedAt) | In-memory |
 | `vectorStore` | Knowledge embeddings | In-memory |
 

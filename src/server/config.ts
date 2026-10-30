@@ -33,10 +33,6 @@ const knowledgeSchema = z
 
 export const configSchema = z
   .object({
-    /** OpenAPI spec. Required with `allow`; a knowledge-only agent leaves it out. */
-    spec: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
-    /** Where your API lives. Required with `allow`. */
-    baseUrl: url.optional(),
     /** OpenAI-compatible endpoint. Give either this or the `model` option of createAgent, never both. */
     llm: z
       .object({
@@ -49,18 +45,14 @@ export const configSchema = z
         maxRetries: z.number().int().min(0).max(6).optional(),
       })
       .optional(),
-    /** Operations to expose (default-deny). Empty only for a knowledge-only agent. */
-    allow: z.array(z.string()).default([]),
     allowedOrigins: z.array(z.string().url()).min(1, "allowedOrigins is required"),
     anonymous: z.boolean().optional(),
     allowPrivateNetworks: z.boolean().optional(),
-    /** HMAC key for approval tokens. Set it on serverless/multi-instance deployments. */
-    approvalSecret: z.string().min(16).optional(),
     instructions: z.string().optional(),
     /**
-     * Keeps the agent on its documentation and operations. Adds fixed scope rules to the system prompt and a
-     * relevance gate: a turn that no passage scoring at least `minScore` and no operation backs is answered
-     * with `offTopic` and the model's text never reaches the user. Needs `knowledge`.
+     * Keeps the agent on its documentation. Adds fixed scope rules to the system prompt and a relevance gate:
+     * a turn that no passage scoring at least `minScore` backs is answered with `offTopic` and the model's
+     * text never reaches the user.
      */
     scope: z
       .object({
@@ -92,11 +84,11 @@ export const configSchema = z
       })
       .strict()
       .optional(),
-    knowledge: knowledgeSchema.optional(),
+    /** What the agent answers from. */
+    knowledge: knowledgeSchema,
     limits: z
       .object({
         maxSteps: z.number().int().positive().default(8),
-        callTimeoutMs: z.number().int().positive().default(30_000),
         maxResultBytes: z
           .number()
           .int()
@@ -104,15 +96,12 @@ export const configSchema = z
           .default(64 * 1024),
         turnTimeoutMs: z.number().int().positive().default(120_000),
         maxConcurrentTurnsPerUser: z.number().int().positive().default(2),
-        maxTools: z.number().int().positive().default(40),
       })
       .default({
         maxSteps: 8,
-        callTimeoutMs: 30_000,
         maxResultBytes: 64 * 1024,
         turnTimeoutMs: 120_000,
         maxConcurrentTurnsPerUser: 2,
-        maxTools: 40,
       }),
   })
   .strict();
@@ -134,13 +123,10 @@ export function parseConfig(
   if (!hasGetAuth && !result.data.anonymous) {
     throw new Error("Invalid agent config:\n  - getAuth: provide getAuth(request) or set anonymous: true explicitly");
   }
-  const { llm, knowledge, allow, scope } = result.data;
+  const { llm, knowledge } = result.data;
   const fail = (msg: string): never => {
     throw new Error(`Invalid agent config:\n  - ${msg}`);
   };
-  if (allow.length === 0 && !knowledge) fail("allow is empty; list operationIds, tags or globs to expose");
-  if (allow.length > 0 && !(result.data.spec && result.data.baseUrl)) fail("allow needs spec and baseUrl");
-  if (scope && !knowledge) fail("scope needs knowledge");
   // A turn adds up to two messages per step plus the user's. Keeping that many keeps the current turn whole.
   const { summarize, limits } = result.data;
   if (summarize && summarize.keepMessages < limits.maxSteps * 2 + 1)
@@ -151,11 +137,11 @@ export function parseConfig(
     );
   if (!llm && !injected.model)
     fail("no model: pass llm ({ baseUrl, apiKey, model }) or model (a LangChain BaseChatModel)");
-  if (knowledge?.embeddings && injected.embeddings)
+  if (knowledge.embeddings && injected.embeddings)
     fail("knowledge.embeddings and the embeddings option are mutually exclusive");
-  if (knowledge && !knowledge.embeddings && !injected.embeddings)
+  if (!knowledge.embeddings && !injected.embeddings)
     fail("knowledge needs knowledge.embeddings (HTTP endpoint) or the embeddings option");
-  if (knowledge?.embeddings && !llm && !(knowledge.embeddings.baseUrl && knowledge.embeddings.apiKey)) {
+  if (knowledge.embeddings && !llm && !(knowledge.embeddings.baseUrl && knowledge.embeddings.apiKey)) {
     fail("knowledge.embeddings needs baseUrl and apiKey when llm is not set");
   }
   return result.data;

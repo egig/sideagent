@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.9.0
+
+sideagent is a docs agent now. Tool calling against your API is gone; the agent answers from `knowledge` and shows its sources. This is a breaking release with no migration path for operations.
+
+- Removed from `createAgent`: `spec`, `baseUrl`, `allow`, `approvalSecret`, `dryRun`, `onAudit`, `limits.callTimeoutMs`, `limits.maxTools`, the `x-agent` spec hints and the `tools` field of `agent.doctor()`. The config now rejects them. `knowledge` is required.
+- `getAuth` returns `{ userId }`. `headers` is gone: nothing is forwarded to an API.
+- The model's only tool is `search_knowledge`. A call to any other tool name gets an error and never runs. Searches may now run in parallel.
+- Wire format (`src/protocol.ts`): removes the `approval.request` and `tool.rejected` events, the `approval` request body, `invalidates` on `tool.complete` and `pending` on thread history. `tool.start`, `tool.complete` and `knowledge.hits` stay, for knowledge search. The `operationId` field of `tool.start`, `tool.complete` and history tool parts is now `tool`.
+- Client: removed `resultRenderers`, the approval card, `useAgentBusy`, and the hooks `onApprovalRequested`, `onOperationStart`, `onOperationAbort`, `onAnyOperation`, `onOperationComplete` and `onInvalidate`. `onTurnStart`, `onTurnEnd` and `onError` stay. `ResultView` and `humanize` are no longer exported.
+- `sideagent/server` no longer exports `assertAllowedUrl`. The `@scalar/openapi-parser` dependency is gone.
+- `sideagent/testing`: the mock model no longer has the invoice shortcuts. New `mockEmbeddings` for the `embeddings` option.
+- The skill and its evals now set up a docs agent.
+
 ## 0.8.0
 
 - A Cloud agent can say it is unavailable: `agent.info` may answer `{ "name": "…", "available": false }` when the agent will refuse every message (a usage cap is reached). `AgentChat` then renders nothing, launcher included, and `useAgent()` returns `available: false` so an app can hide its own "ask" button. Checked once per page load; a cap reached mid-conversation still shows as an error in the chat.

@@ -6,12 +6,7 @@ import {
   FileTextIcon,
   ReloadIcon,
 } from "@radix-ui/react-icons";
-import { useContext } from "react";
-import { RenderersContext } from "./context.js";
 import { httpUrl, pretty } from "./format.js";
-import { humanize, ResultView } from "./results.js";
-
-const SEARCH_TOOL = "search_knowledge";
 
 /** Knowledge search shows where the answer came from. Links only for http(s) URLs from your config. */
 function Sources({ result }: { result: unknown }) {
@@ -60,36 +55,23 @@ function Passages({ result }: { result: unknown }) {
   );
 }
 
-export function ToolCard(props: { toolName: string; args: unknown; result?: unknown }) {
-  const renderers = useContext(RenderersContext);
-  const { toolName, args, result } = props;
-  const rejected = (result as any)?.rejected === true;
-  const failed = !rejected && typeof (result as any)?.error === "string";
+/** The one tool the model has is the knowledge search, so this card is its sources. */
+export function ToolCard(props: { args: unknown; result?: unknown }) {
+  const { args, result } = props;
+  const failed = typeof (result as any)?.error === "string";
   const running = result === undefined;
-  const custom = renderers?.[toolName];
   return (
-    <div className="sa-tool" data-state={running ? "running" : rejected ? "rejected" : failed ? "error" : "done"}>
+    <div className="sa-tool" data-state={running ? "running" : failed ? "error" : "done"}>
       <div className="sa-tool-head">
-        {running ? (
-          <ReloadIcon className="sa-spin" />
-        ) : rejected || failed ? (
-          <CrossCircledIcon />
-        ) : (
-          <CheckCircledIcon />
-        )}
-        <span>{toolName === SEARCH_TOOL ? "Sources" : humanize(toolName)}</span>
+        {running ? <ReloadIcon className="sa-spin" /> : failed ? <CrossCircledIcon /> : <CheckCircledIcon />}
+        <span>Sources</span>
       </div>
-      {!running &&
-        (custom ? (
-          custom({ operationId: toolName, args, result })
-        ) : toolName === SEARCH_TOOL ? (
-          <>
-            <Sources result={result} />
-            <Passages result={result} />
-          </>
-        ) : (
-          <ResultView result={result} />
-        ))}
+      {!running && (
+        <>
+          <Sources result={result} />
+          <Passages result={result} />
+        </>
+      )}
       <details className="sa-details">
         <summary>
           <ChevronRightIcon /> Details

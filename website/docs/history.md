@@ -3,7 +3,7 @@ sidebar_position: 7
 title: Chat history
 ---
 
-`AgentChat` has a History button (list, open, delete), reopens the last conversation after a refresh, and restores a pending approval. Messages live in your LangGraph `checkpointer`; the list lives in a `threadStore` (in-memory by default). Both must be persistent in production. See [Persistence](./persistence.md) for setup:
+`AgentChat` has a History button (list, open, delete) and reopens the last conversation after a refresh. Messages live in your LangGraph `checkpointer`; the list lives in a `threadStore` (in-memory by default). Both must be persistent in production. See [Persistence](./persistence.md) for setup:
 
 ```ts
 createAgent({ …, checkpointer: new PostgresSaver(…), threadStore: myThreadStore }); // ThreadStore: list / has / touch / delete

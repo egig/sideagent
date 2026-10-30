@@ -3,7 +3,7 @@ sidebar_position: 11
 title: Cloudflare Workers
 ---
 
-`sideagent/server` runs on Workers. Use `nodejs_compat` (or just `nodejs_als`) in `wrangler.jsonc`. LangGraph's approval pause (`interrupt()`) needs `AsyncLocalStorage`, and the Workers build of LangGraph does not register it. sideagent registers it for you when the runtime has it. Without the flag, reads work and the first approval fails (startup logs a warning).
+`sideagent/server` runs on Workers. Use `nodejs_compat` (or just `nodejs_als`) in `wrangler.jsonc`. LangGraph relies on `AsyncLocalStorage`, and the Workers build of LangGraph does not register it. sideagent registers it for you when the runtime has it.
 
 ```jsonc
 { "compatibility_date": "2025-09-01", "compatibility_flags": ["nodejs_compat"] }
@@ -20,11 +20,10 @@ import { workersAiChatModel, workersAiEmbeddings } from "sideagent/workers-ai";
 export default {
   async fetch(request: Request, env: Env) {
     agent ??= await createAgent({
-      spec, baseUrl: env.API_URL, allow: ["listInvoices", "createInvoice"],
-      allowedOrigins: ["https://app.example.com"], approvalSecret: env.APPROVAL_SECRET,
+      allowedOrigins: ["https://app.example.com"],
       getAuth,
       model: workersAiChatModel(env.AI, "@cf/openai/gpt-oss-120b"),
-      knowledge: { sources }, // optional
+      knowledge: { sources },
       embeddings: workersAiEmbeddings(env.AI, "@cf/baai/bge-m3"), // replaces knowledge.embeddings
     });
     return agent.handler(request);

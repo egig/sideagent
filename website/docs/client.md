@@ -9,7 +9,7 @@ import { AgentChat } from "sideagent";
 <AgentChat
   endpoint="/agent"
   mode="floating"            // "floating" | "sidebar"; the user can switch
-  hooks={{ onInvalidate: (tag) => tag === "invoices" && refetchInvoices() }}
+  hooks={{ onTurnEnd: () => track("agent_turn") }}
 />
 ```
 
@@ -57,7 +57,7 @@ import { AgentProvider } from "sideagent";
 
 `AgentProvider` fills the viewport height (`100dvh`); override with the `className` or `style` props.
 
-Anything under `AgentProvider` can call `useAgent()` to get `{ open, setOpen, available }`, e.g. an "Ask assistant" button in your toolbar, and `useAgentBusy()` to know whether one of the agent's operations is running, e.g. to disable a form that would race it. See [Hooks](./hooks.md#blocking-the-app-while-an-operation-runs).
+Anything under `AgentProvider` can call `useAgent()` to get `{ open, setOpen, available }`, e.g. an "Ask assistant" button in your toolbar.
 
 ## Small screens
 

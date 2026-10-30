@@ -1,14 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { mockEmbeddings } from "../testing/mock-llm.js";
 import type { AgentEvent } from "../protocol.js";
 import { createAgent, type TurnErrorContext } from "./index.js";
 
 const ORIGIN = "https://app.example.com";
-const spec = {
-  openapi: "3.0.3",
-  info: { title: "t", version: "1" },
-  paths: { "/invoices": { get: { operationId: "listInvoices", responses: { "200": { description: "ok" } } } } },
-};
-
 // A fetch that fails like a dead model host.
 const failingFetch: typeof fetch = async () => {
   throw new Error("model exploded");
@@ -17,12 +12,14 @@ const failingFetch: typeof fetch = async () => {
 async function failedTurn(onError: (ctx: TurnErrorContext) => void | Promise<void>) {
   const agent = await createAgent({
     llm: { baseUrl: "https://llm.invalid/v1", apiKey: "k", model: "m", fetch: failingFetch, maxRetries: 0 },
-    spec,
-    baseUrl: "https://api.example.com",
-    allow: ["listInvoices"],
+    knowledge: {
+      sources: [
+        { id: "refunds", title: "Refund policy", content: "Customers can request a refund within thirty days." },
+      ],
+    },
+    embeddings: mockEmbeddings,
     allowedOrigins: [ORIGIN],
     anonymous: true,
-    approvalSecret: "test-secret-test-secret",
     onError,
   });
   const res = await agent.handler(

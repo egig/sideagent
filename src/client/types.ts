@@ -1,10 +1,8 @@
 import type { ReactNode } from "react";
-import type { AgentEvent, HistoryMessage } from "../protocol.js";
+import type { HistoryMessage } from "../protocol.js";
 import type { AgentHooks } from "./hooks.js";
 
 export type AgentChatMode = "floating" | "sidebar";
-export type ApprovalEvent = Extract<AgentEvent, { type: "approval.request" }>;
-export type Decision = "approve" | "reject";
 
 export interface AgentChatProps {
   /** URL of your sideagent endpoint, e.g. "/api/agent". With `publishableKey`, overrides the URL the key names. */
@@ -48,8 +46,6 @@ export interface AgentChatProps {
   newChatButton?: boolean;
   /** Extra buttons rendered in the panel header, before History. Use `className="sa-btn sa-icon-btn"` to match. */
   headerActions?: ReactNode;
-  /** Custom result views per operationId. Anything not listed gets the built-in table / fields view. */
-  resultRenderers?: Record<string, (e: { operationId: string; args: unknown; result: unknown }) => ReactNode>;
   /** "auto" (alias "system") follows the OS and host `.dark` / `data-theme=dark`; a host `.light` / `data-theme=light` wins over a dark OS. Colors are overridable via --sideagent-* CSS variables. */
   theme?: "auto" | "system" | "light" | "dark";
   /** Set false to hide the layout switcher. */
@@ -61,5 +57,4 @@ export interface Session {
   key: number;
   threadId?: string;
   messages?: HistoryMessage[];
-  pending?: ApprovalEvent;
 }

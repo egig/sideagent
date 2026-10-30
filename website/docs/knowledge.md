@@ -17,7 +17,7 @@ createAgent({
 });
 ```
 
-The agent gets a `search_knowledge` tool. Answers show a "Sources" card, with links only for your configured URLs.
+The model gets a `search_knowledge` tool. It is the agent's only tool. Answers show a "Sources" card, with links only for your configured URLs.
 
 ## Showing passages to the host's own user
 
@@ -43,11 +43,9 @@ createAgent({
 });
 ```
 
-A turn is backed when an operation was called in it, a `search_knowledge` call in it found a passage scoring at least `minScore`, or the user's message itself matches such a passage. A turn that is not backed gets `offTopic` as its answer. Without allowed operations the model is not called at all. With operations it may still call one, but its text is never shown. `scope` needs `knowledge`. With `exposeKnowledge` on, the gate's search is sent like a model search: `tool.start`, `tool.complete` and `knowledge.hits`, all with `callId: "gate"`.
+A turn is backed when a `search_knowledge` call in it found a passage scoring at least `minScore`, or the user's message itself matches such a passage. A turn that is not backed gets `offTopic` as its answer, and the model is not called. With `exposeKnowledge` on, the gate's search is sent like a model search: `tool.start`, `tool.complete` and `knowledge.hits`, all with `callId: "gate"`.
 
 Set `naturalReply: true` to have the model write the off-topic answer, in the user's language, instead of sending `offTopic`. The model sees only the last user message, with no tools, passages or history, and is told not to answer it. This costs one model call per off-topic turn, and the model's text reaches the user. `offTopic` is the fallback when that call fails or returns nothing.
-
-A knowledge-only agent sets `allow: []` and leaves out `spec` and `baseUrl`.
 
 ## Limits
 

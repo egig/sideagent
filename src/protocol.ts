@@ -2,25 +2,14 @@
 export type AgentEvent =
   | { type: "turn.start"; threadId: string }
   | { type: "text.delta"; text: string }
-  | { type: "tool.start"; callId: string; operationId: string }
-  | {
-      type: "approval.request";
-      callId: string;
-      operationId: string;
-      method: string;
-      path: string;
-      args: unknown;
-      token: string;
-      expiresAt: number;
-    }
+  | { type: "tool.start"; callId: string; tool: string }
   | {
       type: "tool.complete";
       callId: string;
-      operationId: string;
+      tool: string;
       status: number;
       args: unknown;
       result: unknown;
-      invalidates: string[];
     }
   /**
    * Passages a knowledge search returned, after its `tool.complete`. Sent only when the host opts in
@@ -32,13 +21,11 @@ export type AgentEvent =
       query: string;
       hits: { title: string; url?: string; score: number; text: string }[];
     }
-  | { type: "tool.rejected"; callId: string; operationId: string }
   | { type: "error"; code: string; message: string }
   | { type: "turn.end" };
 
 export type ChatRequest =
   | { threadId?: string; message: string; context?: unknown }
-  | { threadId: string; approval: { token: string; decision: "approve" | "reject" } }
   | { action: "agent.info" }
   | { action: "threads.list" }
   | { action: "threads.get"; threadId: string }
@@ -62,8 +49,7 @@ export interface ThreadMeta {
 }
 
 export type HistoryPart =
-  | { type: "text"; text: string }
-  | { type: "tool"; callId: string; operationId: string; args: unknown; result?: unknown };
+  { type: "text"; text: string } | { type: "tool"; callId: string; tool: string; args: unknown; result?: unknown };
 
 export interface HistoryMessage {
   role: "user" | "assistant";
@@ -72,6 +58,4 @@ export interface HistoryMessage {
 
 export interface ThreadResponse {
   messages: HistoryMessage[];
-  /** Set when the thread is waiting for an approval decision. */
-  pending?: Extract<AgentEvent, { type: "approval.request" }>;
 }

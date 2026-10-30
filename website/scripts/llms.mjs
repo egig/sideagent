@@ -19,7 +19,7 @@ const docs = readdirSync(join(root, "docs"))
   })
   .sort((a, b) => a.pos - b.pos);
 
-const head = `# sideagent\n\n> Embed a chat agent in your app. Give it an OpenAPI spec and an OpenAI-compatible LLM host and key; get a secure agent endpoint (\`sideagent/server\`) and a React chat UI (\`sideagent\`).\n\n`;
+const head = `# sideagent\n\n> Embed a docs chat agent in your app. Give it your documentation and an OpenAI-compatible LLM host and key; get a secure agent endpoint (\`sideagent/server\`) and a React chat UI (\`sideagent\`).\n\n`;
 const index = head + "## Docs\n\n" + docs.map((d) => `- [${d.title}](${d.url}): ${d.summary}`).join("\n") + `\n\n## Optional\n\n- [Full docs in one file](${site}/llms-full.txt)\n- [Source](https://github.com/egig/sideagent)\n`;
 const full = head + docs.map((d) => `# ${d.title}\n\nSource: ${d.url}\n\n${d.body}`).join("\n\n---\n\n") + "\n";
 

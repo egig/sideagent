@@ -5,11 +5,6 @@ import { createAgent } from "./index.js";
 
 const ORIGIN = "https://app.example.com";
 const CANARY = "CANARY-PASSAGE-TEXT";
-const spec = {
-  openapi: "3.0.3",
-  info: { title: "t", version: "1" },
-  paths: { "/ping": { get: { operationId: "ping", responses: { "200": { description: "ok" } } } } },
-};
 
 // No server: the injected fetch is the only way the agent reaches the model and the embeddings.
 const llmUrls: string[] = [];
@@ -29,13 +24,9 @@ const mockFetch: typeof fetch = async (input, init) => {
 
 const make = (exposeKnowledge?: Parameters<typeof createAgent>[0]["exposeKnowledge"]) =>
   createAgent({
-    spec,
-    baseUrl: "https://api.example.com",
     llm: { baseUrl: "https://llm.invalid/v1", apiKey: "k", model: "mock", fetch: mockFetch },
-    allow: ["ping"],
     allowedOrigins: [ORIGIN],
     anonymous: true,
-    approvalSecret: "test-secret-test-secret",
     exposeKnowledge,
     knowledge: {
       embeddings: { model: "mock-embedding", fetch: mockFetch },
@@ -133,10 +124,7 @@ describe("llm and embeddings fetch", () => {
   it("embeddings fall back to llm.fetch", async () => {
     embeddingUrls.length = 0;
     const agent = await createAgent({
-      spec,
-      baseUrl: "https://api.example.com",
       llm: { baseUrl: "https://llm.invalid/v1", apiKey: "k", model: "mock", fetch: mockFetch },
-      allow: ["ping"],
       allowedOrigins: [ORIGIN],
       anonymous: true,
       knowledge: {

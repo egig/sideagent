@@ -1,9 +1,3 @@
-export interface UrlGuardOptions {
-  /** Pinned origin from config. Requests may only go here. */
-  baseUrl: string;
-  allowPrivateNetworks?: boolean;
-}
-
 function parseIPv4(host: string): number[] | null {
   const parts = host.split(".").map(Number);
   return parts.length === 4 && parts.every((n) => Number.isInteger(n) && n >= 0 && n <= 255) ? parts : null;
@@ -36,21 +30,6 @@ export function isPrivateHost(host: string): boolean {
   if (!v4) return false;
   const [a, b] = v4 as [number, number, number, number];
   return a === 10 || a === 127 || a === 0 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
-}
-
-/** Throws unless `url` is safe to call under the pinned config. */
-export function assertAllowedUrl(url: string, opts: UrlGuardOptions): URL {
-  const target = new URL(url);
-  const base = new URL(opts.baseUrl);
-  if (target.protocol !== "https:" && target.protocol !== "http:") {
-    throw new Error(`blocked scheme: ${target.protocol}`);
-  }
-  if (isAlwaysBlockedHost(target.hostname)) throw new Error("blocked: link-local/metadata address");
-  if (target.origin !== base.origin) throw new Error(`blocked: origin ${target.origin} is not baseUrl origin`);
-  if (!opts.allowPrivateNetworks && isPrivateHost(target.hostname) && !isPrivateHost(base.hostname)) {
-    throw new Error("blocked: private network address");
-  }
-  return target;
 }
 
 /** For knowledge URLs: any public http(s) host. Private ranges need allowPrivateNetworks; metadata never. */

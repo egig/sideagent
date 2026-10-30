@@ -1,4 +1,4 @@
 schema_version: "1.1"
-name: keep-delete-off
+name: no-actions
 context:
   scaffold_script: scaffold.sh

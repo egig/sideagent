@@ -95,7 +95,7 @@ export function AgentChat(props: AgentChatProps) {
       try {
         const r = await callJson<ThreadResponse>({ action: "threads.get", threadId: id }, opts);
         if (r.status === 200 && r.data) {
-          setSession((s) => ({ key: s.key + 1, threadId: id, messages: r.data!.messages, pending: r.data!.pending }));
+          setSession((s) => ({ key: s.key + 1, threadId: id, messages: r.data!.messages }));
           if (remember) storeSet(key, id);
         } else {
           if (r.status === 404) storeSet(key, null);
@@ -251,7 +251,6 @@ export function AgentChat(props: AgentChatProps) {
                 {...target}
                 session={session}
                 onThread={(id) => remember && storeSet(key, id)}
-                onReload={() => session.threadId && void openThread(session.threadId)}
               />
             )}
           </div>

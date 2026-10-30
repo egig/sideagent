@@ -1,21 +1,14 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { AgentEvent } from "../protocol.js";
 import { mockEmbeddingsHandler, mockLlmHandler } from "../testing/mock-llm.js";
 import { createAgent, type Agent } from "./index.js";
 
 const ORIGIN = "https://app.example.com";
 const OFF_TOPIC = "Stay on topic.";
-const spec = {
-  openapi: "3.0.3",
-  info: { title: "t", version: "1" },
-  paths: { "/invoices": { get: { operationId: "listInvoices", responses: { "200": { description: "ok" } } } } },
-};
-
 let srv: Server;
 let docsOnly: Agent;
-let withOps: Agent;
 let owner: Agent;
 let natural: Agent;
 let naturalNoRetry: Agent;
@@ -49,7 +42,6 @@ beforeAll(async () => {
     allowedOrigins: [ORIGIN],
     anonymous: true,
     allowPrivateNetworks: true,
-    approvalSecret: "test-secret-test-secret",
     scope: { minScore: 0.3, offTopic: OFF_TOPIC },
     knowledge: {
       embeddings: { model: "mock-embedding" },
@@ -58,12 +50,11 @@ beforeAll(async () => {
       ],
     },
   };
-  docsOnly = await createAgent({ ...base, allow: [] });
-  owner = await createAgent({ ...base, allow: [], exposeKnowledge: () => true });
-  const naturalBase = { ...base, scope: { ...base.scope, naturalReply: true }, allow: [] };
+  docsOnly = await createAgent({ ...base });
+  owner = await createAgent({ ...base, exposeKnowledge: () => true });
+  const naturalBase = { ...base, scope: { ...base.scope, naturalReply: true } };
   natural = await createAgent(naturalBase);
   naturalNoRetry = await createAgent({ ...naturalBase, llm: { ...base.llm, maxRetries: 0 } });
-  withOps = await createAgent({ ...base, spec, baseUrl: "https://api.example.com", allow: ["listInvoices"] });
 });
 afterAll(() => srv.close());
 
@@ -84,7 +75,7 @@ async function chat(agent: Agent, message: string) {
   return { events, text };
 }
 
-describe("scope: knowledge-only agent", () => {
+describe("scope: relevance gate", () => {
   it("answers off-topic questions with the fixed reply and never calls the model", async () => {
     const before = chatCalls;
     const { text, events } = await chat(docsOnly, "what is 2+2");
@@ -150,29 +141,5 @@ describe("scope: owner view", () => {
   it("sends nothing of the sort to end users", async () => {
     const { events } = await chat(docsOnly, "what is 2+2");
     expect(events.some((e) => e.type === "knowledge.hits")).toBe(false);
-  });
-});
-
-describe("scope: agent with operations", () => {
-  it("never shows the model's text for an off-topic question", async () => {
-    const { text } = await chat(withOps, "hello there");
-    expect(text).toBe(OFF_TOPIC);
-  });
-
-  it("lets a turn that calls an operation answer normally", async () => {
-    const real = globalThis.fetch;
-    const spy = vi.spyOn(globalThis, "fetch");
-    spy.mockImplementation(async (input, init) =>
-      String(input instanceof Request ? input.url : input).startsWith("https://api.example.com")
-        ? Response.json([{ id: "inv_1" }])
-        : real(input, init),
-    );
-    try {
-      const { text, events } = await chat(withOps, "list invoices");
-      expect(events.some((e) => e.type === "tool.complete" && e.operationId === "listInvoices")).toBe(true);
-      expect(text).toContain("Done.");
-    } finally {
-      spy.mockRestore();
-    }
   });
 });

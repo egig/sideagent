@@ -1,10 +1,8 @@
 export type { AgentEvent, ChatRequest } from "../protocol.js";
 export { parseConfig, configSchema } from "./config.js";
 export type { AgentConfig, AgentConfigInput } from "./config.js";
-export { assertAllowedUrl } from "./security/url-guard.js";
 export { createAgent } from "./create-agent.js";
 export type { Agent, CreateAgentOptions, AuthResult, DoctorReport, EmbeddingsLike } from "./create-agent.js";
-export type { AuditEvent } from "./security/policy.js";
 export type { TurnErrorContext } from "./http/turn.js";
 export { nextRoute, honoHandler, expressHandler } from "./adapters/index.js";
 export { MemoryThreadStore, LangGraphThreadStore } from "./threads.js";

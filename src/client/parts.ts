@@ -33,25 +33,17 @@ export function applyEvent(parts: readonly Part[], ev: AgentEvent): Part[] {
       if (tail?.type === "text") return [...parts.slice(0, -1), { type: "text", text: tail.text + ev.text }];
       return [...parts, { type: "text", text: ev.text }];
     }
-    case "approval.request":
-      return upsertTool(parts, ev.callId, {
-        toolName: ev.operationId,
-        args: argsOf(ev.args),
-        argsText: pretty(ev.args),
-      });
     case "tool.start":
-      return upsertTool(parts, ev.callId, { toolName: ev.operationId });
+      return upsertTool(parts, ev.callId, { toolName: ev.tool });
     case "knowledge.hits": {
       // After tool.complete: fold the passages into the search call's result for the card to show.
       const prev = parts.find((p) => p.type === "tool-call" && p.toolCallId === ev.callId);
       const base = prev?.type === "tool-call" && prev.result && typeof prev.result === "object" ? prev.result : {};
       return upsertTool(parts, ev.callId, { result: { ...base, hits: ev.hits } });
     }
-    case "tool.rejected":
-      return upsertTool(parts, ev.callId, { toolName: ev.operationId, result: { rejected: true } });
     case "tool.complete":
       return upsertTool(parts, ev.callId, {
-        toolName: ev.operationId,
+        toolName: ev.tool,
         args: argsOf(ev.args),
         argsText: pretty(ev.args),
         result: ev.result ?? null,
@@ -79,7 +71,7 @@ export function toInitialMessages(messages: HistoryMessage[] | undefined) {
               : {
                   type: "tool-call" as const,
                   toolCallId: p.callId,
-                  toolName: p.operationId,
+                  toolName: p.tool,
                   args: argsOf(p.args),
                   argsText: pretty(p.args),
                   result: p.result,
