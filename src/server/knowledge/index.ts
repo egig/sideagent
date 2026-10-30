@@ -50,11 +50,18 @@ export interface SourceStatus {
 export interface KnowledgeDeps {
   embedDocuments(texts: string[]): Promise<number[][]>;
   embedQuery(text: string): Promise<number[]>;
+  /** Optional second-stage ranker. Return one score per candidate; higher scores rank first. */
+  reranker?: KnowledgeReranker;
   store?: VectorStore;
   allowPrivateNetworks?: boolean;
   fetch?: typeof fetch;
   now?: () => number;
 }
+
+/** Scores the retrieved candidates in order. Higher scores rank first; return one finite score per candidate. */
+export type KnowledgeReranker = (query: string, candidates: readonly Hit[]) => Promise<readonly number[]>;
+/** `true` selects sideagent's built-in LLM ranker; a function supplies a custom ranker. */
+export type KnowledgeRerankerOption = KnowledgeReranker | true;
 
 export class KnowledgeBase {
   readonly store: VectorStore;
@@ -176,15 +183,27 @@ export class KnowledgeBase {
     if (cached) return cached;
 
     const hybrid = this.opts.hybrid !== false && typeof this.store.keywordSearch === "function";
-    // Hybrid ranks a wider candidate pool on each side before keeping topK, so a strong keyword match the
-    // embedding ranked just outside the cut still makes it in.
-    const limit = hybrid ? Math.min(Math.max(this.opts.topK * 4, 12), 50) : this.opts.topK;
+    // Hybrid retrieval and reranking need a wider candidate pool before keeping topK.
+    const limit = hybrid || this.deps.reranker ? Math.min(Math.max(this.opts.topK * 4, 12), 50) : this.opts.topK;
     const found = await this.store.similaritySearchVectorWithScore(vector, limit);
-    const hits = hybrid
-      ? mergeRankings(found, await this.store.keywordSearch!(query, limit).catch(() => []), this.opts.topK)
-      : found
-          .slice(0, this.opts.topK)
-          .map(([doc, score]) => ({ text: doc.pageContent, score, meta: doc.metadata as ChunkMeta }));
+    let candidates = hybrid
+      ? mergeRankings(found, await this.store.keywordSearch!(query, limit).catch(() => []), limit)
+      : found.map(([doc, score]) => ({ text: doc.pageContent, score, meta: doc.metadata as ChunkMeta }));
+    if (this.deps.reranker && candidates.length > 1) {
+      try {
+        const scores = await this.deps.reranker(query, candidates);
+        if (scores.length !== candidates.length || scores.some((score) => !Number.isFinite(score))) {
+          throw new Error("reranker must return one finite score per candidate");
+        }
+        candidates = candidates
+          .map((hit, index) => ({ hit, score: scores[index]!, index }))
+          .sort((a, b) => b.score - a.score || a.index - b.index)
+          .map(({ hit }) => hit);
+      } catch (e) {
+        console.warn(`[sideagent] knowledge reranker failed; using retrieval ranking: ${(e as Error).message}`);
+      }
+    }
+    const hits = candidates.slice(0, this.opts.topK);
     this.cache?.set(vector, hits, this.now());
     return hits;
   }

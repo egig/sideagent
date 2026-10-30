@@ -252,6 +252,50 @@ describe("KnowledgeBase", () => {
     expect(keyword).not.toHaveBeenCalled();
   });
 
+  it("reranks a wider candidate pool before applying topK", async () => {
+    const store = new MemoryVectorStore(embed);
+    const docs = ["first", "second", "third"].map(
+      (text, i) => new Document({ pageContent: text, metadata: { sourceId: String(i), title: text } }),
+    );
+    await store.addVectors(
+      docs.map(() => mockEmbed("query")),
+      docs,
+    );
+    const reranker = vi.fn(async (_query: string, candidates: readonly { text: string }[]) => {
+      expect(candidates.map((candidate) => candidate.text)).toEqual(["first", "second", "third"]);
+      return [0, 3, 1];
+    });
+    const kb = new KnowledgeBase(opts({ topK: 1, hybrid: false }), { ...embed, store, reranker });
+
+    const hits = await kb.search("query");
+
+    expect(reranker).toHaveBeenCalledOnce();
+    expect(hits.map((hit) => hit.text)).toEqual(["second"]);
+  });
+
+  it("falls back to retrieval ranking when reranking fails", async () => {
+    const store = new MemoryVectorStore(embed);
+    const docs = ["first", "second"].map(
+      (text, i) => new Document({ pageContent: text, metadata: { sourceId: String(i), title: text } }),
+    );
+    await store.addVectors(
+      docs.map(() => mockEmbed("query")),
+      docs,
+    );
+    const reranker = vi.fn(async () => {
+      throw new Error("offline");
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const kb = new KnowledgeBase(opts({ topK: 1, hybrid: false }), { ...embed, store, reranker });
+
+    const hits = await kb.search("query");
+
+    expect(reranker).toHaveBeenCalledOnce();
+    expect(hits.map((hit) => hit.text)).toEqual(["first"]);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("using retrieval ranking"));
+    warn.mockRestore();
+  });
+
   it("reuses a cached search until a source changes", async () => {
     let body = "# Refunds\n\nrefund within thirty days";
     const fetchMock = vi.fn(

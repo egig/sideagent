@@ -6,7 +6,8 @@ import { runDoctor } from "./doctor.js";
 import { buildGraph } from "./graph/index.js";
 import { createHandler, type AuthResult } from "./http/handler.js";
 import type { TurnErrorContext } from "./http/turn.js";
-import { KnowledgeBase, type VectorStore } from "./knowledge/index.js";
+import { KnowledgeBase, type KnowledgeRerankerOption, type VectorStore } from "./knowledge/index.js";
+import { createLlmReranker } from "./knowledge/reranker.js";
 import { createChatModel, createEmbeddings, type EmbeddingsLike } from "./model.js";
 import type { Callbacks } from "@langchain/core/callbacks/manager";
 import { MemoryThreadStore, type ThreadStore } from "./threads.js";
@@ -46,6 +47,8 @@ export interface CreateAgentOptions extends AgentConfigInput {
   threadStore?: ThreadStore;
   /** Where knowledge embeddings live. Defaults to in-memory (re-embedded on every start). */
   vectorStore?: VectorStore;
+  /** Optional second-stage ranker for retrieved passages. Return one higher-is-better score per candidate. */
+  reranker?: KnowledgeRerankerOption;
 }
 
 const KNOWLEDGE_STARTUP_WAIT_MS = 60_000;
@@ -60,6 +63,7 @@ export async function createAgent(options: CreateAgentOptions) {
     checkpointer,
     threadStore: givenStore,
     vectorStore,
+    reranker,
     model: givenModel,
     embeddings: givenEmbeddings,
     ...data
@@ -78,8 +82,9 @@ export async function createAgent(options: CreateAgentOptions) {
     );
   }
 
-  const knowledge = await startKnowledge(config, givenEmbeddings, vectorStore);
   const model = givenModel ?? createChatModel(config.llm!);
+  const ranker = reranker === true ? createLlmReranker(model) : reranker;
+  const knowledge = await startKnowledge(config, givenEmbeddings, vectorStore, ranker);
   const graph = buildGraph({ config, checkpointer, knowledge, model });
   const handler = createHandler({
     config,
@@ -103,6 +108,7 @@ async function startKnowledge(
   config: AgentConfig,
   givenEmbeddings: EmbeddingsLike | undefined,
   store: VectorStore | undefined,
+  reranker: Exclude<KnowledgeRerankerOption, true> | undefined,
 ) {
   const k = config.knowledge;
   // parseConfig guarantees exactly one of the two sources
@@ -110,6 +116,7 @@ async function startKnowledge(
   const knowledge = new KnowledgeBase(k, {
     embedDocuments: (t) => embedder.embedDocuments(t),
     embedQuery: (t) => embedder.embedQuery(t),
+    reranker,
     store,
     allowPrivateNetworks: config.allowPrivateNetworks,
   });

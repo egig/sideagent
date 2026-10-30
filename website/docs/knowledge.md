@@ -25,6 +25,35 @@ Search fuses two rankings with reciprocal rank fusion: the vector search, and a 
 
 The in-memory store supports this out of the box. A custom `vectorStore` opts in by implementing `keywordSearch(query, k): Promise<[Document, number][]>` over the same ids `addVectors` uses; without it, search is vector-only. Keyword scores may use any scale. The `score` reported for a passage is the stronger of its cosine similarity and its keyword score, clamped to `[0, 1]`, which is what `scope.minScore` compares against.
 
+## Reranking
+
+For an optional second-stage ranker, pass `reranker: true` to use the built-in ranker, which asks the configured chat model to score the wider set of vector or hybrid candidates. This adds a model call and sends those candidate passages to the same model provider. Higher scores rank first; sideagent applies `topK` after reranking. If the call fails or returns invalid scores, the original retrieval order is used. The hit `score` stays the retrieval score, so reranker scores do not change the `scope.minScore` gate.
+
+```ts
+createAgent({ …, reranker: true });
+```
+
+On Cloudflare Workers, you can use the dedicated cross-encoder through the Workers AI binding:
+
+```ts
+import { workersAiReranker } from "sideagent/workers-ai";
+
+createAgent({ …, reranker: workersAiReranker(env.AI) });
+```
+
+It defaults to `@cf/baai/bge-reranker-base` and returns relevance scores for the candidate passages.
+
+To use another provider, pass a callback instead. It receives the query and candidates, and must return one finite score per candidate in candidate order:
+
+```ts
+createAgent({
+  …,
+  reranker: async (query, candidates) => myRerankEndpoint(query, candidates.map((candidate) => candidate.text)),
+});
+```
+
+The candidate set can contain up to 50 passages, subject to how many retrieval returns, and is wider than `topK` when enough candidates exist. The built-in ranker adds latency and model usage to uncached searches; reranking is opt-in.
+
 ## Semantic cache
 
 Repeated or slightly reworded questions reuse the previous result set instead of searching again. Query embeddings are compared per agent: at `minScore` cosine similarity (default 0.97), the cached hits are returned. Entries expire after `ttlMs` (default 5 minutes, bounded to `maxEntries`) and are cleared whenever a source is ingested or refreshed, so knowledge updates are visible at once.

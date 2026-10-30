@@ -10,6 +10,7 @@ import { ChatGenerationChunk, type ChatResult } from "@langchain/core/outputs";
 import type { Runnable } from "@langchain/core/runnables";
 import { convertToOpenAITool } from "@langchain/core/utils/function_calling";
 import { messageText } from "../server/message-text.js";
+import type { KnowledgeReranker } from "../server/knowledge/index.js";
 
 /**
  * The part of the Workers AI binding (`env.AI`) used here. Structural on purpose:
@@ -389,5 +390,38 @@ export function workersAiEmbeddings(ai: WorkersAiBinding, model: string) {
     async embedQuery(text: string): Promise<number[]> {
       return (await embedDocuments([text]))[0]!;
     },
+  };
+}
+
+/** A cross-encoder reranker backed by Workers AI. Defaults to BAAI's bge-reranker-base model. */
+export function workersAiReranker(ai: WorkersAiBinding, model = "@cf/baai/bge-reranker-base"): KnowledgeReranker {
+  return async (query, candidates) => {
+    const result: any = await ai.run(model, {
+      query,
+      top_k: candidates.length,
+      contexts: candidates.map(({ text }) => ({ text })),
+    });
+    const response = result?.response ?? result?.result?.response;
+    if (!Array.isArray(response) || response.length !== candidates.length) {
+      throw new Error("Workers AI returned an unrecognized reranker response");
+    }
+    const scores = Array<number>(candidates.length);
+    for (const item of response) {
+      if (
+        !item ||
+        !Number.isInteger(item.id) ||
+        item.id < 0 ||
+        item.id >= candidates.length ||
+        !Number.isFinite(item.score) ||
+        scores[item.id] !== undefined
+      ) {
+        throw new Error("Workers AI returned an unrecognized reranker response");
+      }
+      scores[item.id] = item.score;
+    }
+    if (scores.some((score) => !Number.isFinite(score))) {
+      throw new Error("Workers AI returned an unrecognized reranker response");
+    }
+    return scores;
   };
 }

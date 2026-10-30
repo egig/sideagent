@@ -1,6 +1,6 @@
 import { AIMessage, AIMessageChunk, HumanMessage, SystemMessage, ToolMessage } from "@langchain/core/messages";
 import { describe, expect, it } from "vitest";
-import { workersAiChatModel, workersAiEmbeddings, type WorkersAiBinding } from "./index.js";
+import { workersAiChatModel, workersAiEmbeddings, workersAiReranker, type WorkersAiBinding } from "./index.js";
 
 function fake(replies: unknown[]) {
   const calls: { model: string; input: any }[] = [];
@@ -239,5 +239,46 @@ describe("workersAiEmbeddings", () => {
     await expect(workersAiEmbeddings(fake([{ data: [[1]] }]).ai, "m").embedDocuments(["a", "b"])).rejects.toThrow(
       /unrecognized embeddings/,
     );
+  });
+});
+
+describe("workersAiReranker", () => {
+  it("sends query and contexts to Workers AI and returns scores in candidate order", async () => {
+    const { ai, calls } = fake([
+      {
+        response: [
+          { id: 1, score: 0.9 },
+          { id: 0, score: -0.2 },
+        ],
+      },
+    ]);
+    const rerank = workersAiReranker(ai);
+    const scores = await rerank("refund policy", [
+      { text: "Shipping details", score: 0.4, meta: { sourceId: "shipping", title: "Shipping" } },
+      { text: "Refund within 30 days", score: 0.5, meta: { sourceId: "refunds", title: "Refunds" } },
+    ]);
+
+    expect(calls).toEqual([
+      {
+        model: "@cf/baai/bge-reranker-base",
+        input: {
+          query: "refund policy",
+          top_k: 2,
+          contexts: [{ text: "Shipping details" }, { text: "Refund within 30 days" }],
+        },
+      },
+    ]);
+    expect(scores).toEqual([-0.2, 0.9]);
+  });
+
+  it("rejects malformed or incomplete model responses", async () => {
+    const rerank = workersAiReranker(fake([{ response: [{ id: 1, score: 0.9 }] }]).ai);
+
+    await expect(
+      rerank("query", [
+        { text: "a", score: 0.4, meta: { sourceId: "a", title: "A" } },
+        { text: "b", score: 0.5, meta: { sourceId: "b", title: "B" } },
+      ]),
+    ).rejects.toThrow(/unrecognized reranker response/);
   });
 });

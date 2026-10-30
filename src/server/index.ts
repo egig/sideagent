@@ -8,5 +8,10 @@ export { nextRoute, honoHandler, expressHandler } from "./adapters/index.js";
 export { MemoryThreadStore, LangGraphThreadStore } from "./threads.js";
 export type { ThreadStore } from "./threads.js";
 export { KnowledgeBase, MemoryVectorStore, chunkText, htmlToText } from "./knowledge/index.js";
-export type { VectorStore, KnowledgeSourceInput } from "./knowledge/index.js";
+export type {
+  KnowledgeReranker,
+  KnowledgeRerankerOption,
+  VectorStore,
+  KnowledgeSourceInput,
+} from "./knowledge/index.js";
 export { TOOL_TAG } from "./graph/index.js";

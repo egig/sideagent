@@ -15,7 +15,7 @@ title: Cloudflare Workers
 
 ```ts
 import { createAgent } from "sideagent/server";
-import { workersAiChatModel, workersAiEmbeddings } from "sideagent/workers-ai";
+import { workersAiChatModel, workersAiEmbeddings, workersAiReranker } from "sideagent/workers-ai";
 
 export default {
   async fetch(request: Request, env: Env) {
@@ -25,6 +25,7 @@ export default {
       model: workersAiChatModel(env.AI, "@cf/openai/gpt-oss-120b"),
       knowledge: { sources },
       embeddings: workersAiEmbeddings(env.AI, "@cf/baai/bge-m3"), // replaces knowledge.embeddings
+      reranker: workersAiReranker(env.AI),
     });
     return agent.handler(request);
   },
@@ -33,5 +34,7 @@ let agent: Awaited<ReturnType<typeof createAgent>> | undefined;
 ```
 
 `model` and `llm` are mutually exclusive; so are the `embeddings` option and `knowledge.embeddings`. `model` can be any LangChain chat model that supports `bindTools()`. `doctor()` checks an injected model with one `invoke`, not an HTTP call. The adapter takes the binding structurally (no `@cloudflare/workers-types` needed) and reads gpt-oss Responses-style output, chat-style `choices[0].message` and `{ response }`.
+
+`workersAiReranker(env.AI)` uses the Workers AI cross-encoder `@cf/baai/bge-reranker-base` by default. Pass another Workers AI model id as the second argument to select a compatible reranker.
 
 A custom `checkpointer` (D1, Durable Object storage) is a `BaseCheckpointSaver` with four methods: `getTuple`, `list`, `put`, `putWrites`. sideagent also calls `deleteThread` when a user deletes a thread.

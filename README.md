@@ -150,6 +150,8 @@ The model gets a `search_knowledge` tool; answers show a "Sources" card (links o
 
 Search is hybrid: a BM25 keyword ranking is fused with vector search (`knowledge.hybrid`, default on), and a custom `vectorStore` opts in with `keywordSearch(query, k)`. A semantic cache reuses hits for a near-identical query embedding (`knowledge.cache`, default on, cleared whenever knowledge changes).
 
+For an optional second-stage ranker, pass `reranker: true` to use the configured chat model, or pass a callback to use another service. The retrieval score used by `scope.minScore` stays unchanged. Reranking is opt-in and adds latency and model usage. See [Knowledge](./website/docs/knowledge.md#reranking) for details.
+
 With the default in-memory store, every start re-embeds all sources (embedding cost). Use a persistent `vectorStore` for large knowledge.
 
 ## Cloudflare Workers
@@ -166,7 +168,7 @@ With the default in-memory store, every start re-embeds all sources (embedding c
 
 ```ts
 import { createAgent } from "sideagent/server";
-import { workersAiChatModel, workersAiEmbeddings } from "sideagent/workers-ai";
+import { workersAiChatModel, workersAiEmbeddings, workersAiReranker } from "sideagent/workers-ai";
 
 export default {
   async fetch(request: Request, env: Env) {
@@ -176,6 +178,7 @@ export default {
       model: workersAiChatModel(env.AI, "@cf/openai/gpt-oss-120b"),
       knowledge: { sources },
       embeddings: workersAiEmbeddings(env.AI, "@cf/baai/bge-m3"), // replaces knowledge.embeddings
+      reranker: workersAiReranker(env.AI), // BAAI bge-reranker-base cross-encoder
     });
     return agent.handler(request);
   },
