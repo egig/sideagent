@@ -182,21 +182,74 @@ describe("agents API", () => {
       expect(res.status).toBe(400);
     });
 
-    it("reads a stored built-in LLM as not set up", async () => {
-      const cookie = await signIn("a@example.com");
-      const a = await create(cookie);
-      await pg.query(
-        `update sideagent."agent" set config = jsonb_set(config, '{llm}', '{"provider":"builtin"}') where id = $1`,
-        [a.id],
-      );
-      expect((await body(call(`/api/agents/${a.id}`, {}, cookie))).agent.llm).toBeNull();
+    describe("built-in model (D-18)", () => {
+      const builtin = {
+        model: "builtin-chat",
+        embeddingModel: "builtin-embed",
+        models: () => ({}),
+        embed: async (texts: string[]) => texts.map(() => new Float32Array(1)),
+        consume: async () => ({ allowed: true }),
+        usage: async () => ({ month: "2026-11", used: 3, limit: 100 }),
+      };
+
+      it("is not offered without a host model: a stored one reads as unavailable", async () => {
+        const cookie = await signIn("a@example.com");
+        const a = await create(cookie);
+        expect(
+          (await call(`/api/agents/${a.id}/llm`, { method: "PUT", json: { provider: "builtin" } }, cookie)).status,
+        ).toBe(400);
+        await pg.query(
+          `update sideagent."agent" set config = jsonb_set(config, '{llm}', '{"provider":"builtin"}') where id = $1`,
+          [a.id],
+        );
+        const detail = await body(call(`/api/agents/${a.id}`, {}, cookie));
+        expect(detail.builtin).toBeUndefined();
+        expect(detail.readiness.find((r) => r.id === "llm")).toMatchObject({ ok: false });
+      });
+
+      it("starts new agents on it, shows its use, and switches back and forth keeping the custom key", async () => {
+        setDeps({ builtin });
+        const cookie = await signIn("a@example.com");
+        const fresh = await body(call("/api/agents", { method: "POST", json: { name: "A" } }, cookie));
+        expect(fresh.agent.llm).toEqual({ provider: "builtin" });
+        expect(fresh.builtin).toEqual({
+          model: "builtin-chat",
+          embeddingModel: "builtin-embed",
+          usage: { month: "2026-11", used: 3, limit: 100 },
+        });
+        expect(fresh.readiness.find((r) => r.id === "llm")).toMatchObject({
+          ok: true,
+          detail: "Built-in (builtin-chat)",
+        });
+        const put = (json: unknown) => call(`/api/agents/${fresh.agent.id}/llm`, { method: "PUT", json }, cookie);
+        const custom = { provider: "custom", baseUrl: "https://llm.example.com/v1", model: "m", apiKey: LLM_KEY };
+        expect((await body(put(custom))).agent.llmKey).toEqual({ last4: LLM_KEY.slice(-4) });
+        const back = await body(put({ provider: "builtin" }));
+        expect(back.agent.llm).toEqual({ provider: "builtin" });
+        expect(back.agent.llmKey).toEqual({ last4: LLM_KEY.slice(-4) });
+      });
+
+      it("reads rows from before the provider tag as custom", async () => {
+        const cookie = await signIn("a@example.com");
+        const a = await create(cookie);
+        await pg.query(
+          `update sideagent."agent" set config = jsonb_set(config, '{llm}', '{"baseUrl":"https://llm.example.com/v1","model":"m"}') where id = $1`,
+          [a.id],
+        );
+        expect((await body(call(`/api/agents/${a.id}`, {}, cookie))).agent.llm).toEqual({
+          provider: "custom",
+          baseUrl: "https://llm.example.com/v1",
+          model: "m",
+          embeddingModel: "text-embedding-3-small",
+        });
+      });
     });
 
     it("seals the key and only ever returns its last 4 characters", async () => {
       const cookie = await signIn("a@example.com");
       const a = (await body(call("/api/agents", { method: "POST", json: { name: "A" } }, cookie))).agent;
       const put = (json: unknown) => call(`/api/agents/${a.id}/llm`, { method: "PUT", json }, cookie);
-      const custom = { baseUrl: "https://llm.example.com/v1", model: "gpt-4o-mini" };
+      const custom = { provider: "custom" as const, baseUrl: "https://llm.example.com/v1", model: "gpt-4o-mini" };
       expect((await body<{ fields: object }>(put(custom))).fields).toHaveProperty("apiKey");
       expect((await put({ ...custom, baseUrl: "https://llm.private.example", apiKey: LLM_KEY })).status).toBe(400);
       expect((await put({ ...custom, provider: "openai", apiKey: LLM_KEY })).status).toBe(400);
@@ -222,7 +275,13 @@ describe("agents API", () => {
       await runIndexing(a.id);
       const status = async () => (await store.knowledge.listSources(a.id))[0]!.status;
       expect(await status()).toBe("indexed");
-      const custom = { baseUrl: "https://llm.example.com/v1", model: "m", embeddingModel: "embed-2", apiKey: LLM_KEY };
+      const custom = {
+        provider: "custom" as const,
+        baseUrl: "https://llm.example.com/v1",
+        model: "m",
+        embeddingModel: "embed-2",
+        apiKey: LLM_KEY,
+      };
       // Hold the background indexer so the queued state is visible.
       const held: Promise<unknown>[] = [];
       setDeps({ background: (w) => void held.push(w()) });
@@ -402,7 +461,11 @@ describe("agents API", () => {
       const routes: [string, string, unknown?][] = [
         ["GET", ""],
         ["PATCH", "", { name: "Taken" }],
-        ["PUT", "/llm", { baseUrl: "https://llm.example.com", model: "m", apiKey: "sk-bob-0000000000" }],
+        [
+          "PUT",
+          "/llm",
+          { provider: "custom", baseUrl: "https://llm.example.com", model: "m", apiKey: "sk-bob-0000000000" },
+        ],
         ["GET", "/knowledge"],
         ["POST", "/knowledge", { kind: "text", title: "Bob", content: "Planted." }],
         ["DELETE", `/knowledge/${aliceSource.source.id}`],
@@ -450,7 +513,7 @@ describe("agents API", () => {
         `/api/agents/${a.id}/llm`,
         {
           method: "PUT",
-          json: { baseUrl: "https://llm.example.com/v1", model: "m", apiKey: LLM_KEY },
+          json: { provider: "custom", baseUrl: "https://llm.example.com/v1", model: "m", apiKey: LLM_KEY },
         },
         cookie,
       );

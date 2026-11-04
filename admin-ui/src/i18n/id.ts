@@ -165,6 +165,7 @@ export const id: Messages = {
       origins: (n) => `${n} origin`,
       noOrigins: "Belum ada: tidak ada browser yang dapat meng-embed chat",
       keyMissing: "API key Anda belum diisi",
+      builtin: (model) => `Built-in (${model})`,
       notChosen: "Belum dipilih",
     },
     embed: "Embed",
@@ -233,6 +234,9 @@ export const id: Messages = {
     results: { ok: "OK", denied: "Ditolak", limited: "Dibatasi", error: "Error" },
     reasons: {
       origin_not_allowed: "Origin tidak ada di daftar yang diizinkan",
+      builtin_cap_reached: "Batas bulanan pesan built-in tercapai",
+      challenge_required: "Tantangan bot belum diselesaikan",
+      challenge_failed: "Tantangan bot gagal",
       anon_daily_cap_reached: "Batas harian untuk pengunjung anonim tercapai",
       llm_error: "Model tidak menjawab",
       empty: "Model mengembalikan jawaban kosong",
@@ -290,6 +294,18 @@ export const id: Messages = {
       instructionsHint: (n, max) => `${n} dari ${max} karakter. Ditambahkan ke system prompt.`,
     },
     llm: {
+      provider: "Provider",
+      builtin: "Built-in",
+      builtinDescription: (limit) =>
+        ` di Cloudflare Workers AI, tanpa API key. ${limit} pesan per bulan, dibagi untuk semua agent di akun Anda.`,
+      custom: "API key Anda sendiri",
+      customDescription:
+        "Provider apa pun yang kompatibel dengan OpenAI. Tanpa batas bulanan dari kami; biaya token ditagihkan ke akun provider Anda.",
+      usageIn: (month) => `Pesan built-in pada ${month}, semua agent`,
+      of: (limit) => `dari ${limit}`,
+      usageLabel: (used, limit, month) => `${used} dari ${limit} pesan built-in terpakai pada ${month}`,
+      capHint:
+        "Permintaan yang melewati batas mendapat 429. Hitungan direset setiap tanggal 1 (UTC). Gunakan API key Anda sendiri untuk menghapus batas.",
       explanation: "Model yang menjawab dan model yang meng-index knowledge.",
       baseUrl: "Provider base URL",
       baseUrlHint: "Kompatibel dengan OpenAI. Hanya HTTPS.",

@@ -19,7 +19,7 @@ export function initials(name: string): string {
 }
 
 /** The line under a setup item, in the UI language, from the agent (D-26). */
-export function useReadinessDetail({ agent }: AgentDetail): (id: ReadinessItem["id"]) => string {
+export function useReadinessDetail({ agent, builtin }: AgentDetail): (id: ReadinessItem["id"]) => string {
   const { modes, overview } = useT();
   const t = overview.details;
   return (id) => {
@@ -36,6 +36,7 @@ export function useReadinessDetail({ agent }: AgentDetail): (id: ReadinessItem["
         return agent.allowedOrigins.length ? t.origins(agent.allowedOrigins.length) : t.noOrigins;
       case "llm":
         if (!agent.llm) return t.notChosen;
+        if (agent.llm.provider === "builtin") return t.builtin(builtin?.model ?? "");
         return agent.llmKey ? agent.llm.model : t.keyMissing;
       case "auth":
         return agent.auth ? modes[agent.auth.mode] : t.notChosen;

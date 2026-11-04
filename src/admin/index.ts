@@ -6,8 +6,46 @@ import { dataPlaneRouter } from "./data/router.js";
 import type { AdminDeps } from "./deps.js";
 
 export type { AdminDeps, AdminUser } from "./deps.js";
-export type { AdminStore, AgentRecord } from "./store/types.js";
+export type {
+  AdminStore,
+  AgentRecord,
+  AgentChange,
+  AgentStorage,
+  AuditInput,
+  AuditQuery,
+  AuditStorage,
+  CheckpointRow,
+  CheckpointWithWrites,
+  Hit,
+  IndexedChunks,
+  KnowledgeCounts,
+  KnowledgeStorage,
+  QueuedSource,
+  SourceInput,
+  ThreadMeta,
+  ThreadStorage,
+  TraceQuery,
+  UsageCount,
+  UsageStorage,
+  WriteRow,
+} from "./store/types.js";
+export type {
+  Agent,
+  AgentDetail,
+  AuditEvent,
+  AuditPage,
+  KnowledgeSource,
+  ReadinessItem,
+  Trace,
+  TracePage,
+  TraceSpan,
+  TraceSummary,
+} from "./api.js";
 export { dohResolve } from "./url-guard.js";
+export { indexPending } from "./knowledge/sources.js";
+export { KnowledgeError, type Embed } from "./knowledge/ingest.js";
+export type { BuiltinProvider, BuiltinUsage } from "./builtin.js";
+export { turnstileChallenge, type Challenge } from "./data/challenge.js";
 
 /**
  * The whole admin: the dashboard API at `/api` and the data plane at `/v1/agents/:id`, which speaks the sideagent wire

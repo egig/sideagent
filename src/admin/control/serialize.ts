@@ -28,10 +28,18 @@ export async function toJson(deps: AdminDeps, a: AgentRecord, knowledge: Knowled
       tracing: a.config.tracing ?? DEFAULT_TRACE_LEVEL,
       knowledge,
     },
+    ...(deps.builtin && {
+      builtin: {
+        model: deps.builtin.model,
+        embeddingModel: deps.builtin.embeddingModel,
+        usage: await deps.builtin.usage(a.ownerId),
+      },
+    }),
     readiness: readiness(a.config, {
       knowledgeSources: knowledge.sources - knowledge.failed,
       failedSources: knowledge.failed,
       hasLlmKey: a.llmKeyLast4 !== null,
+      builtinModel: deps.builtin?.model,
     }),
   };
 }

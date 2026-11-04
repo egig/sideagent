@@ -89,7 +89,9 @@ export const updateGeneral = (id: string, input: Partial<Pick<Agent, "name" | "a
 export const updateTracing = (id: string, level: TraceLevel) => send("PUT", path(id, "/tracing"), { level });
 export const updateLlm = (
   id: string,
-  input: { baseUrl: string; model: string; embeddingModel: string; apiKey?: string },
+  input:
+    | { provider: "builtin" }
+    | { provider: "custom"; baseUrl: string; model: string; embeddingModel: string; apiKey?: string },
 ) => send("PUT", path(id, "/llm"), input);
 export const addKnowledge = (
   id: string,

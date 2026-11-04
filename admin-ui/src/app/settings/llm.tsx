@@ -1,24 +1,27 @@
-// Settings, LLM: the integrator's own OpenAI-compatible provider.
+// Settings, LLM: the host's built-in model (when it has one) or the integrator's own OpenAI-compatible provider.
 import { useState, type FormEvent } from "react";
 import { useMutation } from "@tanstack/react-query";
 import type { AgentDetail } from "@shared/api";
 import { updateLlm } from "~/app/api/agents";
 import { errorMessage, fieldErrors } from "~/app/api/client";
-import { Alert, Callout, Field, Section } from "~/app/ui";
+import { Alert, Callout, Field, OptionGroup, Section } from "~/app/ui";
 import { useApply, SaveFooter } from "~/app/settings/form";
-import { useT } from "~/i18n";
+import { formatNumber, useLocale, useT } from "~/i18n";
 
 const DEFAULT_CUSTOM = { baseUrl: "https://api.openai.com/v1", model: "", embeddingModel: "text-embedding-3-small" };
 
 export function Llm({ detail }: { detail: AgentDetail }) {
-  const { agent } = detail;
+  const { agent, builtin } = detail;
   const {
     common,
     settings: { llm: t, tabs },
   } = useT();
+  const locale = useLocale();
   const apply = useApply(agent.id);
   const saved = agent.llm;
-  const savedCustom = saved ?? DEFAULT_CUSTOM;
+  const savedCustom = saved?.provider === "custom" ? saved : DEFAULT_CUSTOM;
+  const savedProvider = saved?.provider ?? "custom";
+  const [provider, setProvider] = useState<"builtin" | "custom">(savedProvider);
   const [baseUrl, setBaseUrl] = useState(savedCustom.baseUrl);
   const [model, setModel] = useState(savedCustom.model);
   const [embeddingModel, setEmbeddingModel] = useState(savedCustom.embeddingModel);
@@ -26,12 +29,18 @@ export function Llm({ detail }: { detail: AgentDetail }) {
   const [apiKey, setApiKey] = useState("");
   const save = useMutation({
     mutationFn: () =>
-      updateLlm(agent.id, {
-        baseUrl: baseUrl.trim(),
-        model: model.trim(),
-        embeddingModel: embeddingModel.trim(),
-        ...(apiKey && { apiKey: apiKey.trim() }),
-      }),
+      updateLlm(
+        agent.id,
+        provider === "builtin"
+          ? { provider }
+          : {
+              provider,
+              baseUrl: baseUrl.trim(),
+              model: model.trim(),
+              embeddingModel: embeddingModel.trim(),
+              ...(apiKey && { apiKey: apiKey.trim() }),
+            },
+      ),
     onSuccess: async (d) => {
       setApiKey("");
       setReplacing(false);
@@ -41,15 +50,23 @@ export function Llm({ detail }: { detail: AgentDetail }) {
   const errors = fieldErrors(save.error) ?? {};
   const dirty =
     !saved ||
-    baseUrl.trim() !== savedCustom.baseUrl ||
-    model.trim() !== savedCustom.model ||
-    embeddingModel.trim() !== savedCustom.embeddingModel ||
-    apiKey.length > 0;
+    provider !== savedProvider ||
+    (provider === "custom" &&
+      (baseUrl.trim() !== savedCustom.baseUrl ||
+        model.trim() !== savedCustom.model ||
+        embeddingModel.trim() !== savedCustom.embeddingModel ||
+        apiKey.length > 0));
   const embeddingsMove =
     agent.knowledge.sources > 0 &&
-    (baseUrl.trim() !== savedCustom.baseUrl || embeddingModel.trim() !== savedCustom.embeddingModel);
+    (provider !== savedProvider ||
+      (provider === "custom" &&
+        (baseUrl.trim() !== savedCustom.baseUrl || embeddingModel.trim() !== savedCustom.embeddingModel)));
+  const { used, limit, month } = builtin?.usage ?? { used: 0, limit: 0, month: new Date().toISOString().slice(0, 7) };
+  const monthName = new Date(`${month}-01T00:00:00Z`).toLocaleString(locale, { month: "long", timeZone: "UTC" });
+  const [usedText, limitText] = [formatNumber(used, locale), formatNumber(limit, locale)];
 
   function reset() {
+    setProvider(savedProvider);
     setBaseUrl(savedCustom.baseUrl);
     setModel(savedCustom.model);
     setEmbeddingModel(savedCustom.embeddingModel);
@@ -67,58 +84,101 @@ export function Llm({ detail }: { detail: AgentDetail }) {
     >
       <Section id="llm" title={tabs.llm} explanation={t.explanation}>
         {save.error && !Object.keys(errors).length && <Alert>{errorMessage(save.error, common.notSaved)}</Alert>}
-        <Field id="llm-base" label={t.baseUrl} hint={t.baseUrlHint} error={errors.baseUrl}>
-          <input
-            id="llm-base"
-            className="input font-mono"
-            type="url"
-            required
-            value={baseUrl}
-            onChange={(e) => setBaseUrl(e.target.value)}
+        {builtin && (
+          <OptionGroup
+            legend={t.provider}
+            value={provider}
+            onChange={setProvider}
+            options={[
+              {
+                value: "builtin",
+                title: t.builtin,
+                description: (
+                  <>
+                    <span className="font-mono">{builtin.model}</span>
+                    {t.builtinDescription(limitText)}
+                  </>
+                ),
+              },
+              { value: "custom", title: t.custom, description: t.customDescription },
+            ]}
           />
-        </Field>
-        <Field id="llm-model" label={t.model} error={errors.model}>
-          <input
-            id="llm-model"
-            className="input font-mono"
-            required
-            placeholder="gpt-4o-mini"
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-          />
-        </Field>
-        <Field id="llm-embedding" label={t.embeddingModel} hint={t.embeddingHint} error={errors.embeddingModel}>
-          <input
-            id="llm-embedding"
-            className="input font-mono"
-            required
-            value={embeddingModel}
-            onChange={(e) => setEmbeddingModel(e.target.value)}
-          />
-        </Field>
-        <Field id="llm-key" label={t.apiKey} hint={t.apiKeyHint} error={errors.apiKey}>
-          {replacing ? (
-            <input
-              id="llm-key"
-              className="input font-mono"
-              type="password"
-              autoComplete="off"
-              required={!agent.llmKey}
-              placeholder={agent.llmKey ? t.newKey : ""}
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-            />
-          ) : (
-            <div className="flex items-center gap-2">
-              <span id="llm-key" className="input flex items-center font-mono text-ink-muted">
-                •••• •••• {agent.llmKey?.last4}
-              </span>
-              <button type="button" className="btn whitespace-nowrap" onClick={() => setReplacing(true)}>
-                {t.replaceKey}
-              </button>
+        )}
+
+        {builtin && provider === "builtin" ? (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[13px] text-ink-muted">{t.usageIn(monthName)}</span>
+            <span className="text-[24px] font-semibold">
+              {usedText} <span className="text-[14px] font-normal text-ink-muted">{t.of(limitText)}</span>
+            </span>
+            <div
+              className="h-1.5 overflow-hidden rounded-full bg-selected"
+              role="img"
+              aria-label={t.usageLabel(usedText, limitText, monthName)}
+            >
+              <div
+                className="h-full bg-ink"
+                style={{ width: `${limit ? Math.min(100, (used / limit) * 100) : 100}%` }}
+              />
             </div>
-          )}
-        </Field>
+            <p className="hint mt-0">{t.capHint}</p>
+          </div>
+        ) : (
+          <>
+            <Field id="llm-base" label={t.baseUrl} hint={t.baseUrlHint} error={errors.baseUrl}>
+              <input
+                id="llm-base"
+                className="input font-mono"
+                type="url"
+                required
+                value={baseUrl}
+                onChange={(e) => setBaseUrl(e.target.value)}
+              />
+            </Field>
+            <Field id="llm-model" label={t.model} error={errors.model}>
+              <input
+                id="llm-model"
+                className="input font-mono"
+                required
+                placeholder="gpt-4o-mini"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+              />
+            </Field>
+            <Field id="llm-embedding" label={t.embeddingModel} hint={t.embeddingHint} error={errors.embeddingModel}>
+              <input
+                id="llm-embedding"
+                className="input font-mono"
+                required
+                value={embeddingModel}
+                onChange={(e) => setEmbeddingModel(e.target.value)}
+              />
+            </Field>
+            <Field id="llm-key" label={t.apiKey} hint={t.apiKeyHint} error={errors.apiKey}>
+              {replacing ? (
+                <input
+                  id="llm-key"
+                  className="input font-mono"
+                  type="password"
+                  autoComplete="off"
+                  required={!agent.llmKey}
+                  placeholder={agent.llmKey ? t.newKey : ""}
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                />
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span id="llm-key" className="input flex items-center font-mono text-ink-muted">
+                    •••• •••• {agent.llmKey?.last4}
+                  </span>
+                  <button type="button" className="btn whitespace-nowrap" onClick={() => setReplacing(true)}>
+                    {t.replaceKey}
+                  </button>
+                </div>
+              )}
+            </Field>
+          </>
+        )}
         {dirty && embeddingsMove && <Callout tone="warn">{t.reindexWarning(agent.knowledge.sources)}</Callout>}
       </Section>
       <SaveFooter dirty={dirty} pending={save.isPending} onDiscard={reset} />

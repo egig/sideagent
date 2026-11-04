@@ -30,7 +30,7 @@ export function corsHeaders(origin: string | undefined, allowed: string[]): Reco
   return {
     "access-control-allow-origin": origin,
     "access-control-allow-methods": "POST, OPTIONS",
-    "access-control-allow-headers": "content-type, authorization, x-sideagent-key",
+    "access-control-allow-headers": "content-type, authorization, x-sideagent-key, x-sideagent-challenge",
     "access-control-max-age": "600",
     vary: "Origin",
   };

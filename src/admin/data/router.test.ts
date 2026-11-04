@@ -151,6 +151,28 @@ describe("data plane", () => {
       expect(await info.json()).toMatchObject({ available: false });
     });
 
+    it("counts a built-in message against the owner's cap before the model runs (D-18)", async () => {
+      const owners: string[] = [];
+      setDeps({
+        builtin: {
+          model: "b",
+          embeddingModel: "e",
+          models: () => ({}),
+          embed: async (t) => t.map(() => new Float32Array(1)),
+          consume: async (ownerId) => (owners.push(ownerId), { allowed: false }),
+          usage: async () => ({ month: "2026-11", used: 100, limit: 100 }),
+        },
+      });
+      const { id } = await liveKnowledgeAgent();
+      await store.agents.update((await store.agents.get(id))!.ownerId, id, {
+        config: { ...(await store.agents.get(id))!.config, llm: { provider: "builtin" } },
+      });
+      expect((await ask(id, { message: REFUND_QUESTION })).status).toBe(429);
+      expect(owners).toEqual([(await store.agents.get(id))!.ownerId]);
+      expect(modelCalls).toBe(0);
+      expect(await (await ask(id, { action: "agent.info" })).json()).toMatchObject({ available: false });
+    });
+
     it("limits requests per address", async () => {
       const { id } = await liveKnowledgeAgent();
       const sameIp = { origin: ORIGIN, "x-forwarded-for": "203.0.113.9" };
@@ -180,6 +202,56 @@ describe("data plane", () => {
       const { id } = await liveKnowledgeAgent();
       await ask(id, { action: "agent.info" }, { origin: ORIGIN, "x-real-ip": "192.0.2.1" });
       expect(keys).toEqual([`${id}|192.0.2.1`]);
+    });
+  });
+
+  describe("bot challenge (D-39)", () => {
+    const challenge = {
+      siteKey: "site-key",
+      secret: "challenge-secret",
+      verify: async (proof: string) => proof === "solved",
+    };
+    const verify = (id: string, token: string, headers?: Record<string, string>) =>
+      ask(id, { action: "challenge.verify", token }, headers);
+
+    it("is off unless the host sets one", async () => {
+      const { id } = await liveKnowledgeAgent();
+      expect(await (await ask(id, { action: "agent.info" })).json()).not.toHaveProperty("challenge");
+      expect((await ask(id, { message: REFUND_QUESTION })).status).toBe(200);
+    });
+
+    it("refuses anonymous messages without a token, and accepts one earned by a solved challenge", async () => {
+      setDeps({ challenge });
+      const { id } = await liveKnowledgeAgent();
+      expect(await (await ask(id, { action: "agent.info" })).json()).toMatchObject({
+        challenge: { siteKey: "site-key" },
+      });
+      const refused = await ask(id, { message: REFUND_QUESTION });
+      expect(refused.status).toBe(403);
+      expect(await refused.json()).toEqual({ error: "challenge_required" });
+      const ip = { origin: ORIGIN, "x-forwarded-for": "192.0.2.50" };
+      expect((await verify(id, "wrong", ip)).status).toBe(403);
+      const issued = (await (await verify(id, "solved", ip)).json()) as { challengeToken: string };
+      expect(
+        (await ask(id, { message: REFUND_QUESTION }, { ...ip, "x-sideagent-challenge": issued.challengeToken })).status,
+      ).toBe(200);
+    });
+
+    it("gives a token that works for one agent and one address only", async () => {
+      setDeps({ challenge });
+      const first = await liveKnowledgeAgent();
+      const issued = (await (
+        await verify(first.id, "solved", { origin: ORIGIN, "x-forwarded-for": "192.0.2.1" })
+      ).json()) as {
+        challengeToken: string;
+      };
+      const withToken = (ip: string) => ({
+        origin: ORIGIN,
+        "x-sideagent-challenge": issued.challengeToken,
+        "x-forwarded-for": ip,
+      });
+      expect((await ask(first.id, { message: REFUND_QUESTION }, withToken("192.0.2.1"))).status).toBe(200);
+      expect((await ask(first.id, { message: REFUND_QUESTION }, withToken("192.0.2.2"))).status).toBe(403);
     });
   });
 
@@ -285,7 +357,7 @@ describe("data plane", () => {
       `/api/agents/${a.id}/llm`,
       {
         method: "PUT",
-        json: { baseUrl: "https://llm.example.com/v1", model: "m", apiKey: secret },
+        json: { provider: "custom", baseUrl: "https://llm.example.com/v1", model: "m", apiKey: secret },
       },
       cookie,
     );

@@ -9,7 +9,9 @@ The admin dashboard and the server behind it move into the library. It is single
 - New `sideagent/admin/auth`: bundled sign-in (email magic link, GitHub, Google) on better-auth and the same database. Optional: pass your own `session` instead.
 - New `sideagent/admin/node` and `sideagent/admin/ui`: serve the built dashboard (`dist/admin-ui`, a standalone SPA) from any mount path.
 - New peers, all optional: `drizzle-orm`, `hono`, `jose`, `better-auth`. `pnpm dev` runs it all on PGlite.
-- Every admin agent uses its owner's own OpenAI-compatible LLM and API key; there is no built-in model or monthly message cap. A new agent has no LLM until one is set in Settings.
+- Every admin agent uses its owner's own OpenAI-compatible LLM and API key, unless the host passes `builtin` (its own model, with a per-owner cap: `BuiltinProvider`); a new agent then starts on it. The LLM config carries a `provider` (`builtin` or `custom`), `PUT /api/agents/:id/llm` needs it, and stored rows without one read as `custom`.
+- New `sideagent/admin/contract`: `runStoreContract` and `runThreadContract`, the tests every `AdminStore` must pass (needs `vitest`). `indexPending` is exported from `sideagent/admin`.
+- `challenge` (optional) makes anonymous visitors solve a bot challenge before they chat; `turnstileChallenge` is Cloudflare Turnstile. The data plane answers `challenge.verify` with a token for one agent and one address, and `agent.info` carries the site key.
 - Existing exports and the wire format (`src/protocol.ts`) are unchanged.
 
 ## 0.9.0

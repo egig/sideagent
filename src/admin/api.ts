@@ -20,7 +20,9 @@ export type AuthConfig =
 
 export type AuthMode = AuthConfig["mode"];
 
-export type LlmConfig = { baseUrl: string; model: string; embeddingModel: string };
+/** `builtin` is the host's own model (`AdminDeps.builtin`); `custom` is the integrator's OpenAI-compatible endpoint. */
+export type LlmConfig =
+  { provider: "builtin" } | { provider: "custom"; baseUrl: string; model: string; embeddingModel: string };
 
 export interface AgentSummary {
   id: string;
@@ -67,7 +69,15 @@ export interface ReadinessItem {
 /** GET /api/agents/:id and every write that returns the agent. */
 export interface AgentDetail {
   agent: Agent;
+  /** The host's built-in model and this owner's use of it. Absent when the host has none. */
+  builtin?: BuiltinInfo;
   readiness: ReadinessItem[];
+}
+
+export interface BuiltinInfo {
+  model: string;
+  embeddingModel: string;
+  usage: { month: string; used: number; limit: number };
 }
 
 export type SourceStatus = "pending" | "indexing" | "indexed" | "failed";

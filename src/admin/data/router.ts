@@ -27,6 +27,7 @@ import { createEndUserAuth } from "./end-user-auth.js";
 import { MESSAGE_MAX } from "./answer.js";
 import { corsHeaders, sse, uniform, uniformFrom } from "./http.js";
 import { createRequestLimiter } from "./rate-limit.js";
+import { checkChallengeToken, CHALLENGE_HEADER, issueChallengeToken } from "./challenge.js";
 
 type Ctx = Context;
 
@@ -210,12 +211,34 @@ export function dataPlaneRouter(deps: AdminDeps) {
       } catch {
         return uniform(c, 400, "bad_request");
       }
+      // An anonymous visitor must hold a solved bot challenge, when this deployment has one set up (D-39).
+      const challenge = !userId && !previewOwner ? deps.challenge : undefined;
+
       // The chat UI's title (D-33). After the origin, key and end-user checks, so it is no more open than a turn.
       if (typeof raw === "object" && raw !== null && "action" in raw && raw.action === "agent.info") {
         // An anonymous agent over a cap would refuse every message: say so, so the chat hides itself (D-38).
         if (userId) return c.json({ name: row.name }, 200, cors);
-        const available = await anonAvailable(deps, { id: row.id }, new Date(now()));
-        return c.json({ name: row.name, available }, 200, cors);
+        const available = await anonAvailable(
+          deps,
+          { id: row.id, ownerId: row.ownerId, builtin: row.config.llm?.provider === "builtin" },
+          new Date(now()),
+        );
+        return c.json(
+          { name: row.name, available, ...(challenge && { challenge: { siteKey: challenge.siteKey } }) },
+          200,
+          cors,
+        );
+      }
+
+      if (typeof raw === "object" && raw !== null && "action" in raw && raw.action === "challenge.verify") {
+        const proof = "token" in raw && typeof raw.token === "string" && raw.token.length <= 2048 ? raw.token : null;
+        if (!challenge || !proof) return uniform(c, 400, "bad_request", cors);
+        if (!(await challenge.verify(proof, ip))) {
+          await log({ result: "denied", reason: "challenge_failed" }, "request");
+          return uniform(c, 403, "challenge_failed", cors);
+        }
+        const issued = await issueChallengeToken(challenge, row.id, ip, now());
+        return c.json({ challengeToken: issued.token, expiresIn: issued.expiresIn }, 200, cors);
       }
 
       // The turn is logged when its stream ends, so a provider failure shows as one. The library says only
@@ -258,6 +281,10 @@ export function dataPlaneRouter(deps: AdminDeps) {
       // and history all live there. What differs is what this request may use: see Mode in runtime.ts.
       if (typeof raw !== "object" || raw === null) return uniform(c, 400, "bad_request");
       const isMessage = "message" in raw;
+      if (challenge && !(await checkChallengeToken(challenge, row.id, ip, c.req.header(CHALLENGE_HEADER), now()))) {
+        await log({ result: "denied", reason: "challenge_required" }, "request");
+        return uniform(c, 403, "challenge_required", cors);
+      }
       // Nobody is signed in: no history.
       if (!userId && "action" in raw) return uniform(c, 501, "not_implemented");
       if (isMessage && !body.safeParse(raw).success) return uniform(c, 400, "bad_request");
@@ -265,7 +292,8 @@ export function dataPlaneRouter(deps: AdminDeps) {
       const mode: Mode = userId ? "docs" : "anon";
 
       if (isMessage) {
-        // Anonymous visitors share a daily cap per agent (D-38). The owner's provider bills the messages.
+        // Anonymous visitors share a daily cap per agent (D-38), before the monthly one so a refused message costs the
+        // owner nothing. Custom models are counted too: the owner's provider bills them.
         if (!userId) {
           const daily = await deps.store.usage.consumeAnon(row.id, anonDailyMessages(deps), new Date(now()));
           if (!daily.allowed) {
@@ -273,8 +301,17 @@ export function dataPlaneRouter(deps: AdminDeps) {
             return uniform(c, 429, "limit_reached", cors);
           }
         }
+        // A new message costs one built-in message; approvals and history reads do not. A custom model is billed by
+        // its own provider, so it is not counted (D-18, D-30).
+        if (row.config.llm?.provider === "builtin" && deps.builtin) {
+          const cap = await deps.builtin.consume(row.ownerId, new Date(now()));
+          if (!cap.allowed) {
+            await log({ result: "limited", reason: "builtin_cap_reached" });
+            return uniform(c, 429, "limit_reached");
+          }
+        }
         // Passages made by another embedding model are skipped by search: say so instead of "off topic".
-        if (await deps.store.knowledge.isStale(row.id, embeddingKey(row.config))) {
+        if (await deps.store.knowledge.isStale(row.id, embeddingKey(deps, row.config))) {
           await log({ result: "error", reason: "knowledge_stale" });
           return sse(
             [

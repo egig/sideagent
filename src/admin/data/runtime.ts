@@ -1,5 +1,5 @@
 // Runs a hosted agent with the sideagent library (D-24): it answers from the agent's knowledge, with
-// history for a signed-in user. The model is the integrator's own OpenAI-compatible
+// history for a signed-in user. The model is the host's built-in one (D-18) or the integrator's own OpenAI-compatible
 // endpoint, reached through the SSRF guard (D-30). One library agent per
 // (agent, config version, mode), cached in memory.
 import { MemorySaver } from "@langchain/langgraph";
@@ -103,28 +103,42 @@ export function createRuntime(deps: AdminDeps) {
 
   async function build(row: AgentRecord, allowedOrigins: string[], mode: Mode): Promise<Agent> {
     const llm = row.config.llm;
-    // The library talks to the integrator's endpoint with a guarded fetch, for the chat model and for query
-    // embeddings (D-30).
-    if (!llm || !row.llmKeySealed) throw new Error("no llm key");
-    const inner = guardedFetch(deps.resolve, deps.fetch);
-    const guarded: typeof fetch = async (input, init) => {
-      const res = await inner(input, init).catch((e: unknown) => (failed(row.id, e), Promise.reject(e)));
-      if (!res.ok) failed(row.id, new Error(`provider answered HTTP ${res.status}`));
-      return res;
+    // Built-in: the host's model for chat and embeddings. Custom: the library talks to the integrator's endpoint with
+    // a guarded fetch, for the chat model and for query embeddings (D-30).
+    let provider: Pick<CreateAgentOptions, "model" | "embeddings" | "llm"> & {
+      embeddingsConfig?: { model: string; fetch: typeof fetch; maxRetries: number };
     };
-    const key = embeddingKey(row.config);
+    if (llm?.provider === "builtin") {
+      if (!deps.builtin) throw new Error("no built-in model");
+      provider = deps.builtin.models((e) => failed(row.id, e));
+    } else {
+      if (!llm || !row.llmKeySealed) throw new Error("no llm key");
+      const inner = guardedFetch(deps.resolve, deps.fetch);
+      const guarded: typeof fetch = async (input, init) => {
+        const res = await inner(input, init).catch((e: unknown) => (failed(row.id, e), Promise.reject(e)));
+        if (!res.ok) failed(row.id, new Error(`provider answered HTTP ${res.status}`));
+        return res;
+      };
+      provider = {
+        llm: {
+          baseUrl: llm.baseUrl,
+          apiKey: await open(deps.secrets, row.id, "llmKey", row.llmKeySealed),
+          model: llm.model,
+          fetch: guarded,
+          maxRetries: LLM_RETRIES,
+        },
+        embeddingsConfig: { model: llm.embeddingModel, fetch: guarded, maxRetries: LLM_RETRIES },
+      };
+    }
+    const key = embeddingKey(deps, row.config);
     const ephemeral = mode === "anon" ? new EphemeralSaver() : null;
     const threads = deps.store.threads;
     return createAgent({
       allowedOrigins,
       instructions: row.config.instructions || undefined,
-      llm: {
-        baseUrl: llm.baseUrl,
-        apiKey: await open(deps.secrets, row.id, "llmKey", row.llmKeySealed),
-        model: llm.model,
-        fetch: guarded,
-        maxRetries: LLM_RETRIES,
-      },
+      model: provider.model,
+      embeddings: provider.embeddings,
+      llm: provider.llm,
       // The library wants at least one source to turn knowledge on. This one is embedded once and
       // never stored (writes are no-ops); searches go to the agent's own knowledge.
       // Keeps the agent on the documentation, in code (D-20).
@@ -132,7 +146,7 @@ export function createRuntime(deps: AdminDeps) {
       knowledge: {
         topK: TOP_K,
         sources: [{ id: "placeholder", title: "placeholder", content: "placeholder" }],
-        embeddings: { model: llm.embeddingModel, fetch: guarded, maxRetries: LLM_RETRIES },
+        ...(provider.embeddingsConfig && { embeddings: provider.embeddingsConfig }),
       },
       vectorStore: new StoreVectorStore((vector, k) =>
         deps.store.knowledge

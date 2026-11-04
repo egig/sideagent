@@ -28,7 +28,7 @@ export function crudRoutes(deps: AdminDeps) {
       status: "draft",
       disabledAt: null,
       configVersion: 1,
-      config: emptyConfig(),
+      config: emptyConfig(Boolean(deps.builtin)),
       llmKeySealed: null,
       llmKeyLast4: null,
       createdAt: now,

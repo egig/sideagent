@@ -48,14 +48,14 @@ export async function indexPending(deps: AdminDeps, agent: AgentRecord): Promise
   try {
     embed = await embedderFor(deps, agent);
     // A customer embeddings URL is checked again at call time (D-11).
-    if (agent.config.llm) await assertPublicUrl(agent.config.llm.baseUrl, deps.resolve);
+    if (agent.config.llm?.provider === "custom") await assertPublicUrl(agent.config.llm.baseUrl, deps.resolve);
   } catch (e) {
     const failure = e instanceof KnowledgeError ? e : new KnowledgeError("The embeddings provider URL is blocked.");
     embed = async () => {
       throw failure;
     };
   }
-  const key = embeddingKey(agent.config);
+  const key = embeddingKey(deps, agent.config);
   const queued = await store.knowledge.claimPending(agent.id);
   for (const s of queued) {
     try {

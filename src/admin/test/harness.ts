@@ -70,6 +70,8 @@ beforeEach(async () => {
   responses = [];
   await store.migrate();
   await pg.exec(`TRUNCATE sideagent."agent" CASCADE`);
+  // Start from nothing: a test's setDeps must not reach the next one.
+  deps = undefined as unknown as AdminDeps;
   setDeps({
     store,
     session: async (req) => {
@@ -113,7 +115,7 @@ export async function create(cookie: string, name = "Invoices assistant") {
   // Every agent gets the scripted provider, as an integrator would set up theirs.
   const llm = await call(
     `/api/agents/${agent.id}/llm`,
-    { method: "PUT", json: { baseUrl: LLM_BASE_URL, model: "gpt-4o-mini", apiKey: LLM_KEY } },
+    { method: "PUT", json: { provider: "custom", baseUrl: LLM_BASE_URL, model: "gpt-4o-mini", apiKey: LLM_KEY } },
     cookie,
   );
   expect(llm.status).toBe(200);
@@ -131,7 +133,7 @@ export async function configure(cookie: string, id: string) {
     `/api/agents/${id}/llm`,
     {
       method: "PUT",
-      json: { baseUrl: LLM_BASE_URL, model: "gpt-4o-mini", apiKey: LLM_KEY },
+      json: { provider: "custom", baseUrl: LLM_BASE_URL, model: "gpt-4o-mini", apiKey: LLM_KEY },
     },
     cookie,
   );

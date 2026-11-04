@@ -3,6 +3,8 @@
 import type { CryptoEnv } from "./crypto.js";
 import type { Resolve } from "./url-guard.js";
 import type { AdminStore } from "./store/types.js";
+import type { BuiltinProvider } from "./builtin.js";
+import type { Challenge } from "./data/challenge.js";
 
 export interface AdminUser {
   id: string;
@@ -36,6 +38,10 @@ export interface AdminDeps {
   /** DNS for the SSRF guard (D-11). On Workers: `dohResolve`. */
   resolve: Resolve;
   fetch: typeof fetch;
+  /** The host's own model, offered next to the integrator's endpoint and metered per owner (D-18). New agents start on it. */
+  builtin?: BuiltinProvider;
+  /** A bot challenge that anonymous visitors must solve before they chat (D-39). Without it, anonymous agents are open. */
+  challenge?: Challenge;
   /** Anonymous messages one agent answers per UTC day (D-38). Default 25. */
   anonDailyMessages?: number;
   /** Starts work after the response and keeps it alive, e.g. `waitUntil` on a serverless host. Default: start it at once and let it run. */

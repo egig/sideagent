@@ -162,6 +162,7 @@ export const en = {
       origins: (n: number) => plural(n, "origin", "origins"),
       noOrigins: "None: no browser could embed the chat",
       keyMissing: "Your API key is missing",
+      builtin: (model: string) => `Built-in (${model})`,
       notChosen: "Not chosen",
     },
     embed: "Embed",
@@ -230,6 +231,9 @@ export const en = {
     results: { ok: "OK", denied: "Denied", limited: "Limited", error: "Error" },
     reasons: {
       origin_not_allowed: "Origin is not in the allowed list",
+      builtin_cap_reached: "Monthly built-in message cap reached",
+      challenge_required: "Bot challenge not solved",
+      challenge_failed: "Bot challenge failed",
       anon_daily_cap_reached: "Daily cap for anonymous visitors reached",
       llm_error: "The model did not answer",
       empty: "The model returned an empty answer",
@@ -289,6 +293,19 @@ export const en = {
       instructionsHint: (n: string, max: string) => `${n} of ${max} characters. Added to the system prompt.`,
     },
     llm: {
+      provider: "Provider",
+      builtin: "Built-in",
+      builtinDescription: (limit: string) =>
+        ` on Cloudflare Workers AI, no key needed. ${limit} messages a month, shared by all agents on your account.`,
+      custom: "Your own key",
+      customDescription:
+        "Any OpenAI-compatible provider. No monthly cap from us; token costs go to your provider account.",
+      usageIn: (month: string) => `Built-in messages in ${month}, all agents`,
+      of: (limit: string) => `of ${limit}`,
+      usageLabel: (used: string, limit: string, month: string) =>
+        `${used} of ${limit} built-in messages used in ${month}`,
+      capHint:
+        "A request over the cap gets 429. The count resets on the 1st (UTC). Switch to your own key to remove the cap.",
       explanation: "The model that answers and the one that indexes knowledge.",
       baseUrl: "Provider base URL",
       baseUrlHint: "OpenAI-compatible. HTTPS only.",

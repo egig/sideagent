@@ -61,15 +61,19 @@ export const generalInput = z
 
 const modelId = (label: string) => z.string().trim().min(1, `${label} is required.`).max(200);
 
-export const llmInput = z
-  .object({
-    baseUrl: customerUrl,
-    model: modelId("Model"),
-    embeddingModel: modelId("Embedding model").default("text-embedding-3-small"),
-    /** Omitted: keep the stored key. */
-    apiKey: z.string().trim().min(8, "That does not look like an API key.").max(1000).optional(),
-  })
-  .strict();
+export const llmInput = z.discriminatedUnion("provider", [
+  z.object({ provider: z.literal("builtin") }).strict(),
+  z
+    .object({
+      provider: z.literal("custom"),
+      baseUrl: customerUrl,
+      model: modelId("Model"),
+      embeddingModel: modelId("Embedding model").default("text-embedding-3-small"),
+      /** Omitted: keep the stored key. */
+      apiKey: z.string().trim().min(8, "That does not look like an API key.").max(1000).optional(),
+    })
+    .strict(),
+]);
 
 const issuer = z.string().trim().min(1, "Issuer is required.").max(200, "200 characters at most.");
 const claim = z
@@ -115,7 +119,7 @@ export type AuthConfig = z.output<typeof authInput>;
 export interface AgentConfig {
   allowedOrigins: string[];
   instructions: string;
-  /** Null until the integrator sets up their provider. */
+  /** Null until the integrator sets up their provider (a host without a built-in model). */
   llm: LlmConfig | null;
   auth: AuthConfig | null;
   /** Absent on rows from before D-35: read as `DEFAULT_TRACE_LEVEL`. */
@@ -126,10 +130,11 @@ export const DEFAULT_TRACE_LEVEL: TraceLevel = "metadata";
 
 export const tracingInput = z.object({ level: z.enum(TRACE_LEVELS as [TraceLevel, ...TraceLevel[]]) }).strict();
 
-export const emptyConfig = (): AgentConfig => ({
+/** A new agent starts on the host's built-in model when it has one (D-18). */
+export const emptyConfig = (builtin = false): AgentConfig => ({
   allowedOrigins: [],
   instructions: "",
-  llm: null,
+  llm: builtin ? { provider: "builtin" } : null,
   auth: null,
   tracing: DEFAULT_TRACE_LEVEL,
 });
@@ -148,6 +153,8 @@ export interface ReadinessInput {
   knowledgeSources: number;
   failedSources?: number;
   hasLlmKey: boolean;
+  /** The host's built-in model name; absent when the host has none. */
+  builtinModel?: string;
 }
 
 /** What going live needs (D-19): something to answer from, an origin, a model and a way to identify users. */
@@ -182,8 +189,16 @@ export function readiness(config: AgentConfig, input: ReadinessInput): Readiness
     {
       id: "llm",
       label: "LLM",
-      ok: llm !== null && input.hasLlmKey,
-      detail: !llm ? "Not set up" : input.hasLlmKey ? llm.model : "Your API key is missing",
+      ok: llm?.provider === "builtin" ? input.builtinModel !== undefined : llm !== null && input.hasLlmKey,
+      detail: !llm
+        ? "Not set up"
+        : llm.provider === "builtin"
+          ? input.builtinModel !== undefined
+            ? `Built-in (${input.builtinModel})`
+            : "Built-in model is not available"
+          : input.hasLlmKey
+            ? llm.model
+            : "Your API key is missing",
     },
     {
       id: "auth",
@@ -212,17 +227,22 @@ export const knowledgeInput = z.discriminatedUnion("kind", [
 ]);
 
 /**
- * Rows written before the built-in LLM was removed hold `{ provider: "builtin" }`: no LLM set up.
- * Custom rows carried a `provider: "custom"` tag that is no longer stored.
+ * Rows without a `provider` tag (an endpoint, or nothing) are custom (D-18); a row with no endpoint is not set up.
  * Rows from before D-28 may hold the removed backend proxy mode: no auth mode chosen.
  */
 export function normalizeConfig(config: AgentConfig): AgentConfig {
   if ((config.auth as { mode: string } | null)?.mode === "proxy") config = { ...config, auth: null };
   const llm = config.llm as unknown as Record<string, string> | null;
+  if (llm?.provider === "builtin") return config;
   return {
     ...config,
     llm: llm?.baseUrl
-      ? { baseUrl: llm.baseUrl, model: llm.model!, embeddingModel: llm.embeddingModel ?? "text-embedding-3-small" }
+      ? {
+          provider: "custom",
+          baseUrl: llm.baseUrl,
+          model: llm.model!,
+          embeddingModel: llm.embeddingModel ?? "text-embedding-3-small",
+        }
       : null,
   };
 }

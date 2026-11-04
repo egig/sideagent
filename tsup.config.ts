@@ -12,9 +12,12 @@ export default defineConfig({
     "admin/ui": "src/admin/ui.ts",
     "admin/node": "src/admin/node.ts",
     "admin/pg": "src/admin/store/pg/index.ts",
+    "admin/contract": "src/admin/store/contract.ts",
     "workers-ai/index": "src/workers-ai/index.ts",
     "testing/mock-llm": "src/testing/mock-llm.ts",
   },
+  // The contract tests use the host project's test runner.
+  external: ["vitest"],
   format: ["esm"],
   dts: true,
   clean: true,
