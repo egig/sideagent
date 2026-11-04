@@ -1,7 +1,7 @@
 // Agent config: input validation per settings section, and the readiness
 // check that gates "Go live". Shapes follow PRD 6.1 and 6.2.
 import { z } from "zod";
-import { checkUrlSyntax } from "./url-guard.js";
+import { checkUrlSyntax } from "./security/url-guard.js";
 import { MODE_LABEL, TRACE_LEVELS, type TraceLevel, type LlmConfig, type ReadinessItem } from "./api.js";
 import { ALGORITHMS, DEFAULT_ALGORITHMS, INSTRUCTIONS_MAX, NAME_MAX, ORIGINS_MAX } from "./limits.js";
 

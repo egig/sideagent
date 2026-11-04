@@ -3,7 +3,7 @@
 // copy the library's (sideagent src/server/knowledge.ts) so hosted chunks look
 // like self-hosted ones; htmlToText also drops <head>, whose <title> text the
 // library leaves in the body.
-import { assertPublicUrl, BlockedUrlError, type Resolve } from "../url-guard.js";
+import { assertPublicUrl, BlockedUrlError, type Resolve } from "../security/url-guard.js";
 
 export const KNOWLEDGE_MAX_SOURCES = 50;
 /** The library's defaults for maxSourceBytes, maxChunks and chunkSize. */

@@ -41,11 +41,11 @@ export type {
   TraceSpan,
   TraceSummary,
 } from "./api.js";
-export { dohResolve } from "./url-guard.js";
+export { dohResolve } from "./security/url-guard.js";
 export { indexPending } from "./knowledge/sources.js";
 export { KnowledgeError, type Embed } from "./knowledge/ingest.js";
 export type { BuiltinProvider, BuiltinUsage } from "./builtin.js";
-export { turnstileChallenge, type Challenge } from "./data/challenge.js";
+export { turnstileChallenge, type Challenge } from "./security/challenge.js";
 
 /**
  * The whole admin: the dashboard API at `/api` and the data plane at `/v1/agents/:id`, which speaks the sideagent wire

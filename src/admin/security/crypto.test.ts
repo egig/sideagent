@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { open, seal } from "./crypto.js";
-import { parsePublishableKey, publishableKey } from "../keys.js";
+import { parsePublishableKey, publishableKey } from "../../keys.js";
 
 const env = { CONFIG_KEK: btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))) };
 

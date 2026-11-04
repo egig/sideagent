@@ -5,8 +5,8 @@
 // Every failure is one of a few fixed reasons, for the tenant audit log only; the client always
 // gets 401 {"error":"unauthorized"}. The token never reaches a log or an audit row.
 import { createLocalJWKSet, errors, jwtVerify, type JSONWebKeySet } from "jose";
-import { assertPublicUrl, type Resolve } from "../url-guard.js";
-import { sha256Hex } from "../crypto.js";
+import { assertPublicUrl, type Resolve } from "../security/url-guard.js";
+import { sha256Hex } from "../security/crypto.js";
 import type { AuthConfig } from "../config.js";
 
 export type TokenAuth = Extract<AuthConfig, { mode: "jwks" | "userinfo" }>;

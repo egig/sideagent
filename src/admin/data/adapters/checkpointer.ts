@@ -16,7 +16,7 @@ import {
   type PendingWrite,
 } from "@langchain/langgraph-checkpoint";
 import type { RunnableConfig } from "@langchain/core/runnables";
-import type { CheckpointWithWrites, ThreadStorage } from "../store/types.js";
+import type { CheckpointWithWrites, ThreadStorage } from "../../store/types.js";
 
 export function userOfThread(threadId: string): string | null {
   const at = threadId.indexOf(":");

@@ -1,10 +1,10 @@
 // What the admin needs from its host. Everything the admin cannot decide for itself is here: who is signed in, where
 // secrets come from and which network it may reach.
-import type { CryptoEnv } from "./crypto.js";
-import type { Resolve } from "./url-guard.js";
+import type { CryptoEnv } from "./security/crypto.js";
+import type { Resolve } from "./security/url-guard.js";
 import type { AdminStore } from "./store/types.js";
 import type { BuiltinProvider } from "./builtin.js";
-import type { Challenge } from "./data/challenge.js";
+import type { Challenge } from "./security/challenge.js";
 
 export interface AdminUser {
   id: string;

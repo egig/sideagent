@@ -6,32 +6,19 @@ import {
   PlusIcon,
   ViewVerticalIcon,
 } from "@radix-ui/react-icons";
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type PointerEvent,
-} from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ThreadResponse } from "../protocol.js";
 import { Chat } from "./Chat.js";
-import { AgentContext, DockContext, SetAvailableContext } from "./context.js";
+import { AgentContext, DockContext } from "./context.js";
 import { HistoryList } from "./HistoryList.js";
-import { MODE_KEY, readMode, storeGet, storeSet, threadKey, WIDTH_KEY } from "./storage.js";
+import { MODE_KEY, readMode, storeGet, storeSet, threadKey } from "./storage.js";
 import { CSS } from "./styles.js";
 import { resolveTarget } from "./target.js";
-import { callJson, fetchAgentInfo } from "./transport.js";
+import { maxWidth, MIN_WIDTH, useAgentInfo, useResizableWidth } from "./panel-hooks.js";
+import { callJson } from "./transport.js";
 import type { AgentChatMode, AgentChatProps, Session } from "./types.js";
 
 export type { AgentChatMode, AgentChatProps } from "./types.js";
-
-const MIN_WIDTH = 300;
-const DEFAULT_WIDTH = 400;
-const maxWidth = () => Math.max(MIN_WIDTH, Math.min(760, Math.round(window.innerWidth * 0.7)));
-const clampWidth = (w: number) => Math.min(maxWidth(), Math.max(MIN_WIDTH, Math.round(w)));
 
 /** The panel shell: open/close, floating or docked layout, resize, history and session loading. */
 export function AgentChat(props: AgentChatProps) {
@@ -50,8 +37,7 @@ export function AgentChat(props: AgentChatProps) {
   const [session, setSession] = useState<Session>({ key: 0 });
   const [loading, setLoading] = useState(false);
   const docked = useContext(DockContext) && mode === "sidebar";
-  const [width, setWidth] = useState(() => clampWidth(Number(storeGet(WIDTH_KEY)) || DEFAULT_WIDTH));
-  const [resizing, setResizing] = useState(false);
+  const { width, resizing, handle } = useResizableWidth();
   const booted = useRef(false);
   const remember = props.history !== false;
   const key = threadKey(target.endpoint, props.storageKey);
@@ -62,26 +48,8 @@ export function AgentChat(props: AgentChatProps) {
     getHeaders: props.getHeaders,
   };
 
-  // Only admin-hosted agents (publishableKey) have a name to show and can say they are unavailable; an explicit
-  // `title` always wins. An agent over a usage cap hides the whole chat, launcher included.
-  const [agentName, setAgentName] = useState<string | null>(null);
-  const [available, setAvailable] = useState(true);
-  const reportAvailable = useContext(SetAvailableContext);
   const wantInfo = props.publishableKey !== undefined;
-  useEffect(() => {
-    if (!wantInfo) return;
-    let live = true;
-    void fetchAgentInfo(opts).then((info) => {
-      if (!live || !info) return;
-      setAgentName(info.name);
-      setAvailable(info.available);
-      reportAvailable?.(info.available);
-    });
-    return () => {
-      live = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wantInfo, target.endpoint]);
+  const { agentName, available } = useAgentInfo(wantInfo, target.endpoint, opts);
   const title = props.title ?? agentName ?? "Assistant";
 
   const setMode = useCallback((m: AgentChatMode) => {
@@ -111,30 +79,6 @@ export function AgentChat(props: AgentChatProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [target, props.credentials, props.getHeaders, remember],
   );
-
-  const resizeTo = useCallback((w: number) => {
-    const next = clampWidth(w);
-    setWidth(next);
-    return next;
-  }, []);
-  const onHandleDown = (e: PointerEvent<HTMLDivElement>) => {
-    e.currentTarget.setPointerCapture(e.pointerId);
-    setResizing(true);
-  };
-  const onHandleMove = (e: PointerEvent<HTMLDivElement>) => {
-    if (resizing) resizeTo(e.currentTarget.parentElement!.getBoundingClientRect().right - e.clientX);
-  };
-  const onHandleUp = () => {
-    setResizing(false);
-    storeSet(WIDTH_KEY, String(width));
-  };
-  const onHandleKey = (e: KeyboardEvent<HTMLDivElement>) => {
-    const d = e.key === "ArrowLeft" ? 16 : e.key === "ArrowRight" ? -16 : 0;
-    if (d) {
-      e.preventDefault();
-      storeSet(WIDTH_KEY, String(resizeTo(width + d)));
-    }
-  };
 
   const newChat = () => {
     storeSet(key, null);
@@ -188,11 +132,11 @@ export function AgentChat(props: AgentChatProps) {
               aria-valuemax={maxWidth()}
               aria-valuenow={width}
               tabIndex={0}
-              onPointerDown={onHandleDown}
-              onPointerMove={onHandleMove}
-              onPointerUp={onHandleUp}
-              onPointerCancel={onHandleUp}
-              onKeyDown={onHandleKey}
+              onPointerDown={handle.onPointerDown}
+              onPointerMove={handle.onPointerMove}
+              onPointerUp={handle.onPointerUp}
+              onPointerCancel={handle.onPointerUp}
+              onKeyDown={handle.onKeyDown}
             />
           )}
           <header className="sa-header">

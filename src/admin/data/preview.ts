@@ -6,7 +6,7 @@ export const PREVIEW_PREFIX = "preview:";
 export const previewUserId = (ownerId: string) => `${PREVIEW_PREFIX}${ownerId}`;
 export const isPreviewUser = (userId: string) => userId.startsWith(PREVIEW_PREFIX);
 
-import { BlockedUrlError } from "../url-guard.js";
+import { BlockedUrlError } from "../security/url-guard.js";
 
 /** A coarse reason for the owner. Reads only an HTTP status and our own error classes, never the provider's words. */
 export function llmErrorCode(e: unknown): string {

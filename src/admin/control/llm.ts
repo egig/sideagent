@@ -1,7 +1,7 @@
 // The host's built-in model (D-18) or the integrator's own OpenAI-compatible provider.
 import { Hono } from "hono";
 import { llmInput } from "../config.js";
-import { seal } from "../crypto.js";
+import { seal } from "../security/crypto.js";
 import type { AdminDeps } from "../deps.js";
 import { scheduleIndexing } from "../knowledge/sources.js";
 import type { AgentChange } from "../store/types.js";

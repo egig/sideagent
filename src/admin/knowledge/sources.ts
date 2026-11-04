@@ -1,6 +1,6 @@
 // Adding and indexing knowledge sources. The store keeps the rows and vectors; the limits and the page fetching live here
 // so every database enforces the same ones.
-import { assertPublicUrl } from "../url-guard.js";
+import { assertPublicUrl } from "../security/url-guard.js";
 import type { AdminDeps } from "../deps.js";
 import { embedderFor, embeddingKey } from "../llm.js";
 import type { AgentRecord, SourceInput } from "../store/types.js";

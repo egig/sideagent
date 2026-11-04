@@ -1,5 +1,5 @@
 // Which model an agent embeds and answers with: the integrator's own OpenAI-compatible endpoint (D-18, D-30).
-import { open } from "./crypto.js";
+import { open } from "./security/crypto.js";
 import type { AdminDeps } from "./deps.js";
 import { embedder, KnowledgeError, type Embed } from "./knowledge/ingest.js";
 import type { AgentRecord } from "./store/types.js";

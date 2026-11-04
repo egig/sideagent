@@ -2,39 +2,20 @@
 // history for a signed-in user. The model is the host's built-in one (D-18) or the integrator's own OpenAI-compatible
 // endpoint, reached through the SSRF guard (D-30). One library agent per
 // (agent, config version, mode), cached in memory.
-import { MemorySaver } from "@langchain/langgraph";
-import { Document } from "@langchain/core/documents";
-import { VectorStore } from "@langchain/core/vectorstores";
-import { createAgent, type Agent, type AuthResult, type CreateAgentOptions } from "../../server/index.js";
-import { open } from "../crypto.js";
+import { type Agent, type AuthResult, createAgent } from "../../server/index.js";
 import { DEFAULT_TRACE_LEVEL } from "../config.js";
 import type { AdminDeps } from "../deps.js";
-import { guardedFetch } from "../guarded-fetch.js";
 import { embeddingKey } from "../llm.js";
-import type { AgentRecord, Hit } from "../store/types.js";
-import { StoreCheckpointer } from "./checkpointer.js";
-import { MIN_SCORE, OFF_TOPIC, TOP_K } from "./answer.js";
+import type { AgentRecord } from "../store/types.js";
+import { StoreCheckpointer } from "./adapters/checkpointer.js";
+import { EphemeralSaver, NO_THREADS } from "./adapters/ephemeral.js";
+import { TraceHandler } from "./adapters/trace.js";
+import { StoreVectorStore } from "./adapters/vector-store.js";
+import { watch } from "./adapters/watch.js";
+import { MIN_SCORE, OFF_TOPIC, TOP_K } from "./limits.js";
 import { isPreviewUser } from "./preview.js";
-import { TraceHandler } from "./trace.js";
+import { buildProvider } from "./provider.js";
 
-/** The agent's own store as a LangChain vector store the library can search. Writes are no-ops: the control plane indexes. */
-class StoreVectorStore extends VectorStore {
-  constructor(private find: (vector: number[], k: number) => Promise<Hit[]>) {
-    super({} as never, {});
-  }
-  _vectorstoreType() {
-    return "sideagent-admin";
-  }
-  async addVectors() {}
-  async addDocuments() {}
-  async delete() {}
-  async similaritySearchVectorWithScore(query: number[], k: number): Promise<[Document, number][]> {
-    return (await this.find(query, k)).map((h) => [new Document({ pageContent: h.text, metadata: h.meta }), h.score]);
-  }
-}
-
-/** One retry: the SSRF guard's refusals and dead hosts should fail in seconds, not after the clients' full backoff (D-30). */
-const LLM_RETRIES = 1;
 const CACHE_MAX = 50;
 const TITLE_MAX = 80;
 /** Auth for the request being handled. The agent is shared between requests, so it cannot hold it. */
@@ -49,51 +30,6 @@ const turnOf = new WeakMap<Request, string>();
  */
 export type Mode = "docs" | "anon";
 
-const EPHEMERAL_THREADS = 200;
-
-/** Checkpoints for anonymous turns, in memory and bounded: the oldest threads are dropped. */
-class EphemeralSaver extends MemorySaver {
-  private threads: string[] = [];
-  override async put(...args: Parameters<MemorySaver["put"]>) {
-    const id = args[0].configurable?.thread_id as string | undefined;
-    if (id && !this.threads.includes(id)) {
-      this.threads.push(id);
-      while (this.threads.length > EPHEMERAL_THREADS) await this.deleteThread(this.threads.shift()!);
-    }
-    return super.put(...args);
-  }
-}
-
-const NO_THREADS = { list: async () => [], has: async () => false, touch: async () => {}, delete: async () => {} };
-
-/** Records what an object's async methods (promises or async generators) throw, then rethrows it. */
-function watch<T extends object>(target: T, methods: string[], onError: (e: unknown) => void): T {
-  for (const name of methods) {
-    const original = (target as Record<string, unknown>)[name];
-    if (typeof original !== "function") continue;
-    (target as Record<string, unknown>)[name] = function (this: unknown, ...args: unknown[]) {
-      try {
-        const out = original.apply(this, args);
-        if (out && typeof (out as AsyncGenerator).next === "function" && Symbol.asyncIterator in (out as object)) {
-          return (async function* () {
-            try {
-              yield* out as AsyncGenerator;
-            } catch (e) {
-              onError(e);
-              throw e;
-            }
-          })();
-        }
-        return out instanceof Promise ? out.catch((e: unknown) => (onError(e), Promise.reject(e))) : out;
-      } catch (e) {
-        onError(e);
-        throw e;
-      }
-    };
-  }
-  return target;
-}
-
 export function createRuntime(deps: AdminDeps) {
   const cache = new Map<string, { key: string; agent: Promise<Agent> }>();
   // The last model or embeddings failure per agent. The library tells the browser only "the agent
@@ -102,34 +38,7 @@ export function createRuntime(deps: AdminDeps) {
   const failed = (agentId: string, e: unknown) => failures.set(agentId, e);
 
   async function build(row: AgentRecord, allowedOrigins: string[], mode: Mode): Promise<Agent> {
-    const llm = row.config.llm;
-    // Built-in: the host's model for chat and embeddings. Custom: the library talks to the integrator's endpoint with
-    // a guarded fetch, for the chat model and for query embeddings (D-30).
-    let provider: Pick<CreateAgentOptions, "model" | "embeddings" | "llm"> & {
-      embeddingsConfig?: { model: string; fetch: typeof fetch; maxRetries: number };
-    };
-    if (llm?.provider === "builtin") {
-      if (!deps.builtin) throw new Error("no built-in model");
-      provider = deps.builtin.models((e) => failed(row.id, e));
-    } else {
-      if (!llm || !row.llmKeySealed) throw new Error("no llm key");
-      const inner = guardedFetch(deps.resolve, deps.fetch);
-      const guarded: typeof fetch = async (input, init) => {
-        const res = await inner(input, init).catch((e: unknown) => (failed(row.id, e), Promise.reject(e)));
-        if (!res.ok) failed(row.id, new Error(`provider answered HTTP ${res.status}`));
-        return res;
-      };
-      provider = {
-        llm: {
-          baseUrl: llm.baseUrl,
-          apiKey: await open(deps.secrets, row.id, "llmKey", row.llmKeySealed),
-          model: llm.model,
-          fetch: guarded,
-          maxRetries: LLM_RETRIES,
-        },
-        embeddingsConfig: { model: llm.embeddingModel, fetch: guarded, maxRetries: LLM_RETRIES },
-      };
-    }
+    const provider = await buildProvider(deps, row, failed);
     const key = embeddingKey(deps, row.config);
     const ephemeral = mode === "anon" ? new EphemeralSaver() : null;
     const threads = deps.store.threads;

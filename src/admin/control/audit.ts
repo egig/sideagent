@@ -2,7 +2,7 @@
 import { Hono } from "hono";
 import { tracingInput } from "../config.js";
 import type { AdminDeps } from "../deps.js";
-import { AUDIT_RANGES, AUDIT_RESULTS } from "../store/retention.js";
+import { AUDIT_RANGES, AUDIT_RESULTS } from "../retention.js";
 import type { AuditQuery, AuditResult } from "../store/types.js";
 import { bump, loadRow, notFound, parseBody, type AgentsEnv } from "./context.js";
 import { respond } from "./serialize.js";

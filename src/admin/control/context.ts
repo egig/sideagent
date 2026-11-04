@@ -4,7 +4,7 @@ import type { Context } from "hono";
 import type { z } from "zod";
 import type { AdminDeps, AdminUser } from "../deps.js";
 import { fieldErrors, normalizeConfig } from "../config.js";
-import { assertPublicUrl, BlockedUrlError } from "../url-guard.js";
+import { assertPublicUrl, BlockedUrlError } from "../security/url-guard.js";
 import type { AgentChange, AgentRecord } from "../store/types.js";
 
 export type AgentsEnv = { Variables: { user: AdminUser; scope: string } };
