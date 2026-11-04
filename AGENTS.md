@@ -7,9 +7,9 @@ Library that embeds a docs chat agent in an app: knowledge (markdown and URLs) +
 - `pnpm install`
 - `pnpm test` — vitest (uses `src/testing/mock-llm.ts`, no API key needed)
 - `pnpm typecheck`
-- `pnpm format` / `pnpm format:check` — Prettier (width 120) over `src/` and `demo/`
+- `pnpm format` / `pnpm format:check` — Prettier (width 120) over `src/`, `dev/` and `admin-ui/`
 - `pnpm build` — tsup to `dist/`
-- `pnpm demo` — demo API on :8787 + vite UI on :5173 (scripted mock LLM unless `LLM_API_KEY` is set)
+- `pnpm dev` — admin API on :8788 + dashboard with hot reload on :5174 (PGlite unless `DATABASE_URL` is set); `pnpm admin:start` serves the built dashboard
 - Docs: `pnpm --dir website install && pnpm --dir website build`
 
 ## Layout
@@ -22,10 +22,15 @@ Library that embeds a docs chat agent in an app: knowledge (markdown and URLs) +
   - `knowledge/` — chunking, HTML to text, vector store, guarded page fetch, `KnowledgeBase`
   - `config.ts`, `threads.ts`, `history.ts`, `doctor.ts`, `model.ts`, `adapters/` (Hono/Next/Express)
 - `src/client/` — React UI (`sideagent`): `AgentChat.tsx` (panel shell), `Chat.tsx` (runtime adapter), `parts.ts` (pure event → message parts), `ToolCard.tsx` (sources), `transport.ts`, `hooks.ts`
+- `src/admin/` — server and dashboard API (single workspace by default, multi-tenant via the `scope` hook) (`sideagent/admin`); not under the `src/server/` edge rule, but it still has no `node:*` (enforced by `edge-compat.test.ts`) except `node.ts`, the static-file server
+  - `store/types.ts` — `AdminStore`, the only thing handlers and the data plane talk to; `store/pg/` — Postgres + pgvector (Drizzle schema, SQL migrations, store); `store/contract.ts` — behaviour every store must have
+  - `control/` — dashboard API; `data/` — `/v1/agents/:id` (request flow in `router.ts`, the library runtime in `runtime.ts`); `auth/` — bundled better-auth sign-in
+  - `config.ts`, `crypto.ts`, `url-guard.ts`, `knowledge/` — validation, sealed secrets, SSRF guard with DNS, ingestion
+- `admin-ui/` — the dashboard SPA (Vite, built to `dist/admin-ui`; its own `tsconfig.json`)
 - `src/workers-ai/` — Cloudflare Workers AI chat model and embeddings
 - `src/protocol.ts` — wire types shared by both sides
 - `src/testing/` — mock LLM, exported as `sideagent/testing`
-- `demo/` — example app; `website/docs/` — Docusaurus docs (source of `llms.txt`)
+- `dev/` — the admin dev server (`pnpm dev`, Docker); `website/docs/` — Docusaurus docs (source of `llms.txt`)
 
 Tests sit next to the code they cover (`*.test.ts`). `e2e.test.ts` drives the full handler.
 
@@ -44,9 +49,18 @@ Tests sit next to the code they cover (`*.test.ts`). `e2e.test.ts` drives the fu
   | Page context and passages are untrusted data | `security/policy.ts`, `knowledge/format.ts` | `knowledge.e2e.test.ts` "wraps passages as untrusted data" |
   | A conversation summary is untrusted data, and a failed summary keeps the history | `graph/summarize.ts`, `security/policy.ts` (`wrapSummary`) | `summarize.e2e.test.ts` "given to the model as untrusted data", "passages reach the summary only", "keeps the history when the summary call fails" |
 
+  | Admin: another scope's agent (the `scope` hook; one shared workspace by default) looks like a missing one on every dashboard route | `admin/control/context.ts`, `store/pg/store.ts` (`getOwned`, `update`, `remove`) | `admin/control/agents.test.ts` "hides another integrator's agent", "groups users by the host's scope hook", `store/contract.ts` "treats another owner's agent as missing" |
+  | Admin: writes need the dashboard's own origin, reads need a session | `admin/app.ts` | `agents.test.ts` "requires a session on every route", "refuses writes from another origin" |
+  | Admin: LLM keys are sealed and never in responses, logs or rows | `admin/crypto.ts`, `control/llm.ts` | `agents.test.ts` "seals the key", "never leaks a stack trace or secret" |
+  | Admin: provider errors never reach end users | `admin/data/router.ts` | `data/router.test.ts` "never shows provider errors to the client" |
+  | Admin: a preview is the owner's alone and the public route cannot start one | `admin/data/router.ts` (`__preview`) | `data/router.test.ts` "preview (D-31)" |
+  | Admin: threads stay with their user | `store/pg/store.ts` (`threads`) | `store/contract.ts` `runThreadContract` |
+  | Admin: the dashboard server stays inside its folder and keeps the server path out of the page | `admin/node.ts` | `admin/ui.test.ts` |
+
 - Everything in `src/server/` (non-test) must run on edge runtimes: no `node:*` imports, `Buffer`, or `process.` (enforced by `edge-compat.test.ts`, which scans subfolders).
 - `src/client/` must not import server code (enforced by `client-isolation.test.ts`).
 - Update `website/docs/` and README when public API changes.
+- `src/admin/` is new code that was moved from the hosted product, so comments cite its decision numbers (`D-12`); keep them. Schema changes to Postgres append a step to `store/pg/migrations.ts`, never edit a shipped one, and update `store/pg/schema.ts` to match (the contract tests catch drift).
 - Run `pnpm test && pnpm typecheck && pnpm format:check` before finishing.
 
 ## Skill evals

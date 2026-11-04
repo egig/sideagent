@@ -2,12 +2,15 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+// The one file that serves static files from disk (sideagent/admin/node) is Node by design and is not an edge entry.
+const NODE_ONLY = new Set(["node.ts"]);
+
 // Recursive, so code moved into subfolders stays covered.
 const sources = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
     const path = join(dir, e.name);
-    if (e.isDirectory()) return sources(path);
-    return e.name.endsWith(".ts") && !e.name.endsWith(".test.ts") ? [path] : [];
+    if (e.isDirectory()) return e.name === "test" ? [] : sources(path);
+    return e.name.endsWith(".ts") && !e.name.endsWith(".test.ts") && !NODE_ONLY.has(e.name) ? [path] : [];
   });
 const noNode = (src: string) => {
   expect(src).not.toMatch(/from\s+["']node:/);
@@ -16,7 +19,11 @@ const noNode = (src: string) => {
 
 // Server core must run on edge runtimes (Workers, Vercel Edge): no node:* or Buffer/process in src.
 describe("edge runtime compatibility", () => {
-  for (const f of [...sources(__dirname), ...sources(join(__dirname, "../workers-ai"))]) {
+  for (const f of [
+    ...sources(__dirname),
+    ...sources(join(__dirname, "../workers-ai")),
+    ...sources(join(__dirname, "../admin")),
+  ]) {
     it(`${f.split("/src/")[1]} uses only web-standard APIs`, () => noNode(readFileSync(f, "utf8")));
   }
 });

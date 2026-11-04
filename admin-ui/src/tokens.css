@@ -1,0 +1,76 @@
+/* sideagent design tokens: neutral greys, #333333 accent. Source: the sideagent design system (tokens.json), mirrored in docs/design.md.
+   Dark values apply under the .dark class, which ThemeScript (web/theme.tsx) sets on <html>. */
+
+:root {
+  color-scheme: light;
+  --canvas: #ffffff;
+  --sidebar: #eeeeee;
+  --surface-subtle: #f7f7f7;
+  --surface-raised: #ffffff;
+  --hover: #e7e7e7;
+  --selected: #e0e0e0;
+  --line: #e8e8e8;
+  --line-strong: #d2d2d2;
+  --control-border: #8c8c8c;
+  --ink: #282828;
+  --ink-muted: #606060;
+  --ink-subtle: #737373;
+  --accent: #333333;
+  --accent-hover: #1f1f1f;
+  --on-accent: #ffffff;
+  --accent-soft: #ebebeb;
+  --primary: var(--accent);
+  --primary-hover: var(--accent-hover);
+  --on-primary: var(--on-accent);
+  --brand-ink: #333333;
+  --focus: var(--accent);
+  --success: #2f6b4f;
+  --success-soft: #e7f2ec;
+  --warning: #8a5a12;
+  --warning-soft: #fbf1de;
+  --danger: #a63d2f;
+  --danger-soft: #fbe9e6;
+  --info: #3b5f8a;
+  --info-soft: #e8eff7;
+  --scrim: rgba(40, 40, 40, 0.28);
+  --elev-sm: 0 1px 2px rgba(40, 40, 40, 0.05);
+  --elev-md: 0 6px 20px rgba(40, 40, 40, 0.07), 0 1px 3px rgba(40, 40, 40, 0.05);
+  --elev-lg: 0 18px 48px rgba(40, 40, 40, 0.12), 0 2px 6px rgba(40, 40, 40, 0.05);
+
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+}
+
+.dark {
+  color-scheme: dark;
+  --canvas: #1c1c1c;
+  --sidebar: #252525;
+  --surface-subtle: #202020;
+  --surface-raised: #2a2a2a;
+  --hover: #2f2f2f;
+  --selected: #353535;
+  --line: #303030;
+  --line-strong: #424242;
+  --control-border: #6b6b6b;
+  --ink: #ececec;
+  --ink-muted: #a9a9a9;
+  --ink-subtle: #8f8f8f;
+  --accent: #d6d6d6;
+  --accent-hover: #ebebeb;
+  --on-accent: #1a1a1a;
+  --accent-soft: #2b2b2b;
+  --brand-ink: #ececec;
+  --success: #7cc4a0;
+  --success-soft: #1d3027;
+  --warning: #e0b062;
+  --warning-soft: #3a2c14;
+  --danger: #f08a7a;
+  --danger-soft: #3d1f1b;
+  --info: #8fb3dd;
+  --info-soft: #1f2a38;
+  --scrim: rgba(0, 0, 0, 0.5);
+  --elev-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --elev-md: 0 6px 20px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --elev-lg: 0 18px 48px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.35);
+}

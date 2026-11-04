@@ -1,30 +1,25 @@
 # syntax=docker/dockerfile:1
 
-# Dependencies shared by both targets.
+# Dependencies shared by the stages below.
 FROM node:22-alpine AS deps
 RUN corepack enable
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-# Static build of the demo chat UI.
-FROM deps AS build
+# Static build of the admin dashboard (dist/admin-ui).
+FROM deps AS admin-ui
 COPY . .
-RUN pnpm exec vite build demo --outDir dist
+RUN pnpm build:ui
 
-# Demo API + agent (tsx runs the TypeScript sources directly, like `pnpm demo:api`).
-FROM deps AS api
+# Admin: dashboard, API and data plane in one process (tsx runs dev/server.ts, like `pnpm admin:start`).
+FROM deps AS admin
 ENV NODE_ENV=production
 COPY package.json pnpm-lock.yaml ./
 COPY src ./src
-COPY demo ./demo
-EXPOSE 8787
-HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=6 \
-  CMD wget -qO- http://127.0.0.1:8787/healthz >/dev/null || exit 1
-CMD ["pnpm", "demo:api"]
-
-# Nginx serves the UI and proxies /agent to the API (SSE needs buffering off).
-FROM nginx:1.27-alpine AS web
-COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/demo/dist /usr/share/nginx/html
-EXPOSE 80
+COPY dev ./dev
+COPY --from=admin-ui /app/dist/admin-ui ./dist/admin-ui
+EXPOSE 8788
+HEALTHCHECK --interval=10s --timeout=3s --start-period=30s --retries=6 \
+  CMD wget -qO- http://127.0.0.1:8788/api/health >/dev/null || exit 1
+CMD ["pnpm", "admin:start"]

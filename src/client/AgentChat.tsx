@@ -62,7 +62,7 @@ export function AgentChat(props: AgentChatProps) {
     getHeaders: props.getHeaders,
   };
 
-  // Only Cloud agents (publishableKey) have a name to show and can say they are unavailable; an explicit
+  // Only admin-hosted agents (publishableKey) have a name to show and can say they are unavailable; an explicit
   // `title` always wins. An agent over a usage cap hides the whole chat, launcher included.
   const [agentName, setAgentName] = useState<string | null>(null);
   const [available, setAvailable] = useState(true);

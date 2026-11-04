@@ -1,0 +1,331 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Tailwind names for the variables in tokens.css. The .dark class sits on <html>, so these re-resolve in dark mode. */
+@theme {
+  --font-sans: "Source Sans 3", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Source Code Pro", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --color-canvas: var(--canvas);
+  --color-sidebar: var(--sidebar);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-surface-raised: var(--surface-raised);
+  --color-hover: var(--hover);
+  --color-selected: var(--selected);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-control-border: var(--control-border);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-subtle: var(--ink-subtle);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-on-accent: var(--on-accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-on-primary: var(--on-primary);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-scrim: var(--scrim);
+
+  --shadow-sm: var(--elev-sm);
+  --shadow-md: var(--elev-md);
+  --shadow-lg: var(--elev-lg);
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  /* Names used before the redesign (landing page, docs, older screens). They resolve to the tokens above. */
+  --color-surface: var(--surface-raised);
+  --color-fill: var(--selected);
+  --color-muted: var(--ink-muted);
+  --color-subtle: var(--ink-subtle);
+  --color-faint: var(--ink-subtle);
+  --color-ink-2: var(--ink);
+  --color-ink-hover: var(--primary-hover);
+  --color-on-ink: var(--on-primary);
+  --color-link: var(--info);
+  --color-link-hover: var(--ink);
+  --color-info-bg: var(--info-soft);
+  --color-ok-bg: var(--success-soft);
+  --color-ok-fg: var(--success);
+  --color-ok-icon: var(--success);
+  --color-warn-bg: var(--warning-soft);
+  --color-warn-fg: var(--warning);
+  --color-warn-line: var(--line-strong);
+  --color-warn-strong: var(--warning);
+  --color-warn-icon: var(--warning);
+  --color-bad-bg: var(--danger-soft);
+  --color-bad-fg: var(--danger);
+  --color-bad-icon: var(--danger);
+  --color-bad-line: var(--line-strong);
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 22px;
+    color: var(--ink);
+    background: var(--canvas);
+    -webkit-font-smoothing: antialiased;
+  }
+  a {
+    color: var(--ink);
+    text-underline-offset: 2px;
+  }
+  a:hover {
+    color: var(--ink-muted);
+  }
+  :focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--canvas),
+      0 0 0 4px var(--focus);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0ms !important;
+      animation-duration: 0ms !important;
+    }
+  }
+}
+
+@layer components {
+  .icon {
+    width: 18px;
+    height: 18px;
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 16px;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    background: var(--surface-raised);
+    box-shadow: var(--shadow-sm);
+    color: var(--ink);
+    font: inherit;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background-color var(--duration-fast) var(--ease-soft),
+      transform var(--duration-fast) var(--ease-soft);
+  }
+  .btn:hover {
+    background: var(--surface-subtle);
+    color: var(--ink);
+  }
+  .btn:active {
+    transform: scale(0.98);
+  }
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .btn-lg {
+    height: 40px;
+  }
+  .btn-sm {
+    height: 30px;
+    padding: 0 12px;
+    font-size: 13px;
+    border-radius: 8px;
+  }
+  .btn-primary {
+    background: var(--primary);
+    border-color: var(--primary);
+    box-shadow: none;
+    color: var(--on-primary);
+  }
+  .btn-primary:hover {
+    background: var(--primary-hover);
+    color: var(--on-primary);
+  }
+  .btn-ghost {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+    color: var(--ink-muted);
+  }
+  .btn-ghost:hover {
+    background: var(--hover);
+    color: var(--ink);
+  }
+  .btn-danger {
+    border-color: transparent;
+    background: var(--danger-soft);
+    box-shadow: none;
+    color: var(--danger);
+  }
+  .btn-danger:hover {
+    background: var(--danger-soft);
+    color: var(--danger);
+    filter: brightness(0.97);
+  }
+
+  .input {
+    display: block;
+    width: 100%;
+    height: 38px;
+    padding: 0 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    background: var(--canvas);
+    color: var(--ink);
+    font: inherit;
+    transition: border-color var(--duration-fast) var(--ease-soft);
+  }
+  .input::placeholder {
+    color: var(--ink-subtle);
+  }
+  .input:hover {
+    border-color: var(--control-border);
+  }
+  .input:focus,
+  .input:focus-visible {
+    outline: none;
+    box-shadow: none;
+    border-color: var(--control-border);
+  }
+  .input[aria-invalid="true"] {
+    border-color: var(--danger);
+  }
+  textarea.input {
+    height: auto;
+    min-height: 76px;
+    padding: 8px 12px;
+  }
+  .input-lg {
+    height: 42px;
+  }
+  .label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    line-height: 18px;
+    font-weight: 600;
+  }
+  .hint {
+    margin: 6px 0 0;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--ink-muted);
+  }
+
+  .card {
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 22px;
+    padding: 0 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 18px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .badge-ok {
+    background: var(--success-soft);
+    color: var(--success);
+  }
+  .badge-warn {
+    background: var(--warning-soft);
+    color: var(--warning);
+  }
+  .badge-bad {
+    background: var(--danger-soft);
+    color: var(--danger);
+  }
+  .badge-mute {
+    background: var(--selected);
+    color: var(--ink-muted);
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 36px;
+    padding: 0 12px 0 10px;
+    border-radius: 10px;
+    color: var(--ink);
+    text-decoration: none;
+    transition: background-color var(--duration-fast) var(--ease-soft);
+  }
+  .nav-item .icon {
+    color: var(--ink-muted);
+  }
+  .nav-item:hover {
+    background: var(--hover);
+    color: var(--ink);
+  }
+  .nav-item.active {
+    background: var(--selected);
+    color: var(--ink);
+  }
+  .nav-item.active .icon {
+    color: var(--ink);
+  }
+
+  .sr-only-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+}
+
+/* Unlayered so it wins over the sideagent client's injected (unlayered) styles. */
+.preview-chat .sa-title {
+  order: -2;
+  flex: 0 1 auto;
+}
+.preview-chat .sa-preview-badge {
+  order: -1;
+  margin-right: auto;
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border: 1px solid var(--sa-border);
+  border-radius: 6px;
+  background: var(--sa-surface);
+  color: var(--sa-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}

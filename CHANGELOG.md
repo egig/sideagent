@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+The admin dashboard and the server behind it move into the library. It is single-tenant by default; multi-tenancy is a `scope` hook.
+
+- New `sideagent/admin`: `createAdmin(deps)` serves the dashboard API (`/api`) and a data plane (`/v1/agents/:id`) for many agents and knowledge bases. All signed-in users share one workspace unless you pass `scope(user, request)`, which groups users per user, organisation or anything else. It takes a store, a `session` function and a few options; nothing is tied to a platform.
+- New `sideagent/admin/pg`: `createPgStore(db)`, Postgres with pgvector through any Drizzle pg database, with its own versioned migrations in a `sideagent` schema. `AdminStore` is the contract for other databases; the contract tests are in `src/admin/store/contract.ts`.
+- New `sideagent/admin/auth`: bundled sign-in (email magic link, GitHub, Google) on better-auth and the same database. Optional: pass your own `session` instead.
+- New `sideagent/admin/node` and `sideagent/admin/ui`: serve the built dashboard (`dist/admin-ui`, a standalone SPA) from any mount path.
+- New peers, all optional: `drizzle-orm`, `hono`, `jose`, `better-auth`. `pnpm dev` runs it all on PGlite.
+- Every admin agent uses its owner's own OpenAI-compatible LLM and API key; there is no built-in model or monthly message cap. A new agent has no LLM until one is set in Settings.
+- Existing exports and the wire format (`src/protocol.ts`) are unchanged.
+
 ## 0.9.0
 
 sideagent is a docs agent now. Tool calling against your API is gone; the agent answers from `knowledge` and shows its sources. This is a breaking release with no migration path for operations.
@@ -15,7 +27,7 @@ sideagent is a docs agent now. Tool calling against your API is gone; the agent 
 
 ## 0.8.0
 
-- A Cloud agent can say it is unavailable: `agent.info` may answer `{ "name": "…", "available": false }` when the agent will refuse every message (a usage cap is reached). `AgentChat` then renders nothing, launcher included, and `useAgent()` returns `available: false` so an app can hide its own "ask" button. Checked once per page load; a cap reached mid-conversation still shows as an error in the chat.
+- An admin-hosted agent can say it is unavailable: `agent.info` may answer `{ "name": "…", "available": false }` when the agent will refuse every message (a usage cap is reached). `AgentChat` then renders nothing, launcher included, and `useAgent()` returns `available: false` so an app can hide its own "ask" button. Checked once per page load; a cap reached mid-conversation still shows as an error in the chat.
 - Wire format (`src/protocol.ts`): adds the optional `available` field to the `agent.info` answer. Old clients ignore it; old servers never send it.
 
 ## 0.7.0
@@ -39,12 +51,12 @@ sideagent is a docs agent now. Tool calling against your API is gone; the agent 
 
 - New `getHeaders` prop on `AgentChat` and `AgentProvider`: called before every request (chat turns, approvals, history), for a login token that expires. Its headers are merged under `headers`, which wins on a clash, so it cannot replace the publishable key. If it throws, nothing is sent: a turn shows a `headers_failed` error, a history call fails like a network error.
 - New `storageKey` prop: scopes the remembered last conversation in `localStorage` to one user. Changing it starts over with that user's last conversation.
-- sideagent Cloud agents with token verification (JWKS or a userinfo URL) need both for the documented embed.
+- sideagent admin agents with token verification (JWKS or a userinfo URL) need both for the documented embed.
 - Wire format (`src/protocol.ts`) unchanged.
 
 ## 0.3.0
 
-- New `publishableKey` prop on `AgentChat` and `AgentProvider` for agents hosted on sideagent Cloud. The chat derives the endpoint from the key (https, http for `localhost` and `127.0.0.1`) and sends the key in the `x-sideagent-key` header. `endpoint` is now optional and, when given with a key, overrides the derived URL. A malformed key, or neither prop, throws during render.
+- New `publishableKey` prop on `AgentChat` and `AgentProvider` for agents hosted on sideagent admin. The chat derives the endpoint from the key (https, http for `localhost` and `127.0.0.1`) and sends the key in the `x-sideagent-key` header. `endpoint` is now optional and, when given with a key, overrides the derived URL. A malformed key, or neither prop, throws during render.
 - New entry point `sideagent/keys`, with no dependencies: `publishableKey`, `parsePublishableKey`, `publishableEndpoint` and `PUBLISHABLE_KEY_HEADER`. It owns the publishable key format (`pk_<test|live>_` + base64url of `<host>$<agentId>`).
 - Wire format (`src/protocol.ts`) unchanged. Requests without `publishableKey` are unchanged.
 

@@ -1,5 +1,5 @@
 /**
- * Scripted OpenAI-compatible /chat/completions endpoint for tests and demos. No API key needed.
+ * Scripted OpenAI-compatible /chat/completions endpoint for tests. No API key needed.
  * - "CALL <tool> <json>" in a user message makes the model call that tool (even if not offered).
  * - Questions that mention policy, refunds, terms, docs or warranty call search_knowledge.
  * - After a tool result the model answers with a short text.
@@ -108,7 +108,7 @@ export const mockEmbeddings = {
   embedQuery: async (text: string) => mockEmbed(text),
 };
 
-/** Scripted OpenAI-compatible /embeddings endpoint for tests and demos. */
+/** Scripted OpenAI-compatible /embeddings endpoint for tests. */
 export async function mockEmbeddingsHandler(request: Request): Promise<Response> {
   const body = (await request.json()) as { input: string | string[]; encoding_format?: string };
   const inputs = Array.isArray(body.input) ? body.input : [body.input];

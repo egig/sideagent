@@ -42,15 +42,15 @@ import { AgentChat } from "sideagent";
 />
 ```
 
-### sideagent Cloud
+### sideagent admin
 
-With an agent hosted on sideagent Cloud, pass its publishable key instead of `endpoint`. The key names the agent and its host, so the chat derives the URL (`https://<host>/v1/agents/<agentId>`) and sends the key in the `x-sideagent-key` header on every request. The key is public: it is safe in the browser and proves nothing on its own.
+With an agent hosted on sideagent admin, pass its publishable key instead of `endpoint`. The key names the agent and its host, so the chat derives the URL (`https://<host>/v1/agents/<agentId>`) and sends the key in the `x-sideagent-key` header on every request. The key is public: it is safe in the browser and proves nothing on its own.
 
 ```tsx
 <AgentChat publishableKey="pk_…" />
 ```
 
-Pass `endpoint` as well to send the requests somewhere else, such as a proxy in front of sideagent Cloud. A malformed key, or neither prop, throws during render. `parsePublishableKey` and `publishableEndpoint` are exported from `sideagent/keys`.
+Pass `endpoint` as well to send the requests somewhere else, such as a proxy in front of sideagent admin. A malformed key, or neither prop, throws during render. `parsePublishableKey` and `publishableEndpoint` are exported from `sideagent/keys`.
 
 Signed-in users: pass `getHeaders`, which the chat calls before every request, so a login token that expires is fetched fresh each time. Pass `storageKey` (the user's ID) so the last conversation the chat remembers in `localStorage` belongs to that user; on a shared browser another user starts from their own.
 
@@ -81,15 +81,6 @@ import { AgentProvider } from "sideagent";
 `AgentProvider` fills the viewport height (`100dvh`); override with the `className` or `style` props.
 
 Anything under `AgentProvider` can call `useAgent()` to get `{ open, setOpen, available }`, e.g. an "Ask assistant" button in your toolbar.
-
-## Try the demo (no API key needed)
-
-```
-pnpm install
-pnpm demo       # docs agent + mock LLM on :8787, UI on http://localhost:5173
-```
-The demo has a dark mode toggle and uses `AgentProvider`. Run `pnpm demo:api` alone for just the agent.
-Set `LLM_API_KEY` (and optionally `LLM_BASE_URL`, `LLM_MODEL`) to use a real model.
 
 ## Development
 
@@ -189,6 +180,10 @@ let agent: Awaited<ReturnType<typeof createAgent>> | undefined;
 `model` and `llm` are mutually exclusive; so are the `embeddings` option and `knowledge.embeddings`. `model` can be any LangChain chat model that supports `bindTools()`. `doctor()` checks an injected model with one `invoke`, not an HTTP call. The adapter takes the binding structurally (no `@cloudflare/workers-types` needed) and reads gpt-oss Responses-style output, chat-style `choices[0].message` and `{ response }`.
 
 A custom `checkpointer` (D1, Durable Object storage) is a `BaseCheckpointSaver` with four methods: `getTuple`, `list`, `put`, `putWrites`. sideagent also calls `deleteThread` when a user deletes a thread.
+
+## Admin (`sideagent/admin`)
+
+A server with a dashboard (one shared workspace by default; multi-tenant through a `scope` hook): sign in, create agents, add knowledge, pick a model, go live, read audit logs and traces. Postgres with pgvector first; the database, sign-in and runtime are all options. `pnpm dev` runs it on PGlite, dashboard with hot reload on http://localhost:5174. See [Admin](./website/docs/admin.md).
 
 ## For AI agents
 

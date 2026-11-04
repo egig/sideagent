@@ -93,7 +93,7 @@ export interface AgentSummary {
 const infos = new Map<string, Promise<AgentSummary | null>>();
 
 /**
- * The agent's display name and availability from sideagent Cloud (`agent.info`), or null if the server does
+ * The agent's display name and availability from sideagent admin (`agent.info`), or null if the server does
  * not give a name. Cached per endpoint, so a cap reached later shows on the next page load.
  */
 export function fetchAgentInfo(opts: Omit<TransportOptions, "signal">): Promise<AgentSummary | null> {

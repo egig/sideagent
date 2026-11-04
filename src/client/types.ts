@@ -7,11 +7,11 @@ export type AgentChatMode = "floating" | "sidebar";
 export interface AgentChatProps {
   /** URL of your sideagent endpoint, e.g. "/api/agent". With `publishableKey`, overrides the URL the key names. */
   endpoint?: string;
-  /** sideagent Cloud publishable key (`pk_…`). Requests go to the agent it names and carry it. */
+  /** sideagent admin publishable key (`pk_…`). Requests go to the agent it names and carry it. */
   publishableKey?: string;
   /** Starting layout. The user can switch; their choice is remembered. */
   mode?: AgentChatMode;
-  /** Panel title. With `publishableKey` and no `title`, the agent's name from the Cloud dashboard; otherwise "Assistant". */
+  /** Panel title. With `publishableKey` and no `title`, the agent's name from the admin dashboard; otherwise "Assistant". */
   title?: string;
   placeholder?: string;
   hooks?: AgentHooks;

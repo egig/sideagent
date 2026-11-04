@@ -13,7 +13,7 @@ export function resolveTarget(props: {
   const parts = parsePublishableKey(props.publishableKey);
   if (!parts) throw new Error("sideagent: invalid publishableKey");
   return {
-    // An explicit endpoint wins, e.g. a proxy in front of sideagent Cloud.
+    // An explicit endpoint wins, e.g. a proxy in front of sideagent admin.
     endpoint: props.endpoint || publishableEndpoint(parts),
     headers: { ...props.headers, [PUBLISHABLE_KEY_HEADER]: props.publishableKey },
   };

@@ -14,4 +14,3 @@ npm i sideagent
 - [Client](./client.md): the `AgentChat` component and docked sidebar.
 - [Knowledge](./knowledge.md): the documentation the agent answers from.
 - [Theming](./theming.md), [History](./history.md).
-- [Example](./example.md): a runnable app with a mock LLM, no API key needed.

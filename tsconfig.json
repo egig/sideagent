@@ -13,5 +13,5 @@
     "declaration": true,
     "isolatedModules": true
   },
-  "include": ["src", "demo", "tsup.config.ts"]
+  "include": ["src", "dev", "tsup.config.ts"]
 }

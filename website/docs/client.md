@@ -13,19 +13,19 @@ import { AgentChat } from "sideagent";
 />
 ```
 
-## sideagent Cloud
+## sideagent admin
 
-With an agent hosted on sideagent Cloud, pass its publishable key instead of `endpoint`. The key names the agent and its host, so the chat derives the URL (`https://<host>/v1/agents/<agentId>`) and sends the key in the `x-sideagent-key` header on every request. The key is public: it is safe in the browser and proves nothing on its own.
+With an agent hosted on sideagent admin, pass its publishable key instead of `endpoint`. The key names the agent and its host, so the chat derives the URL (`https://<host>/v1/agents/<agentId>`) and sends the key in the `x-sideagent-key` header on every request. The key is public: it is safe in the browser and proves nothing on its own.
 
 ```tsx
 <AgentChat publishableKey="pk_…" />
 ```
 
-Pass `endpoint` as well to send the requests somewhere else, such as a proxy in front of sideagent Cloud. A malformed key, or neither prop, throws during render. `parsePublishableKey` and `publishableEndpoint` are exported from `sideagent/keys`.
+Pass `endpoint` as well to send the requests somewhere else, such as a proxy in front of sideagent admin. A malformed key, or neither prop, throws during render. `parsePublishableKey` and `publishableEndpoint` are exported from `sideagent/keys`.
 
-The panel title is the agent's name from the Cloud dashboard. The chat asks for it once with `{ "action": "agent.info" }` and shows "Assistant" until it answers, or if the request fails. Pass `title` to use your own text. Without a `publishableKey` the title is "Assistant" and nothing is asked.
+The panel title is the agent's name from the admin dashboard. The chat asks for it once with `{ "action": "agent.info" }` and shows "Assistant" until it answers, or if the request fails. Pass `title` to use your own text. Without a `publishableKey` the title is "Assistant" and nothing is asked.
 
-The same answer can carry `"available": false`, when the agent would refuse every message because a usage cap is reached (sideagent Cloud does this for anonymous visitors). The chat then renders nothing, launcher included, until the next page load.
+The same answer can carry `"available": false`, when the agent would refuse every message because a usage cap is reached (sideagent admin does this for anonymous visitors). The chat then renders nothing, launcher included, until the next page load.
 
 Under `AgentProvider`, `useAgent().available` is `false` too, so hide your own "ask" button.
 

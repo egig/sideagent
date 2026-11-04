@@ -1,6 +1,6 @@
-// Publishable keys for sideagent Cloud: `pk_` + base64url of `<host>$<agentId>`.
+// Publishable keys for sideagent admin: `pk_` + base64url of `<host>$<agentId>`.
 // A publishable key names an agent and the host that serves it. It is public and proves nothing.
-// No dependencies, so the browser client and the Cloud's Worker share this one definition.
+// No dependencies, so the browser client and the admin's Worker share this one definition.
 
 export interface PublishableKeyParts {
   /** host[:port], no scheme. */
