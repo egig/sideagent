@@ -183,7 +183,7 @@ A custom `checkpointer` (D1, Durable Object storage) is a `BaseCheckpointSaver` 
 
 ## Admin (`sideagent/admin`)
 
-A server with a dashboard (one shared workspace by default; multi-tenant through a `scope` hook): sign in, create agents, add knowledge, pick a model, go live, read audit logs and traces. Postgres with pgvector first; the database, sign-in and runtime are all options. `pnpm dev` runs it on PGlite, dashboard with hot reload on http://localhost:5174. See [Admin](./website/docs/admin.md).
+A server with a dashboard (one shared workspace by default; multi-tenant through a `scope` hook): sign in, create agents, add knowledge, pick a model, go live, read audit logs and traces. Postgres with pgvector first; the database, sign-in and runtime are all options. `pnpm dev` runs it on PGlite, dashboard with hot reload on http://localhost:5174. See [Admin](./website/docs/admin.md), or [Self-hosting](./website/docs/self-hosting.md) for an end-to-end guide.
 
 ## For AI agents
 

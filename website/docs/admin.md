@@ -44,6 +44,8 @@ const ui = serveAdminUi({ apiBase: "/api" });
 
 `pnpm dev` runs the API on :8788 and the dashboard with hot reload on http://localhost:5174, on PGlite (Postgres in process) unless `DATABASE_URL` is set; sign-in links print to the console. `pnpm build:ui && pnpm admin:start` serves the built dashboard and API together on :8788. With Docker: `docker compose up` starts Postgres with pgvector and the admin on http://localhost:8788 (`ADMIN_PORT`, `ADMIN_PUBLIC_URL`). Put `BETTER_AUTH_SECRET` and `CONFIG_KEK` in `.env`, or it uses throwaway ones that die with the container. Sign-in links appear in `docker compose logs -f admin`. Install the peers you use: `drizzle-orm`, `hono`, `jose`, and `better-auth` for the bundled sign-in.
 
+For a start-to-finish walkthrough (secrets, HTTPS, first agent, embedding), see [Self-hosting](./self-hosting.md).
+
 ## What it serves
 
 | Path | What |
