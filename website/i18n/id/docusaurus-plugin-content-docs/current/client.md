@@ -1,6 +1,6 @@
 ---
 sidebar_position: 3
-title: Klien
+title: Client
 ---
 
 ```tsx
@@ -13,27 +13,27 @@ import { AgentChat } from "sideagent";
 />
 ```
 
-Publishable key menyebutkan agen dan server yang menjalankannya. Chat menurunkan URL-nya (`https://<host>/v1/agents/<agentId>`) dan mengirim kunci di header `x-sideagent-key` pada setiap permintaan. Kunci ini publik: aman berada di peramban dan tidak membuktikan apa pun dengan sendirinya. Kunci yang formatnya salah akan melempar galat saat render.
+Publishable key menyebutkan agent dan server yang menjalankannya. Chat menurunkan URL-nya (`https://<host>/v1/agents/<agentId>`) dan mengirim key di header `x-sideagent-key` pada setiap request. Key ini publik: aman berada di browser dan tidak membuktikan apa pun dengan sendirinya. Key yang formatnya salah akan melempar error saat render.
 
-Judul panel adalah nama agen dari dasbor. Berikan `title` untuk memakai teks Anda sendiri.
+Judul panel adalah nama agent dari dashboard. Berikan `title` untuk memakai teks Anda sendiri.
 
-Ketika agen akan menolak setiap pesan karena batas penggunaan tercapai (pengunjung anonim), chat tidak merender apa pun, termasuk tombol peluncurnya, hingga halaman dimuat ulang. Di bawah `AgentProvider`, `useAgent().available` juga bernilai `false`, jadi sembunyikan tombol "tanya" milik Anda sendiri.
+Ketika agent akan menolak setiap pesan karena batas penggunaan tercapai (pengunjung anonim), chat tidak merender apa pun, termasuk tombol launcher-nya, hingga halaman dimuat ulang. Di bawah `AgentProvider`, `useAgent().available` juga bernilai `false`, jadi sembunyikan tombol "tanya" milik Anda sendiri.
 
-## Pengguna yang sudah masuk {#signed-in-users}
+## Pengguna yang sudah sign-in {#signed-in-users}
 
-Berikan `getToken`, yang dipanggil chat sebelum setiap permintaan, sehingga token yang kedaluwarsa selalu diambil ulang. Kembalikan `null` untuk pengunjung yang belum masuk. Pengaturan **User auth** agen di dasbor menentukan cara server memeriksa token (JWT terhadap JWKS Anda, atau URL userinfo Anda). Jika `getToken` melempar galat, permintaan tidak dikirim dan chat menampilkan galat.
+Berikan `getToken`, yang dipanggil chat sebelum setiap request, sehingga token yang kedaluwarsa selalu diambil ulang. Kembalikan `null` untuk pengunjung yang belum sign-in. Pengaturan **User auth** agent di dashboard menentukan cara server memeriksa token (JWT terhadap JWKS Anda, atau URL userinfo Anda). Jika `getToken` melempar error, request tidak dikirim dan chat menampilkan error.
 
-Berikan `storageKey` (ID pengguna) agar percakapan terakhir yang diingat chat di `localStorage` menjadi milik pengguna tersebut; di peramban bersama, pengguna lain memulai dari percakapannya sendiri.
+Berikan `storageKey` (ID pengguna) agar percakapan terakhir yang diingat chat di `localStorage` menjadi milik pengguna tersebut; di browser bersama, pengguna lain memulai dari percakapannya sendiri.
 
 ```tsx
 <AgentChat publishableKey="pk_…" getToken={() => auth.getAccessToken()} storageKey={user.id} />
 ```
 
-## Tata letak {#layout}
+## Layout {#layout}
 
 Jika koneksi terputus saat jawaban sedang dialirkan, chat menampilkan "The connection was interrupted" alih-alih menyajikan jawaban parsial seolah-olah lengkap. Jika server tidak lagi memiliki percakapan tersebut (restart, kedaluwarsa), chat memulai percakapan baru dengan pesan Anda berikutnya.
 
-Sembunyikan peluncur mengambang dengan `launcher={false}` dan buka panel dari tombol Anda sendiri melalui `useAgent().setOpen`. Matikan riwayat chat dengan `history={false}`. Sembunyikan tombol New chat dengan `newChatButton={false}`. Tambahkan tombol Anda sendiri ke header panel dengan `headerActions`.
+Sembunyikan floating launcher dengan `launcher={false}` dan buka panel dari tombol Anda sendiri melalui `useAgent().setOpen`. Matikan chat history dengan `history={false}`. Sembunyikan tombol New chat dengan `newChatButton={false}`. Tambahkan tombol Anda sendiri ke header panel dengan `headerActions`.
 
 ### Sidebar yang menempel {#docked-sidebar}
 
@@ -51,9 +51,9 @@ import { AgentProvider } from "sideagent";
 
 ## Layar kecil {#small-screens}
 
-Pada lebar 640px atau kurang, panel terbuka layar penuh di setiap mode, dan pengalih tata letak serta pegangan pengubah ukuran disembunyikan. Panel mematuhi safe-area inset ketika halaman Anda mengatur `viewport-fit=cover`. Halaman memerlukan `<meta name="viewport" content="width=device-width, initial-scale=1">`.
+Pada lebar 640px atau kurang, panel terbuka layar penuh di setiap mode, dan layout switcher serta resize handle disembunyikan. Panel mematuhi safe-area inset ketika halaman Anda mengatur `viewport-fit=cover`. Halaman memerlukan `<meta name="viewport" content="width=device-width, initial-scale=1">`.
 
 ## Batasan {#limits}
 
 - Tanpa `AgentProvider`, `mode="sidebar"` menutupi halaman alih-alih menempel.
-- Lebar sidebar diingat di peramban. Lebar ini tidak dibagikan antarperangkat.
+- Lebar sidebar diingat di browser. Lebar ini tidak dibagikan antarperangkat.

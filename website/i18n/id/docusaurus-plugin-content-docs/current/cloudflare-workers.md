@@ -31,13 +31,13 @@ export default {
 };
 ```
 
-Sajikan dasbor dari aset statis Workers: unggah `dist/admin-ui` (dibangun oleh `pnpm build` di repositori sideagent, dan disertakan dalam paket) dan biarkan API berjalan di origin yang sama. Proses masuk lewat email memerlukan `auth.sendMagicLink`.
+Sajikan dashboard dari static asset Workers: upload `dist/admin-ui` (dibangun oleh `pnpm build` di repository sideagent, dan disertakan dalam paket) dan biarkan API berjalan di origin yang sama. Sign-in lewat email memerlukan `auth.sendMagicLink`.
 
-## Workers AI sebagai model bawaan {#workers-ai-as-the-built-in-model}
+## Workers AI sebagai built-in model {#workers-ai-as-the-built-in-model}
 
 `env.AI` adalah binding, bukan endpoint HTTP, sehingga `sideagent/workers-ai` mengadaptasinya menjadi model chat LangChain, embedding, dan reranker opsional. Adaptor ini menerima binding secara struktural (tidak memerlukan `@cloudflare/workers-types`) dan membaca keluaran gaya Responses dari gpt-oss, `choices[0].message` gaya chat, serta `{ response }`.
 
-`builtinModel` adalah model yang Anda tawarkan kepada setiap pemilik di samping endpoint mereka sendiri. Anda yang menghitung pemakaiannya: `consume` menghitung satu pesan sebelum setiap giliran baru dan harus atomik, sedangkan `usage` membaca hitungan tanpa mengubahnya. Resep di bawah memakai Workers AI untuk chat dan embedding, serta satu Durable Object per pemilik sebagai penghitung, dengan satu hitungan per bulan UTC. Salin ke Worker Anda:
+`builtinModel` adalah model yang Anda tawarkan kepada setiap pemilik di samping endpoint mereka sendiri. Anda yang menghitung pemakaiannya: `consume` menghitung satu pesan sebelum setiap turn baru dan harus atomik, sedangkan `usage` membaca hitungan tanpa mengubahnya. Resep di bawah memakai Workers AI untuk chat dan embedding, serta satu Durable Object per pemilik sebagai meter, dengan satu hitungan per bulan UTC. Salin ke Worker Anda:
 
 ```ts title="src/builtin.ts"
 import type { BuiltinModel } from "sideagent/server";
@@ -115,9 +115,9 @@ export class BuiltinMeter {
 }
 ```
 
-`embed` mengindeks pengetahuan dan harus mengembalikan vektor `Float32Array`, sehingga resep ini mengonversi keluaran embedding. Embedding kueri (`models().embeddings`) dan pengindeksan memakai model yang sama, sebagaimana mestinya. Mengganti `EMBEDDING_MODEL` di kemudian hari tidak ditangani otomatis: setiap agen yang memakai model bawaan menjawab `knowledge_stale` hingga pemiliknya mengindeks ulang pengetahuannya.
+`embed` mengindeks Knowledge Base dan harus mengembalikan vektor `Float32Array`, sehingga resep ini mengonversi keluaran embedding. Query embedding (`models().embeddings`) dan pengindeksan memakai model yang sama, sebagaimana mestinya. Mengganti `EMBEDDING_MODEL` di kemudian hari tidak ditangani otomatis: setiap agent yang memakai built-in model menjawab `knowledge_stale` hingga pemiliknya mengindeks ulang Knowledge Base-nya.
 
-Ikat model dan penghitung di `wrangler.jsonc`:
+Ikat model dan meter di `wrangler.jsonc`:
 
 ```jsonc
 {
@@ -127,7 +127,7 @@ Ikat model dan penghitung di `wrangler.jsonc`:
 }
 ```
 
-Ekspor kelas penghitung dari entri Worker dan berikan model ke `createServer`:
+Ekspor kelas meter dari entri Worker dan berikan model ke `createServer`:
 
 ```ts
 import { workersAiBuiltin } from "./builtin";
@@ -140,4 +140,4 @@ server ??= createServer({
 });
 ```
 
-Agen baru dimulai dengan model bawaan, sehingga pemilik dapat mencoba agen tanpa kunci API. Ketika seorang pemilik mencapai batas, pesan baru mendapat `limit_reached` (HTTP 429) hingga bulan UTC berikutnya; persetujuan dan pembacaan riwayat tidak dihitung, dan agen yang memakai endpoint milik pemilik sendiri tidak pernah dihitung.
+Agent baru dimulai dengan built-in model, sehingga pemilik dapat mencoba agent tanpa API key. Ketika seorang pemilik mencapai batas, pesan baru mendapat `limit_reached` (HTTP 429) hingga bulan UTC berikutnya; persetujuan dan pembacaan history tidak dihitung, dan agent yang memakai endpoint milik pemilik sendiri tidak pernah dihitung.
