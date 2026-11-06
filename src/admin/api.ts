@@ -74,6 +74,15 @@ export interface AgentDetail {
   readiness: ReadinessItem[];
 }
 
+/** One half of POST /api/agents/:id/llm/check. `reason` is our own code (llm_auth, llm_model_not_found, ...), never the provider's words. */
+export type LlmCheckPart = { ok: true } | { ok: false; reason: string };
+
+/** POST /api/agents/:id/llm/check: one tiny chat call and one embedding call on the saved settings. */
+export interface LlmCheck {
+  chat: LlmCheckPart;
+  embeddings: LlmCheckPart;
+}
+
 export interface BuiltinInfo {
   model: string;
   embeddingModel: string;
@@ -108,6 +117,29 @@ export interface AuditEvent {
   durationMs: number | null;
   /** The trace of this turn, when it was recorded and is still kept (D-35). */
   traceId: string | null;
+}
+
+/** Counts from the audit log over one window. Turns are the public endpoint's own; preview turns are left out. */
+export interface UsageWindow {
+  /** Chat turns on the public endpoint, whatever their result. */
+  turns: number;
+  ok: number;
+  errors: number;
+  /** Requests refused (origin, key, end-user token, bot challenge), on any event. */
+  refused: number;
+  /** Requests over a cap. */
+  limited: number;
+  /** Median duration of the successful turns, in ms; null without any. */
+  medianMs: number | null;
+}
+
+export type StatsRange = "24h" | "7d";
+
+/** GET /api/agents/:id/stats: this window and the one before it, for the Overview. */
+export interface AgentStats {
+  range: StatsRange;
+  current: UsageWindow;
+  previous: UsageWindow;
 }
 
 export interface AuditPage {

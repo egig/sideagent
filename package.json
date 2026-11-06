@@ -41,9 +41,10 @@
   "scripts": {
     "build": "tsup && pnpm build:ui",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit && tsc --noEmit -p admin-ui",
-    "format": "prettier --write src admin-ui",
-    "format:check": "prettier --check src admin-ui",
+    "format": "prettier --write src admin-ui e2e playwright.config.ts",
+    "format:check": "prettier --check src admin-ui e2e playwright.config.ts",
     "dev": "tsx watch dev/server.ts",
     "admin:start": "NODE_ENV=production tsx src/cli.ts",
     "eval:skill": "cd skills/sideagent && claude plugin eval . --scaffold --allow-tools Write Edit --trust-plugin --no-publish",
@@ -69,8 +70,8 @@
     "drizzle-orm": "^0.45.4",
     "hono": ">=4.6",
     "jose": "^6.2.15",
-    "react": ">=18",
-    "pg": ">=8"
+    "pg": ">=8",
+    "react": ">=18"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -94,6 +95,7 @@
   },
   "devDependencies": {
     "@base-ui/react": "^1.9.0",
+    "@playwright/test": "1.63.0",
     "@tailwindcss/vite": "^4.3.4",
     "@tanstack/react-query": "^5.105.3",
     "@tanstack/react-router": "^1.170.46",

@@ -1,5 +1,6 @@
 // Which model an agent embeds and answers with: the integrator's own OpenAI-compatible endpoint (D-18, D-30).
 import { open } from "./security/crypto.js";
+import { BlockedUrlError } from "./security/url-guard.js";
 import type { AdminDeps } from "./deps.js";
 import { embedder, KnowledgeError, type Embed } from "./knowledge/ingest.js";
 import type { AgentRecord } from "./store/types.js";
@@ -47,4 +48,17 @@ export async function anonAvailable(
   if (!agent.builtin || !deps.builtin) return true;
   const { used, limit } = await deps.builtin.usage(agent.ownerId, now);
   return used < limit;
+}
+
+/** A coarse reason for the owner. Reads only an HTTP status and our own error classes, never the provider's words. */
+export function llmErrorCode(e: unknown): string {
+  if (e instanceof BlockedUrlError) return "llm_unreachable";
+  const status = String(
+    (e as { status?: number } | null)?.status ?? /HTTP (\d{3})/.exec(e instanceof Error ? e.message : "")?.[1],
+  );
+  if (status === "401" || status === "403") return "llm_auth";
+  if (status === "404") return "llm_model_not_found";
+  if (status === "429") return "llm_rate_limited";
+  if (e instanceof TypeError || (e instanceof Error && e.name === "TimeoutError")) return "llm_unreachable";
+  return "llm_error";
 }

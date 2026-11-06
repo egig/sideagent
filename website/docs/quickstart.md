@@ -13,7 +13,7 @@ It starts on http://localhost:8788 with an in-memory database (data is lost on e
 
 ## 2. Create an agent
 
-Open the dashboard, choose **New agent**, then follow the Overview page: set the model and key, add knowledge, list the origins that may embed the chat, and switch the agent to **Active**. Copy its publishable key (`pk_…`). It is public.
+Open the dashboard, choose **New agent**, then follow its **Setup** page: connect and test the model, add knowledge, try it in the preview, list the origins that may embed the chat, and activate it. Copy its publishable key (`pk_…`). It is public.
 
 ## 3. Add the chat
 

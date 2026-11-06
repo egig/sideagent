@@ -4,6 +4,8 @@ import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import type {
   Agent,
   AgentDetail,
+  AgentStats,
+  StatsRange,
   AgentSummary,
   AuditPage,
   AuditRange,
@@ -11,6 +13,7 @@ import type {
   AuthConfig,
   AuthMode,
   KnowledgeSource,
+  LlmCheck,
   Trace,
   TraceLevel,
   TracePage,
@@ -61,6 +64,13 @@ export const auditQuery = (id: string, f: AuditFilters) =>
     placeholderData: keepPreviousData,
   });
 
+export const statsQuery = (id: string, range: StatsRange) =>
+  queryOptions({
+    queryKey: ["agents", id, "stats", range],
+    queryFn: () => api<AgentStats>(path(id, `/stats?range=${range}`)),
+    placeholderData: keepPreviousData,
+  });
+
 export const tracesQuery = (id: string, page: number, status: string) =>
   queryOptions({
     queryKey: ["agents", id, "traces", page, status],
@@ -93,6 +103,7 @@ export const updateLlm = (
     | { provider: "builtin" }
     | { provider: "custom"; baseUrl: string; model: string; embeddingModel: string; apiKey?: string },
 ) => send("PUT", path(id, "/llm"), input);
+export const checkLlm = (id: string) => send<LlmCheck>("POST", path(id, "/llm/check"));
 export const addKnowledge = (
   id: string,
   input: { kind: "url"; url: string; title?: string } | { kind: "text"; title: string; content: string },

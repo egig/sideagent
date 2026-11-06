@@ -1,5 +1,5 @@
-import { and, count, desc, eq, gte, inArray, lt, or, type SQL } from "drizzle-orm";
-import type { AuditPage, Trace, TracePage } from "../../api.js";
+import { and, count, desc, eq, gte, inArray, lt, or, sql, type SQL } from "drizzle-orm";
+import type { AuditPage, Trace, TracePage, UsageWindow } from "../../api.js";
 import {
   AUDIT_PAGE_SIZE,
   AUDIT_RANGES,
@@ -106,6 +106,44 @@ export const auditStore = (db: PgDb): AdminStore["audit"] => ({
         durationMs: r.durationMs,
         traceId: traced.has(r.id) ? r.id : null,
       })),
+    };
+  },
+
+  async stats(agentId, range, now = new Date()) {
+    const e = t.auditEvent;
+    const span = AUDIT_RANGES[range];
+    const turn = sql`${e.event} = 'chat.turn'`;
+    const publicEvent = sql`${e.event} not like 'preview.%'`;
+    const window = async (from: Date, to: Date): Promise<UsageWindow> => {
+      const [r] = await db
+        .select({
+          turns: sql<string>`count(*) filter (where ${turn})`,
+          ok: sql<string>`count(*) filter (where ${turn} and ${e.result} = 'ok')`,
+          errors: sql<string>`count(*) filter (where ${turn} and ${e.result} = 'error')`,
+          refused: sql<string>`count(*) filter (where ${publicEvent} and ${e.result} = 'denied')`,
+          limited: sql<string>`count(*) filter (where ${publicEvent} and ${e.result} = 'limited')`,
+          medianMs: sql<
+            string | null
+          >`percentile_cont(0.5) within group (order by ${e.durationMs}) filter (where ${turn} and ${e.result} = 'ok' and ${e.durationMs} is not null)`,
+        })
+        .from(e)
+        .where(and(eq(e.agentId, agentId), gte(e.at, from), lt(e.at, to)));
+      return {
+        turns: Number(r?.turns ?? 0),
+        ok: Number(r?.ok ?? 0),
+        errors: Number(r?.errors ?? 0),
+        refused: Number(r?.refused ?? 0),
+        limited: Number(r?.limited ?? 0),
+        medianMs: r?.medianMs == null ? null : Math.round(Number(r.medianMs)),
+      };
+    };
+    // Windows are [start, end): one ms past `now`, so an event recorded at `now` counts in the current one.
+    const end = new Date(+now + 1);
+    const start = new Date(+end - span);
+    return {
+      range,
+      current: await window(start, end),
+      previous: await window(new Date(+start - span), start),
     };
   },
 

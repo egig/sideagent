@@ -151,6 +151,39 @@ export function runStoreContract(name: string, open: () => Promise<{ store: Admi
         expect((await store.audit.listEvents("agt_a", { range: "7d", page: 1 }, now)).total).toBe(1);
       });
 
+      it("counts this window and the one before it, leaving previews out", async () => {
+        await store.agents.create(agentRecord({ id: "agt_b" }));
+        const at = (iso: string) => new Date(iso);
+        const ev = (input: Partial<Parameters<typeof store.audit.recordEvent>[0]>, when: string) =>
+          store.audit.recordEvent({ agentId: "agt_a", event: "chat.turn", result: "ok", ...input }, at(when));
+        await ev({ durationMs: 100 }, "2026-03-15T11:00:00Z");
+        await ev({ durationMs: 300 }, "2026-03-14T00:00:00Z");
+        await ev({ durationMs: 200 }, "2026-03-12T00:00:00Z");
+        await ev({ result: "error", reason: "llm_error", durationMs: 9000 }, "2026-03-13T00:00:00Z");
+        await ev({ event: "request", result: "denied", reason: "origin_not_allowed" }, "2026-03-13T00:00:00Z");
+        await ev({ result: "limited", reason: "anon_daily_cap_reached" }, "2026-03-13T00:00:00Z");
+        await ev({ event: "preview.turn", durationMs: 1 }, "2026-03-15T11:00:00Z");
+        await ev({ event: "preview.request", result: "denied" }, "2026-03-15T11:00:00Z");
+        await ev({ durationMs: 50 }, "2026-03-05T00:00:00Z"); // previous week
+        await ev({ durationMs: 50 }, "2026-02-20T00:00:00Z"); // older than both windows
+        await store.audit.recordEvent({ agentId: "agt_b", event: "chat.turn", result: "ok" }, now);
+        const week = await store.audit.stats("agt_a", "7d", now);
+        expect(week).toEqual({
+          range: "7d",
+          current: { turns: 5, ok: 3, errors: 1, refused: 1, limited: 1, medianMs: 200 },
+          previous: { turns: 1, ok: 1, errors: 0, refused: 0, limited: 0, medianMs: 50 },
+        });
+        expect((await store.audit.stats("agt_a", "24h", now)).current).toEqual({
+          turns: 1,
+          ok: 1,
+          errors: 0,
+          refused: 0,
+          limited: 0,
+          medianMs: 100,
+        });
+        expect((await store.audit.stats("agt_c", "7d", now)).current).toMatchObject({ turns: 0, medianMs: null });
+      });
+
       it("keeps traces by level and hides expired ones", async () => {
         await store.audit.recordTrace("agt_a", trace("2026-03-15T11:00:00Z"), "fresh", now);
         await store.audit.recordTrace("agt_a", trace("2026-03-07T00:00:00Z"), "old-meta", now);

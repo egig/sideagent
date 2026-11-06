@@ -6,6 +6,7 @@ import { Page } from "~/app/ui";
 import { useT } from "~/i18n";
 import { General } from "~/app/settings/general";
 import { Llm } from "~/app/settings/llm";
+import { LlmCheckPanel } from "~/app/settings/llm-check";
 import { UserAuth } from "~/app/settings/user-auth";
 import { DangerZone } from "~/app/settings/danger-zone";
 
@@ -42,7 +43,18 @@ function Settings() {
       </nav>
       {/* key: a different agent starts the form fresh. */}
       {tab === "general" && <General key={agent.id} agent={agent} />}
-      {tab === "llm" && <Llm key={agent.id} detail={data} />}
+      {tab === "llm" && (
+        <>
+          <Llm key={agent.id} detail={data} />
+          <div className="card p-5">
+            <LlmCheckPanel
+              key={agent.id}
+              agentId={agent.id}
+              disabled={!data.readiness.find((r) => r.id === "llm")?.ok}
+            />
+          </div>
+        </>
+      )}
       {tab === "auth" && <UserAuth key={agent.id} agent={agent} />}
       {tab === "danger" && <DangerZone agent={agent} />}
     </Page>

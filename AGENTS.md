@@ -6,6 +6,7 @@ Library that embeds a docs chat agent in an app, in two pieces: a server (`sidea
 
 - `pnpm install`
 - `pnpm test` — vitest (uses `src/testing/mock-llm.ts`, no API key needed)
+- `pnpm test:e2e` — Playwright against `e2e/support/server.ts` (in-memory database, faked DNS and fetch, dashboard from Vite); specs are `e2e/specs/**/*.spec.ts`, page objects in `e2e/pages/`
 - `pnpm typecheck`
 - `pnpm format` / `pnpm format:check` — Prettier (width 120) over `src/` and `admin-ui/`
 - `pnpm build` — tsup to `dist/`
@@ -28,7 +29,8 @@ Public entry points are only: `sideagent` (`src/index.ts`), `sideagent/server` (
   - `store/types.ts` — `AdminStore`, the only thing handlers and the data plane talk to; `store/pg/` — Postgres + pgvector (Drizzle schema, SQL migrations, one file per area: `agents`, `usage`, `audit`, `threads`, `knowledge`, composed in `store.ts`); `store/contract.ts` — behaviour every store must have
   - `control/` — dashboard API; `data/` — `/v1/agents/:id` (request flow in `router.ts`; `access.ts` origin, key and end-user checks; `quota.ts` caps; `audit.ts` audit row; `runtime.ts` + `provider.ts` the library runtime; `adapters/` store-to-LangChain/LangGraph glue); `auth/` — bundled better-auth sign-in
   - `config.ts`, `retention.ts`, `knowledge/` — validation, retention constants, ingestion; `security/` — sealed secrets (`crypto.ts`), SSRF guard with DNS (`url-guard.ts`, `guarded-fetch.ts`), bot challenge (`challenge.ts`)
-- `admin-ui/` — the dashboard SPA (Vite, built to `dist/admin-ui`; its own `tsconfig.json`)
+- `admin-ui/` — the dashboard SPA (Vite, built to `dist/admin-ui`; its own `tsconfig.json`). New agents open `routes/_authed/agents/$agentId/setup.tsx`, the guided setup; its progress comes from the server (`app/setup/progress.ts`: readiness plus audit events), and its steps reuse the same forms as Knowledge and Settings
+- `e2e/` — Playwright tests of the dashboard (`specs/**/*.spec.ts`, `pages/`) and the server (`support/`) they run against
 - `src/workers-ai/` — Cloudflare Workers AI: `chat.ts` chat model, `retrieval.ts` embeddings and reranker
 - `src/protocol.ts` — wire types shared by both sides
 - `src/testing/` — mock LLM, exported as `sideagent/testing`
@@ -52,7 +54,7 @@ Tests sit next to the code they cover (`*.test.ts`). `e2e.test.ts` drives the fu
 
   | Admin: another scope's agent (the `scope` hook; one shared workspace by default) looks like a missing one on every dashboard route | `admin/control/context.ts`, `store/pg/agents.ts` (`getOwned`, `update`, `remove`) | `admin/control/agents.test.ts` "hides another integrator's agent", "groups users by the host's scope hook", `store/contract.ts` "treats another owner's agent as missing" |
   | Admin: writes need the dashboard's own origin, reads need a session | `admin/app.ts` | `agents.test.ts` "requires a session on every route", "refuses writes from another origin" |
-  | Admin: LLM keys are sealed and never in responses, logs or rows | `admin/security/crypto.ts`, `control/llm.ts` | `agents.test.ts` "seals the key", "never leaks a stack trace or secret" |
+  | Admin: LLM keys are sealed and never in responses, logs or rows | `admin/security/crypto.ts`, `control/llm.ts` | `agents.test.ts` "seals the key", "never leaks a stack trace or secret", "reports our own reason codes, never the provider's words or the key" |
   | Admin: provider errors never reach end users | `admin/data/router.ts` | `data/router.test.ts` "never shows provider errors to the client" |
   | Admin: a preview is the owner's alone and the public route cannot start one | `admin/data/router.ts` (`__preview`) | `data/router.test.ts` "preview (D-31)" |
   | Admin: threads stay with their user | `store/pg/threads.ts` | `store/contract.ts` `runThreadContract` |
@@ -64,7 +66,7 @@ Tests sit next to the code they cover (`*.test.ts`). `e2e.test.ts` drives the fu
 - `src/client/` must not import server code (enforced by `client-isolation.test.ts`).
 - Update `website/docs/` and README when public API changes.
 - `src/admin/` is new code that was moved from the hosted product, so comments cite its decision numbers (`D-12`); keep them. Schema changes to Postgres append a step to `store/pg/migrations.ts`, never edit a shipped one, and update `store/pg/schema.ts` to match (the contract tests catch drift).
-- Run `pnpm test && pnpm typecheck && pnpm format:check` before finishing.
+- Run `pnpm test && pnpm typecheck && pnpm format:check` before finishing, and `pnpm test:e2e` after dashboard changes.
 
 ## Skill evals
 

@@ -1,8 +1,9 @@
 import { Link, Outlet, createFileRoute, redirect, useNavigate, useParams } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AgentProvider } from "sideagent";
 import { config } from "~/config";
 import { authClient, sessionQuery } from "~/app/auth";
+import { agentsQuery } from "~/app/api/agents";
 import { AgentSwitcher } from "~/app/switcher";
 import { Brand, Icon, UserMenu } from "~/app/ui";
 import { useLocale, useT } from "~/i18n";
@@ -24,6 +25,9 @@ function Shell() {
   const navigate = useNavigate();
   const t = useT();
   const locale = useLocale();
+  // Setup stays in the menu until the agent is active; after that it is reached from the Overview.
+  const { data: agents } = useQuery(agentsQuery);
+  const inSetup = agents?.find((a) => a.id === agentId)?.status === "inactive";
 
   async function signOut() {
     await authClient.signOut();
@@ -41,6 +45,12 @@ function Shell() {
         <AgentSwitcher currentId={agentId} />
         {agentId && (
           <nav aria-label={t.shell.agentNav} className="flex flex-col gap-0.5">
+            {inSetup && (
+              <Link to="/agents/$agentId/setup" params={{ agentId }} className="nav-item">
+                <Icon name="list" />
+                {t.shell.setup}
+              </Link>
+            )}
             <Link to="/agents/$agentId" params={{ agentId }} className="nav-item" activeOptions={{ exact: true }}>
               <Icon name="grid" />
               {t.shell.overview}

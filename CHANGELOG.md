@@ -13,6 +13,10 @@ The interface is two things now: a React component that takes a publishable key,
 - **Removed.** `createAgent` and the Hono, Next and Express adapters, `sideagent/admin` and its subpaths (`/pg`, `/auth`, `/ui`, `/node`, `/contract`), `sideagent/protocol`, `sideagent/keys`. Knowledge, the model and the agent's settings are set in the dashboard. `sideagent/workers-ai` stays, to build `builtinModel` on Cloudflare; `sideagent/testing` stays.
 - `@hono/node-server` is a dependency; `pg` is an optional peer; PGlite is optional (`npx sideagent` without `DATABASE_URL`).
 - The skill and its evals teach the new interface.
+- **Dashboard setup.** A new agent opens a guided **Setup** page: connect and test the model, add knowledge, try it in the preview, deploy (origins, user auth, embed code), then activate and wait for the first real request. Steps unlock in that order, and progress is read from the server. Instructions moved to the Knowledge page; Settings, General keeps the name and allowed origins. The Overview shows setup progress while inactive and what needs attention once live, and its install line no longer names an old version.
+- New `POST /api/agents/:id/llm/check`: one tiny chat call and one embedding call on the saved settings, through the SSRF guard, answering with our own reason codes only. Saving a new API key retries sources that failed to index.
+- `pnpm test:e2e`: Playwright tests of the dashboard against an in-memory server with faked DNS and fetch, also run in CI (`.github/workflows/e2e.yml`).
+- **Overview numbers.** A live agent's Overview shows chat turns, the share answered without error, the median reply time and refused requests for the last 24 hours or 7 days, each against the window before. New `GET /api/agents/:id/stats?range=24h|7d`. `AdminStore` gains `audit.stats(agentId, range, now?)` (in the contract tests): a custom store must implement it. Preview events are not counted.
 
 ### Earlier, unreleased
 

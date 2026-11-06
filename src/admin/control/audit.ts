@@ -28,6 +28,14 @@ export function auditRoutes(deps: AdminDeps) {
     );
   });
 
+  // The Overview's numbers: this window and the one before it.
+  app.get("/:id/stats", async (c) => {
+    const row = await loadRow(c, deps);
+    if (!row) return c.json(notFound, 404);
+    const range = c.req.query("range") === "24h" ? "24h" : "7d";
+    return c.json(await deps.store.audit.stats(row.id, range));
+  });
+
   // How much of each turn is recorded for the trace view (D-35). Takes effect on the next turn.
   app.put("/:id/tracing", async (c) => {
     const body = await parseBody(c, tracingInput);

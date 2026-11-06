@@ -6,17 +6,5 @@ export const PREVIEW_PREFIX = "preview:";
 export const previewUserId = (ownerId: string) => `${PREVIEW_PREFIX}${ownerId}`;
 export const isPreviewUser = (userId: string) => userId.startsWith(PREVIEW_PREFIX);
 
-import { BlockedUrlError } from "../security/url-guard.js";
-
-/** A coarse reason for the owner. Reads only an HTTP status and our own error classes, never the provider's words. */
-export function llmErrorCode(e: unknown): string {
-  if (e instanceof BlockedUrlError) return "llm_unreachable";
-  const status = String(
-    (e as { status?: number } | null)?.status ?? /HTTP (\d{3})/.exec(e instanceof Error ? e.message : "")?.[1],
-  );
-  if (status === "401" || status === "403") return "llm_auth";
-  if (status === "404") return "llm_model_not_found";
-  if (status === "429") return "llm_rate_limited";
-  if (e instanceof TypeError || (e instanceof Error && e.name === "TimeoutError")) return "llm_unreachable";
-  return "llm_error";
-}
+// The coarse reason lives beside the other LLM helpers, so the dashboard's connection check words failures the same way.
+export { llmErrorCode } from "../llm.js";

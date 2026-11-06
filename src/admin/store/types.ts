@@ -2,7 +2,7 @@
 // implementation of it: Postgres first (store/pg), SQLite and others later. Every method is async. Nothing here
 // returns a driver type.
 import type { AgentConfig } from "../config.js";
-import type { AuditPage, KnowledgeSource, SourceStatus, Trace, TracePage } from "../api.js";
+import type { AgentStats, AuditPage, KnowledgeSource, SourceStatus, StatsRange, Trace, TracePage } from "../api.js";
 
 export interface AgentRecord {
   id: string;
@@ -82,6 +82,8 @@ export interface AuditStorage {
   /** Never throws into the request: a failed write is logged and dropped. */
   recordEvent(input: AuditInput, now?: Date): Promise<void>;
   listEvents(agentId: string, query: AuditQuery, now?: Date): Promise<AuditPage>;
+  /** Counts over the range ending now and over the same length before it (see `UsageWindow`). Preview events are left out. */
+  stats(agentId: string, range: StatsRange, now?: Date): Promise<AgentStats>;
   /** Never throws into the turn. */
   recordTrace(agentId: string, trace: Omit<Trace, "id">, id?: string, now?: Date): Promise<void>;
   listTraces(agentId: string, query: TraceQuery, now?: Date): Promise<TracePage>;

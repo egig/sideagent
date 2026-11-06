@@ -21,7 +21,7 @@ function NewAgent() {
     onSuccess: async (detail) => {
       queryClient.setQueryData(agentQuery(detail.agent.id).queryKey, detail);
       await queryClient.invalidateQueries({ queryKey: agentsQuery.queryKey, exact: true });
-      await navigate({ to: "/agents/$agentId/knowledge", params: { agentId: detail.agent.id } });
+      await navigate({ to: "/agents/$agentId/setup", params: { agentId: detail.agent.id } });
     },
   });
 

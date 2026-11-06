@@ -1,13 +1,16 @@
 import { useState } from "react";
 import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import type { Agent, AgentDetail, ReadinessItem } from "@shared/api";
 import { agentQuery, agentsQuery, setActive } from "~/app/api/agents";
 import type { SettingsTab } from "~/app/settings/tabs";
 import { errorMessage } from "~/app/api/client";
-import { Alert, Callout, CodeBlock, CopyButton, Icon, Page } from "~/app/ui";
-import { useReadinessDetail } from "~/app/display";
+import { statsQuery } from "~/app/api/agents";
+import { Stats } from "~/app/overview/stats";
+import { Embed } from "~/app/embed";
+import { useSetupProgress } from "~/app/setup/progress";
+import { Alert, Callout, CopyButton, Icon, Page } from "~/app/ui";
 import { useT } from "~/i18n";
 
 export const Route = createFileRoute("/_authed/agents/$agentId/")({
@@ -63,7 +66,9 @@ function Overview() {
       }
     >
       {toggle.error && <Alert>{errorMessage(toggle.error, active ? t.deactivateFailed : t.activateFailed)}</Alert>}
-      {!active && <Callout>{t.inactiveNote}</Callout>}
+      {!active && <SetupCallout agentId={agentId} detail={data} />}
+      {active && <Attention agentId={agentId} failed={agent.knowledge.failed} />}
+      {active && <Stats agentId={agentId} />}
       <AlertDialog.Root open={needsSetup} onOpenChange={setNeedsSetup}>
         <AlertDialog.Portal>
           <AlertDialog.Backdrop className="fixed inset-0 z-40 bg-scrim" />
@@ -89,7 +94,6 @@ function Overview() {
         </AlertDialog.Portal>
       </AlertDialog.Root>
       <KeysAndEndpoint agent={agent} />
-      <Setup agentId={agentId} detail={data} />
       <Embed agent={agent} />
     </Page>
   );
@@ -121,7 +125,9 @@ function KeysAndEndpoint({ agent }: { agent: Agent }) {
           <CopyButton value={agent.endpoint} label={common.copyLabel(t.endpoint)} />
         </div>
         <p className="m-0 text-[13px] text-ink-muted">
-          {agent.auth?.mode === "anonymous" ? (
+          {!agent.auth ? (
+            t.noAuthHint
+          ) : agent.auth.mode === "anonymous" ? (
             t.anonymousHint
           ) : (
             <>
@@ -139,71 +145,54 @@ function KeysAndEndpoint({ agent }: { agent: Agent }) {
   );
 }
 
-function Setup({ agentId, detail }: { agentId: string; detail: AgentDetail }) {
+function SetupCallout({ agentId, detail }: { agentId: string; detail: AgentDetail }) {
   const t = useT().overview;
-  const describe = useReadinessDetail(detail);
+  const progress = useSetupProgress(detail);
   return (
-    <section className="card" aria-labelledby="setup-heading">
-      <h2 id="setup-heading" className="m-0 border-b border-line px-5 py-4 text-[15px] font-semibold">
-        {t.setup}
-      </h2>
-      <ul className="m-0 list-none p-0">
-        {detail.readiness.map((r) => (
-          <li key={r.id} className="flex items-center gap-3 border-b border-line px-5 py-3 last:border-b-0">
-            <Icon name={r.ok ? "checkCircle" : "xCircle"} className={`icon ${r.ok ? "text-success" : "text-danger"}`} />
-            <span className="flex min-w-0 flex-1 flex-col">
-              <span>
-                {t.readiness[r.id]}
-                <span className="sr-only">{r.ok ? t.done : t.missing}</span>
-              </span>
-              <span className="truncate text-[13px] text-ink-muted">{describe(r.id)}</span>
-            </span>
-            {!r.ok && (
-              <Link {...FIX[r.id]} params={{ agentId }} className="text-[13px] font-medium">
-                {t.setUp}
-                <span className="sr-only"> {t.readiness[r.id]}</span>
-              </Link>
-            )}
-          </li>
-        ))}
-      </ul>
-    </section>
+    <Callout>
+      <span className="flex flex-wrap items-center justify-between gap-3">
+        <span>
+          {t.inactiveNote} {t.setupProgress(progress.count, progress.total)}
+        </span>
+        <Link to="/agents/$agentId/setup" params={{ agentId }} className="btn btn-primary">
+          {t.continueSetup}
+        </Link>
+      </span>
+    </Callout>
   );
 }
 
-function Embed({ agent }: { agent: Agent }) {
+// What to fix on a live agent, each with the place to fix it.
+function Attention({ agentId, failed }: { agentId: string; failed: number }) {
   const t = useT().overview;
-  // Token modes (D-29): the chat asks the host app for a fresh token before every request.
-  const token = agent.auth?.mode === "jwks" || agent.auth?.mode === "userinfo";
-  const headers = token ? `\n  getToken={getToken}\n  storageKey={user.id}` : "";
+  const { data } = useQuery(statsQuery(agentId, "7d"));
+  const denied = data?.current.refused ?? 0;
+  if (!failed && !denied) return null;
   return (
-    <section className="card flex flex-col gap-4 p-5" aria-labelledby="embed-heading">
-      <h2 id="embed-heading" className="m-0 text-[17px] leading-6 font-semibold">
-        {t.embed}
+    <section className="card" aria-labelledby="attention-heading">
+      <h2 id="attention-heading" className="m-0 border-b border-line px-5 py-4 text-[15px] font-semibold">
+        {t.attention}
       </h2>
-      <CodeBlock title={t.install} code={`npm install sideagent@^${token ? "0.5.0" : "0.4.0"}`} />
-      <CodeBlock title="React" code={`<AgentChat\n  publishableKey="${agent.publishableKey}"${headers}\n/>`} />
-      <p className="m-0 text-[13px] text-ink-muted">
-        <code className="font-mono">publishableKey</code>
-        {t.embedNoteKey}
-        {token && (
-          <>
-            {" "}
-            <code className="font-mono">getToken</code>
-            {t.embedNoteAnd}
-            <code className="font-mono">storageKey</code>
-            {t.embedNoteToken}
-          </>
+      <ul className="m-0 list-none p-0">
+        {failed > 0 && (
+          <li className="flex items-center gap-3 border-b border-line px-5 py-3 last:border-b-0">
+            <Icon name="alert" className="icon text-danger" />
+            <span className="flex-1">{t.failedSources(failed)}</span>
+            <Link to="/agents/$agentId/knowledge" params={{ agentId }} className="btn btn-sm">
+              {t.view}
+            </Link>
+          </li>
         )}
-      </p>
-      {token && (
-        <p className="m-0 text-[13px] text-ink-muted">
-          <code className="font-mono">getToken</code>
-          {t.getTokenNote}
-          <code className="font-mono">user.id</code>
-          {t.storageKeyNote}
-        </p>
-      )}
+        {denied > 0 && (
+          <li className="flex items-center gap-3 border-b border-line px-5 py-3 last:border-b-0">
+            <Icon name="alert" className="icon text-warning" />
+            <span className="flex-1">{t.refusedRequests(denied)}</span>
+            <Link to="/agents/$agentId/audit" params={{ agentId }} className="btn btn-sm">
+              {t.view}
+            </Link>
+          </li>
+        )}
+      </ul>
     </section>
   );
 }
