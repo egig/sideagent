@@ -2,3 +2,5 @@ node_modules
 dist
 .env
 skills/sideagent/evals/results
+test-results
+playwright-report

@@ -29,6 +29,7 @@ describe("agents API", () => {
       ["GET", "/api/agents/agt_x"],
       ["PATCH", "/api/agents/agt_x"],
       ["PUT", "/api/agents/agt_x/llm"],
+      ["POST", "/api/agents/agt_x/llm/check"],
       ["PUT", "/api/agents/agt_x/auth"],
       ["PUT", "/api/agents/agt_x/tracing"],
       ["POST", "/api/agents/agt_x/activate"],
@@ -297,6 +298,91 @@ describe("agents API", () => {
       );
       expect(held).toHaveLength(0);
     });
+
+    it("re-queues sources that failed to index when a new key is saved", async () => {
+      const cookie = await signIn("a@example.com");
+      const a = await create(cookie);
+      await call(
+        `/api/agents/${a.id}/knowledge`,
+        { method: "POST", json: { kind: "text", title: "Refunds", content: "Refund policy." } },
+        cookie,
+      );
+      remote["https://llm.example.com/v1/embeddings"] = () => new Response("bad key", { status: 401 });
+      await runIndexing(a.id);
+      const status = async () => (await store.knowledge.listSources(a.id))[0]!.status;
+      expect(await status()).toBe("failed");
+      delete remote["https://llm.example.com/v1/embeddings"];
+      const held: Promise<unknown>[] = [];
+      setDeps({ background: (w) => void held.push(w()) });
+      const custom = { provider: "custom" as const, baseUrl: "https://llm.example.com/v1", model: "gpt-4o-mini" };
+      // Same settings, no new key: nothing to retry with.
+      await call(`/api/agents/${a.id}/llm`, { method: "PUT", json: custom }, cookie);
+      expect(held).toHaveLength(0);
+      await call(
+        `/api/agents/${a.id}/llm`,
+        { method: "PUT", json: { ...custom, apiKey: "sk-new-key-123456" } },
+        cookie,
+      );
+      expect(held).toHaveLength(1);
+      await Promise.all(held);
+      expect(await status()).toBe("indexed");
+    });
+
+    describe("connection check", () => {
+      const check = (id: string, cookie: string) => call(`/api/agents/${id}/llm/check`, { method: "POST" }, cookie);
+
+      it("tries the saved settings with one chat call and one embedding call", async () => {
+        const cookie = await signIn("a@example.com");
+        const a = await create(cookie);
+        fetched.length = 0;
+        const res = await check(a.id, cookie);
+        expect(res.status).toBe(200);
+        expect(await res.json()).toEqual({ chat: { ok: true }, embeddings: { ok: true } });
+        expect(fetched.sort()).toEqual([
+          "https://llm.example.com/v1/chat/completions",
+          "https://llm.example.com/v1/embeddings",
+        ]);
+      });
+
+      it("reports our own reason codes, never the provider's words or the key", async () => {
+        const cookie = await signIn("a@example.com");
+        const a = await create(cookie);
+        remote["https://llm.example.com/v1/chat/completions"] = () =>
+          new Response(`{"error":"Incorrect API key provided: ${LLM_KEY}"}`, { status: 401 });
+        remote["https://llm.example.com/v1/embeddings"] = () =>
+          new Response('{"error":"model text-embedding-3-small does not exist"}', { status: 404 });
+        const res = await check(a.id, cookie);
+        expect(await res.json()).toEqual({
+          chat: { ok: false, reason: "llm_auth" },
+          embeddings: { ok: false, reason: "llm_model_not_found" },
+        });
+        expect(responses.join("\n")).not.toContain(LLM_KEY);
+        expect(responses.join("\n")).not.toContain("does not exist");
+        expect(logs.join("\n")).not.toContain(LLM_KEY);
+      });
+
+      it("goes through the SSRF guard at call time", async () => {
+        const cookie = await signIn("a@example.com");
+        const a = await create(cookie);
+        // The provider's host now resolves to an internal address (DNS rebinding after save).
+        setDeps({ resolve: async () => ["10.0.0.9"] });
+        fetched.length = 0;
+        expect(await (await check(a.id, cookie)).json()).toEqual({
+          chat: { ok: false, reason: "llm_unreachable" },
+          embeddings: { ok: false, reason: "llm_unreachable" },
+        });
+        expect(fetched).toEqual([]);
+      });
+
+      it("needs saved settings with a key first", async () => {
+        const cookie = await signIn("a@example.com");
+        const res = await call("/api/agents", { method: "POST", json: { name: "Fresh" } }, cookie);
+        const { agent } = await body(res);
+        const missing = await check(agent.id, cookie);
+        expect(missing.status).toBe(400);
+        expect(Object.keys((await body<{ fields: object }>(missing)).fields)).toEqual(["apiKey"]);
+      });
+    });
   });
 
   describe("knowledge", () => {
@@ -466,6 +552,7 @@ describe("agents API", () => {
           "/llm",
           { provider: "custom", baseUrl: "https://llm.example.com", model: "m", apiKey: "sk-bob-0000000000" },
         ],
+        ["POST", "/llm/check"],
         ["GET", "/knowledge"],
         ["POST", "/knowledge", { kind: "text", title: "Bob", content: "Planted." }],
         ["DELETE", `/knowledge/${aliceSource.source.id}`],

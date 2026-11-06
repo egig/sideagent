@@ -93,15 +93,15 @@ For GitHub or Google sign-in set `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` (
 
 ## 6. Create the agent
 
-In the dashboard choose **New agent**. The agent starts inactive: its endpoint answers 404 until you turn it on. The **Overview** page lists what is missing.
+In the dashboard choose **New agent**. The agent starts inactive: its endpoint answers 404 until you turn it on. The dashboard opens its **Setup** page, five steps in the order they depend on each other. Each step opens once the one before it is done, and progress is read from the server, so you can leave and come back.
 
-1. **LLM** (Settings, LLM tab). Set the provider base URL (OpenAI-compatible, HTTPS), the chat model, the embedding model and the API key. The model must support tool calling, because the knowledge search is a tool. The key is encrypted and never shown again.
-2. **Knowledge**. Add web pages (public HTTPS only) or paste Markdown. Wait until each source says *Indexed*. A *Failed* source usually means the page is not public, or the embedding model or key is wrong.
-3. **Allowed origins** (Settings, General tab). List every site that embeds the chat, exact match with scheme and port, such as `https://docs.example.com`. `http://localhost:3000` is allowed for testing. No origins, no browser can use the agent.
-4. **User auth** (Settings, User auth tab). Pick *Nothing, or there is no API* for a public docs site. Anyone can ask and nothing is remembered. For a logged-in product, pick a JWT or userinfo mode so conversations stay with their user.
-5. Back on **Overview**, switch the agent to **Active**.
+1. **Connect a model**. Set the provider base URL (OpenAI-compatible, HTTPS), the chat model, the embedding model and the API key, save, then **Test and continue**: one tiny chat call and one embedding call show a wrong key or model before any knowledge fails to index. The model must support tool calling, because the knowledge search is a tool. The key is encrypted and never shown again.
+2. **Add knowledge**. Add web pages (public HTTPS only) or paste Markdown, and optional instructions. Wait until each source says *Indexed*. A *Failed* source usually means the page is not public; saving a new API key retries failed sources.
+3. **Try it**. Open the preview and ask what your users would ask. The step completes once the agent has answered there (or choose **Skip for now**).
+4. **Deploy to your app**. List every site that embeds the chat under **Allowed origins**, exact match with scheme and port, such as `https://docs.example.com`; `http://localhost:3000` is allowed for testing. Under **User auth** pick *Nothing, or there is no API* for a public docs site (anyone can ask and nothing is remembered), or a JWT or userinfo mode for a logged-in product so conversations stay with their user. The embed code for your choice is shown below.
+5. **Go live**. **Activate agent**, then send a message from your site. The step waits for that first request and shows requests refused in the last hour, so a wrong origin is visible at once.
 
-Use the preview in the dashboard to ask a test question before you embed anything.
+The same settings stay editable later under **Knowledge** and **Settings**.
 
 ## 7. Embed the chat
 
@@ -154,7 +154,7 @@ The database needs the pgvector extension (`CREATE EXTENSION vector`, which `doc
 |---|---|
 | Sign-in link opens a wrong host | `ADMIN_PUBLIC_URL` does not match the browser URL. |
 | Dashboard saves fail with an origin error | Same cause: writes must carry the dashboard's own origin. |
-| Agent cannot be activated | A setup item on Overview is missing: content, origins, LLM or user auth. |
+| Agent cannot be activated | A setup step is not done yet: model, knowledge, origins or user auth. The **Setup** page shows which. |
 | Knowledge source stays *Failed* | Page not public HTTPS, or wrong embedding model or key. The server refuses private addresses on purpose. |
 | Chat shows nothing | The agent is inactive, or its anonymous daily cap is reached. |
 | Chat error in the browser, *Denied* in the audit log | Origin not in the allowed list. |

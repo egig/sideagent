@@ -13,5 +13,5 @@
     "declaration": true,
     "isolatedModules": true
   },
-  "include": ["src", "dev", "tsup.config.ts"]
+  "include": ["src", "dev", "e2e", "tsup.config.ts", "playwright.config.ts"]
 }

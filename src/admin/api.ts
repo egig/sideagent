@@ -74,6 +74,15 @@ export interface AgentDetail {
   readiness: ReadinessItem[];
 }
 
+/** One half of POST /api/agents/:id/llm/check. `reason` is our own code (llm_auth, llm_model_not_found, ...), never the provider's words. */
+export type LlmCheckPart = { ok: true } | { ok: false; reason: string };
+
+/** POST /api/agents/:id/llm/check: one tiny chat call and one embedding call on the saved settings. */
+export interface LlmCheck {
+  chat: LlmCheckPart;
+  embeddings: LlmCheckPart;
+}
+
 export interface BuiltinInfo {
   model: string;
   embeddingModel: string;

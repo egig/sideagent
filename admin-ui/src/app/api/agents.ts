@@ -11,6 +11,7 @@ import type {
   AuthConfig,
   AuthMode,
   KnowledgeSource,
+  LlmCheck,
   Trace,
   TraceLevel,
   TracePage,
@@ -93,6 +94,7 @@ export const updateLlm = (
     | { provider: "builtin" }
     | { provider: "custom"; baseUrl: string; model: string; embeddingModel: string; apiKey?: string },
 ) => send("PUT", path(id, "/llm"), input);
+export const checkLlm = (id: string) => send<LlmCheck>("POST", path(id, "/llm/check"));
 export const addKnowledge = (
   id: string,
   input: { kind: "url"; url: string; title?: string } | { kind: "text"; title: string; content: string },
