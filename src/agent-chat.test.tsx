@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { AgentChat } from "./client/AgentChat";
+import { AgentChat } from "./client";
 
 // Here, not in client/: the isolation test forbids any "server" import there, react-dom/server included.
 describe("AgentChat with a publishable key", () => {

@@ -3,7 +3,7 @@ sidebar_position: 13
 title: Self-hosting
 ---
 
-This guide takes you from nothing to a docs chat on your own site, answered by a [sideagent admin](./admin.md) you run yourself. You get a dashboard to manage the agent and an endpoint your site talks to. Plan on 20 minutes.
+This guide takes you from nothing to a docs chat on your own site, answered by a [sideagent server](./server.md) you run yourself. You get a dashboard to manage the agent and an endpoint your site talks to. Plan on 20 minutes.
 
 What you run: Postgres with pgvector, and one Node process (the admin) that serves the dashboard, the dashboard API and the agent endpoint `/v1/agents/:id`. What you bring: a domain with HTTPS, and an API key for an OpenAI-compatible model provider.
 
@@ -23,21 +23,19 @@ If you want the admin inside your own server instead, skip to [Embed the admin i
 Create `.env` next to `docker-compose.yml`:
 
 ```sh
-BETTER_AUTH_SECRET=...   # openssl rand -base64 32
-CONFIG_KEK=...           # openssl rand -base64 32
+SIDEAGENT_SECRET=...     # openssl rand -base64 32
 POSTGRES_PASSWORD=...    # anything long and random
 ADMIN_PUBLIC_URL=https://admin.example.com
 ```
 
 | Variable | What it does |
 |---|---|
-| `BETTER_AUTH_SECRET` | Signs sessions and sign-in links. Change it and everyone is signed out. |
-| `CONFIG_KEK` | Wraps every stored LLM key. **Lose it and the stored keys are unreadable.** Keep a copy outside the server. |
+| `SIDEAGENT_SECRET` | The master secret: signs sessions and wraps every stored LLM key. Change it and everyone is signed out. **Lose it and the stored keys are unreadable.** Keep a copy outside the server. |
 | `POSTGRES_PASSWORD` | The compose file defaults to `sideagent`. Change it if the database port is reachable by anyone. |
 | `ADMIN_PUBLIC_URL` | The exact URL people type in the browser, with scheme and no trailing slash. Sign-in links and the origin check on dashboard writes use it. Wrong value: sign-in links point to the wrong host and saves fail with an origin error. |
 | `SIGNUP` | `false` stops new accounts. See step 4. |
 
-Without `BETTER_AUTH_SECRET` and `CONFIG_KEK` the admin invents throwaway ones. Sessions and stored keys then die with the container.
+Production refuses to start without `SIDEAGENT_SECRET`.
 
 ## 3. Start it
 
@@ -46,7 +44,7 @@ docker compose up -d --build
 docker compose logs -f admin
 ```
 
-Wait for `admin on https://admin.example.com (postgres)`. The migrations run on every start, so there is no separate step. Check health:
+Wait for `sideagent on https://admin.example.com`. The migrations run on every start, so there is no separate step. Check health:
 
 ```sh
 curl http://localhost:8788/api/health
@@ -83,7 +81,7 @@ The admin reads the client address from `x-forwarded-for` for rate limits. Make 
 
 ## 5. Create your account
 
-The admin has no mail server. Sign-in links print to the log:
+The compose file has no mail server, so it prints sign-in links to the log (`SIDEAGENT_LOG_SIGN_IN_LINKS`):
 
 1. Open `https://admin.example.com`, enter your email.
 2. Run `docker compose logs admin` and copy the line `sign-in link for you@example.com: …`.
@@ -91,7 +89,7 @@ The admin has no mail server. Sign-in links print to the log:
 
 Then close sign-up. By default anyone who can reach the dashboard can create an account, and every account shares every agent. Add `SIGNUP=false` to `.env` and run `docker compose up -d`. Existing accounts still sign in; new ones are refused. To add a teammate later, set `SIGNUP=true`, let them sign in once, and set it back.
 
-To send real email, or add GitHub and Google sign-in, [run your own server](#embed-the-admin-in-your-own-server): `createAuth` takes `sendMagicLink`, `github` and `google`.
+For GitHub or Google sign-in set `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` (or the Google pair) and remove `SIDEAGENT_LOG_SIGN_IN_LINKS`. To send real email, [run your own server](#embed-the-server-in-your-own-code) with `auth.sendMagicLink`.
 
 ## 6. Create the agent
 
@@ -121,7 +119,7 @@ export function Docs() {
 }
 ```
 
-The key carries the admin's host and the agent ID, so no endpoint is needed. Set `endpoint` too only to go through your own proxy. See [Client](./client.md) for layout, theming and signed-in users.
+The key carries the server's host and the agent ID, so nothing else is needed. See [Client](./client.md) for layout, theming and signed-in users.
 
 Check it end to end:
 
@@ -131,7 +129,7 @@ Check it end to end:
 
 ## Running it
 
-**Back up** the `pgdata` volume (or run `pg_dump`) and `CONFIG_KEK`. The database holds agents, vectors, threads and the sealed keys. Restoring the database without the same `CONFIG_KEK` leaves the LLM keys unreadable, and you enter them again.
+**Back up** the `pgdata` volume (or run `pg_dump`) and `SIDEAGENT_SECRET`. The database holds agents, vectors, threads and the sealed keys. Restoring the database without the same secret leaves the LLM keys unreadable, and you enter them again.
 
 **Upgrade** by pulling the new code and rebuilding. Migrations apply on start and are only ever appended.
 
@@ -144,9 +142,9 @@ docker compose up -d --build
 
 **Privacy**: traces (Traces tab) keep no text at *Metadata* and redacted text at *Full content*. Pick the level your users agreed to. The audit log never stores message text.
 
-## Embed the admin in your own server
+## Embed the server in your own code
 
-Use this to send real mail, add GitHub or Google sign-in, split users into workspaces with the `scope` hook, or run on another runtime. Follow the code under [Run it](./admin.md#run-it): `createPgStore` on your Postgres, `createAuth` with a real `sendMagicLink`, and `createAdmin`. `dev/server.ts` in the repository is a complete working example, and the Dockerfile's `admin` stage runs it.
+Use this to send real mail, split users into workspaces with the `scope` hook, or run on another runtime. See [Server](./server.md): `createServer({ database, publicUrl, secret, auth })`. The Dockerfile runs `src/cli.ts`, which is a thin wrapper over it.
 
 The database needs the pgvector extension (`CREATE EXTENSION vector`, which `docker/init.sql` does). Managed Postgres such as Neon, Supabase or RDS offers it.
 
@@ -161,5 +159,5 @@ The database needs the pgvector extension (`CREATE EXTENSION vector`, which `doc
 | Chat shows nothing | The agent is inactive, or its anonymous daily cap is reached. |
 | Chat error in the browser, *Denied* in the audit log | Origin not in the allowed list. |
 | Answer arrives all at once at the end | The proxy buffers. Disable buffering on `/v1/`. |
-| LLM keys stopped working after a restore or move | `CONFIG_KEK` differs from the one that sealed them. |
-| Everyone signed out after a restart | `BETTER_AUTH_SECRET` was not set, or changed. |
+| LLM keys stopped working after a restore or move | `SIDEAGENT_SECRET` differs from the one that sealed them. |
+| Everyone signed out after a restart | `SIDEAGENT_SECRET` changed. |

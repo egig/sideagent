@@ -1,5 +1,6 @@
 // sideagent/admin/node: serves the built dashboard from disk. Node only (it reads files); on Workers or another platform
 // upload dist/admin-ui as static assets and rewrite index.html with `adminUiHtml`.
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,6 +17,14 @@ const TYPES: Record<string, string> = {
   ".woff2": "font/woff2",
 };
 
+/** The built dashboard next to this code: bundled in `dist/`, as its own entry in `dist/admin/`, or from source after `pnpm build:ui`. */
+function shippedDashboard(): string {
+  const found = ["./admin-ui", "../admin-ui", "../../dist/admin-ui"]
+    .map((rel) => fileURLToPath(new URL(rel, import.meta.url)))
+    .find((dir) => existsSync(join(dir, "index.html")));
+  return found ?? fileURLToPath(new URL("./admin-ui", import.meta.url));
+}
+
 export interface ServeAdminUiOptions extends AdminUiConfig {
   /** Folder with the built dashboard. Default: the one shipped in this package. */
   dir?: string;
@@ -31,7 +40,7 @@ export interface ServeAdminUiOptions extends AdminUiConfig {
 export function serveAdminUi(options: ServeAdminUiOptions = {}): (request: Request) => Promise<Response> | null {
   // `dir` is the server's business: only the dashboard's own settings go into the page.
   const { dir: given, exclude = ["/api", "/v1"], ...settings } = options;
-  const dir = given ?? fileURLToPath(new URL("../admin-ui", import.meta.url));
+  const dir = given ?? shippedDashboard();
   const base = (options.basePath ?? "").replace(/\/$/, "");
   const headers = { "x-content-type-options": "nosniff", "referrer-policy": "no-referrer", "x-frame-options": "DENY" };
   let index: string | undefined;

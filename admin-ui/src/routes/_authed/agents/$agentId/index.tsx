@@ -175,9 +175,7 @@ function Embed({ agent }: { agent: Agent }) {
   const t = useT().overview;
   // Token modes (D-29): the chat asks the host app for a fresh token before every request.
   const token = agent.auth?.mode === "jwks" || agent.auth?.mode === "userinfo";
-  const headers = token
-    ? `\n  getHeaders={async () => ({ Authorization: \`Bearer \${await getToken()}\` })}\n  storageKey={user.id}`
-    : "";
+  const headers = token ? `\n  getToken={getToken}\n  storageKey={user.id}` : "";
   return (
     <section className="card flex flex-col gap-4 p-5" aria-labelledby="embed-heading">
       <h2 id="embed-heading" className="m-0 text-[17px] leading-6 font-semibold">
@@ -191,7 +189,7 @@ function Embed({ agent }: { agent: Agent }) {
         {token && (
           <>
             {" "}
-            <code className="font-mono">getHeaders</code>
+            <code className="font-mono">getToken</code>
             {t.embedNoteAnd}
             <code className="font-mono">storageKey</code>
             {t.embedNoteToken}

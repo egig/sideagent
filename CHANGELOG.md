@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+The interface is two things now: a React component that takes a publishable key, and one server call. This is a breaking release.
+
+- **Client.** `AgentChat` and `AgentProvider` take `publishableKey` (required) and `getToken` (returns the signed-in user's token, or null). `endpoint`, `headers`, `getHeaders` and `credentials` are gone, and so are the exports `streamChat`, `callJson`, `sideagent/keys` and `sideagent/protocol`. `getHeaders={async () => ({ Authorization: `Bearer ${t}` })}` becomes `getToken={() => t}`.
+- **Server.** `sideagent/server` is `createServer({ database, publicUrl, secret, … })`, returning `{ fetch, ready, close }`: dashboard API, agent endpoints, sign-in and (with `sideagent/server/node`) the dashboard. `npx sideagent` runs it from environment variables (`SIDEAGENT_SECRET`, `DATABASE_URL`, `PUBLIC_URL`, `PORT`).
+  - One `secret` replaces `CONFIG_KEK` and `BETTER_AUTH_SECRET`; both keys are derived from it (HKDF). Stored LLM keys sealed under the old `CONFIG_KEK` cannot be read with a new `secret`: enter them again.
+  - `auth` is one option: `{ sendMagicLink, github, google, signup }` for the bundled sign-in, or `{ session }` for your own. `builtin` is `builtinModel`. New `onError`.
+  - Email sign-in links are printed only on `localhost`; elsewhere pass `auth.sendMagicLink`. The Docker image sets `SIDEAGENT_LOG_SIGN_IN_LINKS=true` to keep the old behaviour.
+  - New `sideagent/server/store` (the `AdminStore` port and the contract tests, from `sideagent/admin/contract`) and `sideagent/server/node` (`createServer` that also serves the dashboard and `listen`s).
+- **Removed.** `createAgent` and the Hono, Next and Express adapters, `sideagent/admin` and its subpaths (`/pg`, `/auth`, `/ui`, `/node`, `/contract`), `sideagent/protocol`, `sideagent/keys`. Knowledge, the model and the agent's settings are set in the dashboard. `sideagent/workers-ai` stays, to build `builtinModel` on Cloudflare; `sideagent/testing` stays.
+- `@hono/node-server` is a dependency; `pg` is an optional peer; PGlite is optional (`npx sideagent` without `DATABASE_URL`).
+- The skill and its evals teach the new interface.
+
+### Earlier, unreleased
+
 The admin dashboard and the server behind it move into the library. It is single-tenant by default; multi-tenancy is a `scope` hook.
 
 - New `sideagent/admin`: `createAdmin(deps)` serves the dashboard API (`/api`) and a data plane (`/v1/agents/:id`) for many agents and knowledge bases. All signed-in users share one workspace unless you pass `scope(user, request)`, which groups users per user, organisation or anything else. It takes a store, a `session` function and a few options; nothing is tied to a platform.

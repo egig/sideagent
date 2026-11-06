@@ -12,12 +12,11 @@ FROM deps AS admin-ui
 COPY . .
 RUN pnpm build:ui
 
-# Admin: dashboard, API and data plane in one process (tsx runs dev/server.ts, like `pnpm admin:start`).
+# Admin: dashboard, API and data plane in one process (tsx runs src/cli.ts, like `pnpm admin:start`).
 FROM deps AS admin
 ENV NODE_ENV=production
 COPY package.json pnpm-lock.yaml ./
 COPY src ./src
-COPY dev ./dev
 COPY --from=admin-ui /app/dist/admin-ui ./dist/admin-ui
 EXPOSE 8788
 HEALTHCHECK --interval=10s --timeout=3s --start-period=30s --retries=6 \

@@ -1,28 +1,30 @@
 # sideagent
 
-Library that embeds a docs chat agent in an app: knowledge (markdown and URLs) + OpenAI-compatible LLM in, secure agent endpoint (`sideagent/server`) and React chat UI (`sideagent`) out. The agent has one tool, knowledge search; it does not call APIs.
+Library that embeds a docs chat agent in an app, in two pieces: a server (`sideagent/server`: `createServer`, with dashboard, API, sign-in and agent endpoints) and a React chat that takes a publishable key (`sideagent`: `AgentChat`). Knowledge (markdown and URLs) and the LLM are set in the dashboard. The agent has one tool, knowledge search; it does not call APIs.
 
 ## Commands
 
 - `pnpm install`
 - `pnpm test` — vitest (uses `src/testing/mock-llm.ts`, no API key needed)
 - `pnpm typecheck`
-- `pnpm format` / `pnpm format:check` — Prettier (width 120) over `src/`, `dev/` and `admin-ui/`
+- `pnpm format` / `pnpm format:check` — Prettier (width 120) over `src/` and `admin-ui/`
 - `pnpm build` — tsup to `dist/`
-- `pnpm dev` — admin API on :8788 + dashboard with hot reload on :5174 (PGlite unless `DATABASE_URL` is set); `pnpm admin:start` serves the built dashboard
+- `pnpm dev` — server (`src/cli.ts`) on :8788 + dashboard with hot reload on :5174 (PGlite unless `DATABASE_URL` is set); `pnpm admin:start` serves the built dashboard
 - Docs: `pnpm --dir website install && pnpm --dir website build`
 
 ## Layout
 
-- `src/server/` — server entry (`sideagent/server`)
+Public entry points are only: `sideagent` (`src/index.ts`), `sideagent/server` (`src/create-server.ts`), `sideagent/server/node` (`create-server-node.ts`), `sideagent/server/store` (`create-server-store.ts`), `sideagent/workers-ai`, `sideagent/testing`, and the `sideagent` bin (`src/cli.ts`). Everything else below is internal; do not add exports.
+
+- `src/server/` — the agent runtime the data plane runs on (internal, not exported)
   - `create-agent.ts` — wiring only: config → operations → model → graph → handler; `options.ts` — `CreateAgentOptions`; `knowledge/startup.ts` — knowledge load with a startup wait
   - `http/` — the endpoint: `handler.ts` (request pipeline), `request.ts` (body schema), `thread-routes.ts`, `turn.ts` (SSE)
   - `graph/` — agent built on LangChain `createAgent` with one middleware (system prompt, relevance gate); `summarize.ts` wraps LangChain's summarization middleware (opt-in `summarize`); `tools/search.ts` (knowledge search)
   - `security/` — origin check, SSRF guard, prompt policy
   - `knowledge/` — chunking, HTML to text, vector store, guarded page fetch, `KnowledgeBase`
   - `config.ts`, `threads.ts`, `history.ts`, `doctor.ts`, `model.ts`, `adapters/` (Hono/Next/Express)
-- `src/client/` — React UI (`sideagent`): `AgentChat.tsx` (panel shell), `panel-hooks.ts` (dock width, agent info), `Chat.tsx` (runtime adapter), `parts.ts` (pure event → message parts), `ToolCard.tsx` (sources), `transport.ts`, `hooks.ts`
-- `src/admin/` — server and dashboard API (single workspace by default, multi-tenant via the `scope` hook) (`sideagent/admin`); not under the `src/server/` edge rule, but it still has no `node:*` (enforced by `edge-compat.test.ts`) except `node.ts`, the static-file server
+- `src/client/` — React UI (`sideagent`): `public.tsx` (the published `AgentChat`/`AgentProvider`, publishable key + `getToken` only), `internal.ts` (the dashboard's own chat, which may set `endpoint`/`credentials`; not exported), `AgentChat.tsx` (panel shell), `panel-hooks.ts` (dock width, agent info), `Chat.tsx` (runtime adapter), `parts.ts` (pure event → message parts), `ToolCard.tsx` (sources), `transport.ts`, `hooks.ts`
+- `src/admin/` — server and dashboard API (single workspace by default, multi-tenant via the `scope` hook), wrapped by `createServer`; not under the `src/server/` edge rule, but it still has no `node:*` (enforced by `edge-compat.test.ts`) except `node.ts`, the static-file server
   - `store/types.ts` — `AdminStore`, the only thing handlers and the data plane talk to; `store/pg/` — Postgres + pgvector (Drizzle schema, SQL migrations, one file per area: `agents`, `usage`, `audit`, `threads`, `knowledge`, composed in `store.ts`); `store/contract.ts` — behaviour every store must have
   - `control/` — dashboard API; `data/` — `/v1/agents/:id` (request flow in `router.ts`; `access.ts` origin, key and end-user checks; `quota.ts` caps; `audit.ts` audit row; `runtime.ts` + `provider.ts` the library runtime; `adapters/` store-to-LangChain/LangGraph glue); `auth/` — bundled better-auth sign-in
   - `config.ts`, `retention.ts`, `knowledge/` — validation, retention constants, ingestion; `security/` — sealed secrets (`crypto.ts`), SSRF guard with DNS (`url-guard.ts`, `guarded-fetch.ts`), bot challenge (`challenge.ts`)
@@ -30,7 +32,7 @@ Library that embeds a docs chat agent in an app: knowledge (markdown and URLs) +
 - `src/workers-ai/` — Cloudflare Workers AI: `chat.ts` chat model, `retrieval.ts` embeddings and reranker
 - `src/protocol.ts` — wire types shared by both sides
 - `src/testing/` — mock LLM, exported as `sideagent/testing`
-- `dev/` — the admin dev server (`pnpm dev`, Docker); `website/docs/` — Docusaurus docs (source of `llms.txt`)
+- `website/docs/` — Docusaurus docs (source of `llms.txt`)
 
 Tests sit next to the code they cover (`*.test.ts`). `e2e.test.ts` drives the full handler.
 
@@ -41,11 +43,10 @@ Tests sit next to the code they cover (`*.test.ts`). `e2e.test.ts` drives the fu
   | Invariant | Code | Tests |
   |---|---|---|
   | The model can run only the knowledge search; any other tool name is refused | `graph/index.ts` (`wrapToolCall`) | `e2e.test.ts` "does not run a tool the model asks for that does not exist" |
-  | Operations config is gone: `spec`, `baseUrl`, `allow`, `approvalSecret` are rejected | `config.ts` | `config.test.ts` "no longer takes operations" |
   | Pinned SSRF guards on pages the server fetches | `security/url-guard.ts`, `knowledge/fetch-page.ts` | `security/url-guard.test.ts`, `knowledge/knowledge.test.ts` |
   | Origin, method and content-type checks | `security/origin.ts`, `http/handler.ts` | `e2e.test.ts` "checks origin, method and content type", "cors" |
   | Threads bound to their user | `threads.ts` (`ownsThread`) | `e2e.test.ts` "denies another user's thread", "history" |
-  | Passage text reaches the browser only when the host opts in per request | `graph/tools/search.ts`, `http/handler.ts` (`exposeKnowledge`) | `knowledge-expose.e2e.test.ts` "is off by default", "ignores flags sent in the request body" |
+  | Passage text reaches the browser only when the server opts in per request; in `createServer` that is the owner's dashboard preview alone, never the request body | `graph/tools/search.ts`, `http/handler.ts` (`exposeKnowledge`), `admin/data/runtime.ts` (`isPreviewUser`) | `knowledge-expose.e2e.test.ts` "is off by default", "ignores flags sent in the request body"; `data/router.test.ts` "preview (D-31)" |
   | Page context and passages are untrusted data | `security/policy.ts`, `knowledge/format.ts` | `knowledge.e2e.test.ts` "wraps passages as untrusted data" |
   | A conversation summary is untrusted data, and a failed summary keeps the history | `graph/summarize.ts`, `security/policy.ts` (`wrapSummary`) | `summarize.e2e.test.ts` "given to the model as untrusted data", "passages reach the summary only", "keeps the history when the summary call fails" |
 
@@ -56,6 +57,7 @@ Tests sit next to the code they cover (`*.test.ts`). `e2e.test.ts` drives the fu
   | Admin: a preview is the owner's alone and the public route cannot start one | `admin/data/router.ts` (`__preview`) | `data/router.test.ts` "preview (D-31)" |
   | Admin: threads stay with their user | `store/pg/threads.ts` | `store/contract.ts` `runThreadContract` |
   | Admin: the dashboard server stays inside its folder and keeps the server path out of the page | `admin/node.ts` | `admin/ui.test.ts` |
+  | `createServer` refuses to start without a database, a URL `publicUrl` and a `secret` of 32+ characters; stored keys and sign-in cookies use separate keys derived from it; email sign-in links are never logged outside localhost unless the host opts in | `create-server.ts`, `admin/security/crypto.ts` (`deriveSecrets`) | `create-server.test.ts` |
 
 - `src/admin/` layering (see `src/admin/README.md`): `store` imports no service, `control` and `data` never import each other, `security` imports no service, and the library is reached only through `server/index.js` (enforced by `admin/layering.test.ts`).
 - Everything in `src/server/` (non-test) must run on edge runtimes: no `node:*` imports, `Buffer`, or `process.` (enforced by `edge-compat.test.ts`, which scans subfolders).

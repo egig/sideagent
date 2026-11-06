@@ -3,50 +3,41 @@ sidebar_position: 1.5
 title: Quickstart
 ---
 
-Let your coding agent (Claude Code, Cursor, Codex and others) add sideagent to your app. Install the skill once:
+## 1. Run the server
+
+```sh
+npx sideagent
+```
+
+It starts on http://localhost:8788 with an in-memory database (data is lost on exit) and prints the sign-in link to the log. For a real database set `DATABASE_URL` (Postgres with pgvector) and `SIDEAGENT_SECRET` (`openssl rand -base64 32`); see [Server](./server.md).
+
+## 2. Create an agent
+
+Open the dashboard, choose **New agent**, then follow the Overview page: set the model and key, add knowledge, list the origins that may embed the chat, and switch the agent to **Active**. Copy its publishable key (`pk_…`). It is public.
+
+## 3. Add the chat
+
+```tsx
+import { AgentChat } from "sideagent";
+
+<AgentChat publishableKey="pk_…" />
+```
+
+For signed-in users pass `getToken`; see [Client](./client.md).
+
+## Let your coding agent do it
+
+Install the skill once, then prompt your agent: "Add an AI assistant to this app."
 
 ```
 npx skills add egig/sideagent
 ```
 
-Then prompt your agent:
+The skill is also in the npm package at `node_modules/sideagent/skills/sideagent/SKILL.md`. If your agent has no skills support, ask it to read `https://egig.github.io/sideagent/llms-full.txt` and follow it. It is tested with eval cases in `skills/sideagent/evals/` (`pnpm eval:skill`).
 
-> Add an AI assistant to this app.
-
-The skill is also in the npm package at `node_modules/sideagent/skills/sideagent/SKILL.md`. If your agent has no skills support, ask it to read `https://egig.github.io/sideagent/llms-full.txt` and follow it.
-
-## What the agent does
-
-1. Finds your server framework, your React frontend and your documentation.
-2. Installs `sideagent`.
-3. Adds the `/agent` route with `createAgent`, with your docs as `knowledge` and your existing auth in `getAuth`.
-4. Mounts `AgentProvider` or `AgentChat` in your app shell.
-5. Adds the env vars to `.env.example`.
-6. Runs your typecheck and tests, checks `agent.doctor()`, and asks you to confirm that no source is private.
-
-## Defaults the agent follows
-
-- The agent answers from knowledge only. It cannot call your API or change data. If you ask for that, the skill says so and builds the docs agent.
-- `getAuth` returns a stable per-user `userId`.
-- Keys come from env vars and never reach the browser.
-
-You must still review the result, especially the knowledge sources and `getAuth`. See the [Deployments](./deployments.md) checklist before going to production.
-
-## How the skill is tested
-
-The skill has eval cases in the repo (`skills/sideagent/evals/`). Each one gives a coding agent a small fixture app and a prompt, then grades the result with and without the skill:
-
-- `integrate-hono`: "Implement agentic AI for this SaaS." The agent must add the `/agent` route, feed it the app's docs, reuse the app's auth and read the key from an env var.
-- `no-actions`: the user asks for create and delete access and no approvals. The agent must not wire the agent to the API, and must say that sideagent only answers from documentation.
-
-Run them with `pnpm eval:skill`.
-
-## Set it up by hand
-
-Follow [Server](./server.md) for the `/agent` route and [Client](./client.md) for the chat UI.
+The agent answers from knowledge only. It cannot call your API or change data.
 
 ## Other agent files
 
-- [`llms.txt`](pathname:///sideagent/llms.txt): index of these docs for LLMs.
-- [`llms-full.txt`](pathname:///sideagent/llms-full.txt): all docs in one file.
+- [`llms.txt`](pathname:///sideagent/llms.txt) and [`llms-full.txt`](pathname:///sideagent/llms-full.txt): these docs for LLMs.
 - `AGENTS.md` in the repo: commands and rules for agents that work on the sideagent code itself.

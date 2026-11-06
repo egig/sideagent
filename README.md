@@ -1,6 +1,6 @@
 # sideagent
 
-Embed a docs chat agent in your app. You give it your documentation (markdown and URLs) and an OpenAI-compatible host and key. It gives you a secure agent endpoint and a React chat UI that answers from your docs and shows its sources.
+Add a docs chat to your app. A server you run holds the dashboard, the knowledge (markdown and URLs) and the model; a React component, given a publishable key, is the chat. It answers from your docs and shows its sources.
 
 ```
 npm i sideagent
@@ -10,25 +10,26 @@ Docs: https://egig.github.io/sideagent/
 
 ## Server (`sideagent/server`)
 
-```ts
-import { createAgent, honoHandler } from "sideagent/server";
-
-const agent = await createAgent({
-  llm: { baseUrl: "https://api.openai.com/v1", apiKey: process.env.LLM_API_KEY!, model: "gpt-4o-mini" },
-  knowledge: {
-    embeddings: { model: "text-embedding-3-small" }, // OpenAI-compatible /embeddings; baseUrl/apiKey default to llm's
-    sources: [{ id: "guide", title: "Invoicing guide", content: markdownString }], // pass strings: no filesystem on the edge
-    urls: ["https://docs.example.com/payment-terms"], // fetched by the server only
-  },
-  allowedOrigins: ["https://app.example.com"],
-  getAuth: (req) => ({ userId: "…" }), // or anonymous: true
-});
-
-app.on(["POST", "OPTIONS"], "/agent", honoHandler(agent)); // also: nextRoute, expressHandler
-console.log(await agent.doctor());                         // LLM check + what was indexed
+```
+npx sideagent        # http://localhost:8788; set DATABASE_URL and SIDEAGENT_SECRET for real use
 ```
 
-Secure by default: origin checks, threads bound to the user, size/step/time limits, SSRF guards on the pages the server fetches, passages given to the model as untrusted data and kept from the browser. The agent has one tool, `search_knowledge`, and cannot call your API or change anything.
+Open the dashboard, create an agent, add knowledge, set the model, list the origins that may embed the chat, switch the agent to Active and copy its publishable key. Or in your own code:
+
+```ts
+import { createServer } from "sideagent/server/node";
+
+const server = createServer({
+  database: process.env.DATABASE_URL!,   // Postgres with pgvector; or a Drizzle db, or your own AdminStore
+  publicUrl: "https://agent.example.com",
+  secret: process.env.SIDEAGENT_SECRET!, // openssl rand -base64 32
+});
+await server.listen(8788);               // or mount server.fetch anywhere: Hono, Next, Workers (sideagent/server)
+```
+
+One call gives you the dashboard, its sign-in (email link, GitHub, Google, or your own via `auth`), the agents' endpoints, audit logs and traces. One workspace by default; multi-tenant through a `scope` hook. See [Server](./website/docs/server.md), [Self-hosting](./website/docs/self-hosting.md) and [Cloudflare Workers](./website/docs/cloudflare-workers.md).
+
+Secure by default: origin checks, threads bound to the user, size, step and time limits, SSRF guards on every page the server fetches, LLM keys sealed at rest, passages given to the model as untrusted data and kept from the browser. The agent has one tool, knowledge search, and cannot call your API or change anything.
 
 ## Client (`sideagent`)
 
@@ -36,59 +37,29 @@ Secure by default: origin checks, threads bound to the user, size/step/time limi
 import { AgentChat } from "sideagent";
 
 <AgentChat
-  endpoint="/agent"
-  mode="floating"            // "floating" | "sidebar"; the user can switch
+  publishableKey="pk_…"                 // from the dashboard; names the agent and its server
+  getToken={() => auth.getAccessToken()} // signed-in users; omit for public docs
+  storageKey={user.id}                   // keeps each user's last conversation apart
+  mode="floating"                        // "floating" | "sidebar"; the user can switch
   hooks={{ onTurnEnd: () => track("agent_turn") }}
 />
 ```
 
-### sideagent admin
-
-With an agent hosted on sideagent admin, pass its publishable key instead of `endpoint`. The key names the agent and its host, so the chat derives the URL (`https://<host>/v1/agents/<agentId>`) and sends the key in the `x-sideagent-key` header on every request. The key is public: it is safe in the browser and proves nothing on its own.
-
-```tsx
-<AgentChat publishableKey="pk_…" />
-```
-
-Pass `endpoint` as well to send the requests somewhere else, such as a proxy in front of sideagent admin. A malformed key, or neither prop, throws during render. `parsePublishableKey` and `publishableEndpoint` are exported from `sideagent/keys`.
-
-Signed-in users: pass `getHeaders`, which the chat calls before every request, so a login token that expires is fetched fresh each time. Pass `storageKey` (the user's ID) so the last conversation the chat remembers in `localStorage` belongs to that user; on a shared browser another user starts from their own.
-
-```tsx
-<AgentChat
-  publishableKey="pk_…"
-  getHeaders={async () => ({ Authorization: `Bearer ${await getToken()}` })}
-  storageKey={user.id}
-/>
-```
-
-`getHeaders` works with `endpoint` too. Its headers are merged under `headers`, which wins on a clash, so it cannot replace the publishable key. If it throws, the request is not sent and the chat shows an error.
-
-Hide the floating launcher with `launcher={false}` and open the panel from your own button through `useAgent().setOpen`. Turn off chat history with `history={false}`: no History button, and the chat does not remember or reopen the last conversation. Add your own buttons to the panel header with `headerActions`.
+The key is public: it is safe in the browser and proves nothing on its own. Hide the launcher with `launcher={false}` and open the panel through `useAgent().setOpen`; turn history off with `history={false}`; add header buttons with `headerActions`.
 
 ### Docked sidebar
 
-Wrap your app in `AgentProvider` to dock the chat on the right, side by side with the app instead of over it. It takes the same props as `AgentChat`. The user drags the panel's left edge (or uses the arrow keys on it) to resize; the width is remembered. Outside `AgentProvider`, sidebar mode overlays the page.
+Wrap your app in `AgentProvider` to dock the chat beside the app instead of over it. It takes the same props as `AgentChat`. The user drags the panel's left edge to resize.
 
 ```tsx
 import { AgentProvider } from "sideagent";
 
-<AgentProvider endpoint="/agent" mode="sidebar" defaultOpen>
+<AgentProvider publishableKey="pk_…" mode="sidebar" defaultOpen>
   <App />
 </AgentProvider>
 ```
 
-`AgentProvider` fills the viewport height (`100dvh`); override with the `className` or `style` props.
-
-Anything under `AgentProvider` can call `useAgent()` to get `{ open, setOpen, available }`, e.g. an "Ask assistant" button in your toolbar.
-
-## Development
-
-```
-pnpm build       # tsup -> dist/
-pnpm test        # vitest
-pnpm typecheck
-```
+Anything under `AgentProvider` can call `useAgent()` to get `{ open, setOpen, available }`.
 
 ## Theming
 
@@ -114,76 +85,14 @@ A search shows as a "Sources" card: the titles of the sources the answer came fr
 
 Icons come from [Radix Icons](https://github.com/radix-ui/icons) (MIT).
 
-## Chat history
+## Development
 
-`AgentChat` has a History button (list, open, delete) and reopens the last conversation after a refresh. Messages live in your LangGraph `checkpointer`; the list lives in a `threadStore` (in-memory by default). Both must be persistent in production:
-
-```ts
-createAgent({ …, checkpointer: new PostgresSaver(…), threadStore: myThreadStore }); // ThreadStore: list / has / touch / delete
 ```
-History is only ever shown from the user's own index, and search results are rebuilt from the already-filtered copies.
-
-## Knowledge (markdown and URLs)
-
-```ts
-createAgent({
-  …,
-  knowledge: {
-    embeddings: { model: "text-embedding-3-small" }, // OpenAI-compatible /embeddings; baseUrl/apiKey default to llm's
-    sources: [{ id: "guide", title: "Invoicing guide", content: markdownString }], // pass strings: no filesystem on the edge
-    urls: ["https://docs.example.com/payment-terms", { url: "https://…", title: "Shipping" }], // fetched by the server only
-  },
-  vectorStore, // optional: your own VectorStore (pgvector, Vectorize…). Default is in-memory.
-});
+pnpm dev         # server on :8788 + dashboard with hot reload on :5174
+pnpm build       # tsup -> dist/ and the dashboard
+pnpm test        # vitest
+pnpm typecheck
 ```
-
-The model gets a `search_knowledge` tool; answers show a "Sources" card (links only for your configured URLs). Passages reach the model as labelled untrusted data and never reach the browser, unless your server opts in per request with `exposeKnowledge`. URLs come only from config, must be public http(s) (private ranges need `allowPrivateNetworks`, metadata addresses never), follow only same-host redirects, and are capped by `maxSourceBytes`. URL sources refresh in the background after `ttlMs` (default 1h) or on `agent.knowledge.refresh()`. A source that fails to load is skipped with a warning and shown in `doctor()`.
-
-Search is hybrid: a BM25 keyword ranking is fused with vector search (`knowledge.hybrid`, default on), and a custom `vectorStore` opts in with `keywordSearch(query, k)`. A semantic cache reuses hits for a near-identical query embedding (`knowledge.cache`, default on, cleared whenever knowledge changes).
-
-For an optional second-stage ranker, pass `reranker: true` to use the configured chat model, or pass a callback to use another service. The retrieval score used by `scope.minScore` stays unchanged. Reranking is opt-in and adds latency and model usage. See [Knowledge](./website/docs/knowledge.md#reranking) for details.
-
-With the default in-memory store, every start re-embeds all sources (embedding cost). Use a persistent `vectorStore` for large knowledge.
-
-## Cloudflare Workers
-
-`sideagent/server` runs on Workers. Use `nodejs_compat` (or just `nodejs_als`) in `wrangler.jsonc`. LangGraph relies on `AsyncLocalStorage`, and the Workers build of LangGraph does not register it. sideagent registers it for you when the runtime has it.
-
-```jsonc
-{ "compatibility_date": "2025-09-01", "compatibility_flags": ["nodejs_compat"] }
-```
-
-**Export conditions.** `sideagent/server` resolves to the real build under `workerd` and `worker`, listed before `browser` (which stays a throwing stub for real browser bundles). Wrangler (esbuild) and `@cloudflare/vite-plugin` need no alias. Both also set `browser`, so the order in `exports` matters.
-
-**Workers AI as the LLM.** `env.AI` is a binding, not an HTTP endpoint, so use the adapter from `sideagent/workers-ai` instead of `llm`:
-
-```ts
-import { createAgent } from "sideagent/server";
-import { workersAiChatModel, workersAiEmbeddings, workersAiReranker } from "sideagent/workers-ai";
-
-export default {
-  async fetch(request: Request, env: Env) {
-    agent ??= await createAgent({
-      allowedOrigins: ["https://app.example.com"],
-      getAuth,
-      model: workersAiChatModel(env.AI, "@cf/openai/gpt-oss-120b"),
-      knowledge: { sources },
-      embeddings: workersAiEmbeddings(env.AI, "@cf/baai/bge-m3"), // replaces knowledge.embeddings
-      reranker: workersAiReranker(env.AI), // BAAI bge-reranker-base cross-encoder
-    });
-    return agent.handler(request);
-  },
-};
-let agent: Awaited<ReturnType<typeof createAgent>> | undefined;
-```
-
-`model` and `llm` are mutually exclusive; so are the `embeddings` option and `knowledge.embeddings`. `model` can be any LangChain chat model that supports `bindTools()`. `doctor()` checks an injected model with one `invoke`, not an HTTP call. The adapter takes the binding structurally (no `@cloudflare/workers-types` needed) and reads gpt-oss Responses-style output, chat-style `choices[0].message` and `{ response }`.
-
-A custom `checkpointer` (D1, Durable Object storage) is a `BaseCheckpointSaver` with four methods: `getTuple`, `list`, `put`, `putWrites`. sideagent also calls `deleteThread` when a user deletes a thread.
-
-## Admin (`sideagent/admin`)
-
-A server with a dashboard (one shared workspace by default; multi-tenant through a `scope` hook): sign in, create agents, add knowledge, pick a model, go live, read audit logs and traces. Postgres with pgvector first; the database, sign-in and runtime are all options. `pnpm dev` runs it on PGlite, dashboard with hot reload on http://localhost:5174. See [Admin](./website/docs/admin.md), or [Self-hosting](./website/docs/self-hosting.md) for an end-to-end guide.
 
 ## For AI agents
 

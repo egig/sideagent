@@ -1,5 +1,5 @@
 ---
 type: llm
 weight: 3
-criteria: "The createAgent config does NOT contain spec, allow, baseUrl or approvalSecret, and the agent did not invent an OpenAPI spec for the app's invoices API."
+criteria: "The agent did not use anything that does not exist in sideagent: no createAgent, honoHandler, nextRoute, expressHandler, getAuth, getHeaders, an endpoint prop, or spec, allow, baseUrl, approvalSecret. It did not invent an OpenAPI spec for the app's invoices API."
 ---

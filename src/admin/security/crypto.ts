@@ -79,3 +79,29 @@ export async function open(env: CryptoEnv, agentId: string, field: string, seale
   const dataKey = await crypto.subtle.importKey("raw", dataKeyBytes, "AES-GCM", false, ["decrypt"]);
   return dec.decode(await gcm("decrypt", dataKey, fromB64url(iv), fromB64url(ct), ad));
 }
+
+export const SECRET_MIN_LENGTH = 32;
+
+/**
+ * Two independent secrets from the one master `secret` (HKDF-SHA256, a different label for each): the key that wraps
+ * stored secrets (`CONFIG_KEK`) and the one that signs sign-in cookies. Rotating the master rotates both.
+ */
+export async function deriveSecrets(secret: string): Promise<{ kek: string; authSecret: string }> {
+  if (secret.length < SECRET_MIN_LENGTH)
+    throw new Error(`sideagent: secret must be at least ${SECRET_MIN_LENGTH} characters: openssl rand -base64 32`);
+  const master = await crypto.subtle.importKey("raw", enc.encode(secret), "HKDF", false, ["deriveBits"]);
+  const derive = async (label: string) =>
+    new Uint8Array(
+      await crypto.subtle.deriveBits(
+        { name: "HKDF", hash: "SHA-256", salt: enc.encode("sideagent:v1"), info: enc.encode(label) },
+        master,
+        256,
+      ),
+    );
+  const kek = await derive("config-kek");
+  const auth = await derive("auth-secret");
+  return {
+    kek: btoa(String.fromCharCode(...kek)),
+    authSecret: btoa(String.fromCharCode(...auth)),
+  };
+}
