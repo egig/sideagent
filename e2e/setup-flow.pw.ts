@@ -8,8 +8,6 @@ async function fillModel(page: Page, apiKey: string) {
   await card.locator("#llm-base").fill(LLM_BASE_URL);
   await card.locator("#llm-model").fill("gpt-4o-mini");
   await card.locator("#llm-key").fill(apiKey);
-  await card.getByRole("button", { name: "Save changes" }).click();
-  await expect(card.getByRole("button", { name: "Save changes" })).toBeDisabled();
 }
 
 test("a new agent goes from the model to a live request, one step at a time", async ({ page, request }) => {
@@ -20,10 +18,9 @@ test("a new agent goes from the model to a live request, one step at a time", as
   await expect(step(page, "llm")).toHaveAttribute("data-state", "open");
   await expect(step(page, "knowledge")).toHaveAttribute("data-state", "locked");
   await expect(page.getByText("0 of 5 done")).toBeVisible();
-  await expect(step(page, "llm").getByRole("button", { name: "Test and continue" })).toBeDisabled();
 
   await fillModel(page, GOOD_KEY);
-  await step(page, "llm").getByRole("button", { name: "Test and continue" }).click();
+  await step(page, "llm").getByRole("button", { name: "Save & Continue" }).click();
   await expect(step(page, "llm")).toHaveAttribute("data-state", "done");
   await expect(step(page, "knowledge")).toHaveAttribute("data-state", "open");
 
@@ -115,7 +112,7 @@ test("a wrong API key is caught by the connection test, before any knowledge fai
   const llm = step(page, "llm");
 
   await fillModel(page, WRONG_KEY);
-  await llm.getByRole("button", { name: "Test and continue" }).click();
+  await llm.getByRole("button", { name: "Test connection" }).click();
   await expect(llm.getByText("Model: the provider refused the API key.", { exact: true })).toBeVisible();
   await expect(llm.getByText("Embedding model: the provider refused the API key.")).toBeVisible();
   await expect(page.getByText(WRONG_KEY)).toHaveCount(0);
@@ -124,8 +121,7 @@ test("a wrong API key is caught by the connection test, before any knowledge fai
 
   await llm.getByRole("button", { name: "Replace key" }).click();
   await llm.locator("#llm-key").fill(GOOD_KEY);
-  await llm.getByRole("button", { name: "Save changes" }).click();
-  await llm.getByRole("button", { name: "Test and continue" }).click();
+  await llm.getByRole("button", { name: "Save & Continue" }).click();
   await expect(step(page, "knowledge")).toHaveAttribute("data-state", "open");
 });
 
@@ -133,7 +129,7 @@ test("progress is read from the server, so a reload resumes at the next step", a
   await signIn(page);
   const agentId = await createAgent(page);
   await fillModel(page, GOOD_KEY);
-  await step(page, "llm").getByRole("button", { name: "Test and continue" }).click();
+  await step(page, "llm").getByRole("button", { name: "Save & Continue" }).click();
   await expect(step(page, "knowledge")).toHaveAttribute("data-state", "open");
 
   await page.reload();

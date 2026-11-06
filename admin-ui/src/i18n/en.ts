@@ -206,9 +206,6 @@ export const en = {
       llm: {
         title: "Connect a model",
         todo: "The model that answers, and the one that indexes your docs. Knowledge needs it first.",
-        saveFirst: "Save the settings above first.",
-        testContinue: "Test and continue",
-        testing: "Testing…",
       },
       knowledge: {
         title: "Add knowledge",
@@ -404,6 +401,8 @@ export const en = {
       apiKeyHint: "Encrypted at rest. Write-only: it is never shown again or logged.",
       newKey: "New key",
       replaceKey: "Replace key",
+      groups: { connection: "Connection", models: "Models" },
+      saveContinue: "Save & Continue",
       check: "Test connection",
       checking: "Testing…",
       checkHint: "One tiny chat call and one embedding call with the saved settings.",

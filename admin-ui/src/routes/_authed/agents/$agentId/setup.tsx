@@ -10,7 +10,6 @@ import { useFormatDate, useReadinessDetail } from "~/app/display";
 import { Embed } from "~/app/embed";
 import { Instructions } from "~/app/settings/instructions";
 import { Llm } from "~/app/settings/llm";
-import { LlmCheckResult, checkPassed, useLlmCheck } from "~/app/settings/llm-check";
 import { Origins } from "~/app/settings/origins";
 import { UserAuth } from "~/app/settings/user-auth";
 import { useApply } from "~/app/settings/form";
@@ -91,7 +90,7 @@ function Setup() {
         </Callout>
       )}
       <ol className="m-0 flex list-none flex-col gap-4 p-0">
-        {card("llm", <LlmStep agentId={agentId} ready={done.llm} onDone={() => advance("llm")} />)}
+        {card("llm", <Llm key={agentId} detail={detail} onDone={() => advance("llm")} />)}
         {card(
           "knowledge",
           <>
@@ -194,7 +193,7 @@ function StepCard({
     <li
       data-step={step}
       data-state={state}
-      className={`card overflow-hidden ${state === "open" ? "shadow-md" : ""} ${state === "locked" ? "opacity-60" : ""}`}
+      className={`card overflow-hidden ${state === "open" ? "shadow-md ring-2 ring-primary/25" : ""} ${state === "locked" ? "opacity-60" : ""}`}
     >
       {state === "open" || state === "locked" ? (
         <h2 className="m-0 flex items-start gap-3.5 px-5 py-4 font-[inherit]">{heading}</h2>
@@ -213,7 +212,7 @@ function StepCard({
           </button>
         </h2>
       )}
-      {state === "open" && <div className="flex flex-col gap-5 border-t border-line bg-canvas p-5">{children}</div>}
+      {state === "open" && <div className="flex flex-col gap-6 border-t border-line bg-canvas p-5">{children}</div>}
     </li>
   );
 }
@@ -237,32 +236,6 @@ function StepFooter({
         {label ?? t.continue}
       </button>
     </div>
-  );
-}
-
-function LlmStep({ agentId, ready, onDone }: { agentId: string; ready: boolean; onDone: () => void }) {
-  const t = useT().setup.steps.llm;
-  const { data } = useSuspenseQuery(agentQuery(agentId));
-  const check = useLlmCheck(agentId);
-  return (
-    <>
-      <Llm key={agentId} detail={data} />
-      <LlmCheckResult check={check} />
-      <div className="flex flex-wrap items-center justify-end gap-3">
-        {!ready && <span className="text-[13px] text-ink-muted">{t.saveFirst}</span>}
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={!ready || check.isPending}
-          onClick={async () => {
-            const result = await check.mutateAsync().catch(() => undefined);
-            if (checkPassed(result)) onDone();
-          }}
-        >
-          {check.isPending ? t.testing : t.testContinue}
-        </button>
-      </div>
-    </>
   );
 }
 

@@ -209,9 +209,6 @@ export const id: Messages = {
       llm: {
         title: "Hubungkan model",
         todo: "Model yang menjawab, dan model yang meng-index dokumentasi Anda. Knowledge membutuhkannya lebih dulu.",
-        saveFirst: "Simpan pengaturan di atas dulu.",
-        testContinue: "Uji dan lanjut",
-        testing: "Menguji…",
       },
       knowledge: {
         title: "Tambahkan knowledge",
@@ -401,6 +398,8 @@ export const id: Messages = {
       apiKeyHint: "Dienkripsi saat disimpan. Write-only: tidak pernah ditampilkan lagi atau dicatat.",
       newKey: "Key baru",
       replaceKey: "Ganti key",
+      groups: { connection: "Koneksi", models: "Model" },
+      saveContinue: "Simpan & Lanjut",
       check: "Uji koneksi",
       checking: "Menguji…",
       checkHint: "Satu panggilan chat kecil dan satu panggilan embedding dengan pengaturan yang tersimpan.",
