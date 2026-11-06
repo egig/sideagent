@@ -195,6 +195,7 @@ export function AgentChat(props: AgentChatProps) {
                 {...target}
                 session={session}
                 onThread={(id) => remember && storeSet(key, id)}
+                onThreadLost={() => storeSet(key, null)}
               />
             )}
           </div>

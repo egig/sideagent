@@ -386,6 +386,43 @@ export function runThreadContract(
       expect(await store.threads.getCheckpoint("agt_a", "t1", "", null)).toBeNull();
     });
 
+    it("counts a thread only if it was used since the given time", async () => {
+      await store.threads.touch("agt_a", "alice", "t1", "T", 100);
+      expect(await store.threads.has("agt_a", "alice", "t1", 100)).toBe(true);
+      expect(await store.threads.has("agt_a", "alice", "t1", 101)).toBe(false);
+      expect(await store.threads.has("agt_a", "alice", "t1")).toBe(true);
+      expect(await store.threads.has("agt_a", "bob", "t1", 0)).toBe(false);
+    });
+
+    it("prunes idle threads of the users with a prefix, with their checkpoints, and nothing else", async () => {
+      await store.threads.touch("agt_a", "anon:1", "idle", "", 10);
+      await store.threads.touch("agt_a", "anon:2", "fresh", "", 500);
+      await store.threads.touch("agt_a", "alice", "member", "T", 10);
+      await store.threads.touch("agt_b", "anon:3", "other-agent", "", 10);
+      for (const id of ["idle", "fresh", "member"]) await store.threads.putCheckpoint("agt_a", cp(id, "001"));
+      await store.threads.putWrites("agt_a", [wr("idle", "001", 0, "v")]);
+      await store.threads.pruneIdle("agt_a", "anon:", 100);
+      expect(await store.threads.has("agt_a", "anon:1", "idle")).toBe(false);
+      expect(await store.threads.getCheckpoint("agt_a", "idle", "", null)).toBeNull();
+      expect(await store.threads.has("agt_a", "anon:2", "fresh")).toBe(true);
+      expect(await store.threads.has("agt_a", "alice", "member")).toBe(true);
+      expect(await store.threads.getCheckpoint("agt_a", "member", "", null)).not.toBeNull();
+      expect(await store.threads.has("agt_b", "anon:3", "other-agent")).toBe(true);
+    });
+
+    it("takes the prune prefix literally, not as a pattern", async () => {
+      await store.threads.touch("agt_a", "a_b:1", "match", "", 10);
+      await store.threads.touch("agt_a", "aXb:1", "no-match", "", 10);
+      await store.threads.touch("agt_a", "100%:1", "percent", "", 10);
+      await store.threads.touch("agt_a", "1000:1", "no-percent", "", 10);
+      await store.threads.pruneIdle("agt_a", "a_b", 100);
+      await store.threads.pruneIdle("agt_a", "100%", 100);
+      expect(await store.threads.has("agt_a", "a_b:1", "match")).toBe(false);
+      expect(await store.threads.has("agt_a", "aXb:1", "no-match")).toBe(true);
+      expect(await store.threads.has("agt_a", "100%:1", "percent")).toBe(false);
+      expect(await store.threads.has("agt_a", "1000:1", "no-percent")).toBe(true);
+    });
+
     it("destroys one user's data and the agent's delete takes the rest", async () => {
       await store.threads.touch("agt_a", "alice", "t1", "T", 1);
       await store.threads.touch("agt_a", "bob", "t2", "T", 1);

@@ -16,7 +16,32 @@ async function requestHeaders(opts: Omit<TransportOptions, "signal">): Promise<R
   return { "content-type": "application/json", ...dynamic, ...opts.headers };
 }
 
-/** POSTs a chat request and yields the server's SSE events. */
+const INTERRUPTED = {
+  type: "error",
+  code: "stream_interrupted",
+  message: "The connection was interrupted before the answer was complete. Try again.",
+} as const;
+
+/** The JSON of one SSE block (its `data:` lines), or null if it has none or is not JSON. */
+function parseBlock(block: string): AgentEvent | null {
+  const data = block
+    .split("\n")
+    .filter((l) => l.startsWith("data:"))
+    .map((l) => l.slice(5).replace(/^ /, ""))
+    .join("\n");
+  if (!data) return null;
+  try {
+    return JSON.parse(data) as AgentEvent;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * POSTs a chat request and yields the server's SSE events. It never throws for a failed network or a broken
+ * stream: those become `error` events (only the caller's own abort is rethrown). A stream that ends without
+ * `turn.end` was cut off, and says so instead of passing a half answer off as a whole one.
+ */
 export async function* streamChat(body: ChatRequest, opts: TransportOptions): AsyncGenerator<AgentEvent> {
   let headers: Record<string, string>;
   try {
@@ -25,13 +50,24 @@ export async function* streamChat(body: ChatRequest, opts: TransportOptions): As
     yield { type: "error", code: "headers_failed", message: "Could not get credentials. Sign in again." };
     return;
   }
-  const res = await fetch(opts.endpoint, {
-    method: "POST",
-    credentials: opts.credentials ?? "same-origin",
-    headers,
-    body: JSON.stringify(body),
-    signal: opts.signal,
-  });
+  let res: Response;
+  try {
+    res = await fetch(opts.endpoint, {
+      method: "POST",
+      credentials: opts.credentials ?? "same-origin",
+      headers,
+      body: JSON.stringify(body),
+      signal: opts.signal,
+    });
+  } catch (e) {
+    if (opts.signal?.aborted) throw e;
+    yield {
+      type: "error",
+      code: "network",
+      message: "Could not reach the assistant. Check your connection and try again.",
+    };
+    return;
+  }
   if (!res.ok || !res.body) {
     let message = `Request failed (${res.status})`;
     try {
@@ -46,17 +82,46 @@ export async function* streamChat(body: ChatRequest, opts: TransportOptions): As
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buf = "";
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += decoder.decode(value, { stream: true });
-    let i: number;
-    while ((i = buf.indexOf("\n\n")) >= 0) {
-      const block = buf.slice(0, i);
-      buf = buf.slice(i + 2);
-      if (block.startsWith("data: ")) yield JSON.parse(block.slice(6)) as AgentEvent;
+  let ended = false;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf = (buf + decoder.decode(value, { stream: true })).replace(/\r\n/g, "\n");
+      let i: number;
+      while ((i = buf.indexOf("\n\n")) >= 0) {
+        const ev = parseBlock(buf.slice(0, i));
+        buf = buf.slice(i + 2);
+        if (!ev) continue;
+        if (ev.type === "turn.end") ended = true;
+        yield ev;
+      }
     }
+  } catch (e) {
+    if (opts.signal?.aborted) throw e;
   }
+  if (!ended && !opts.signal?.aborted) yield INTERRUPTED;
+}
+
+/**
+ * A turn, recovering from a thread the server no longer has (restarted, expired, deleted): it tells
+ * `onThreadLost` and asks again as a new conversation, once.
+ */
+export async function* streamTurn(
+  body: Extract<ChatRequest, { message: string }>,
+  opts: TransportOptions,
+  onThreadLost: () => void,
+): AsyncGenerator<AgentEvent> {
+  if (!body.threadId) return yield* streamChat(body, opts);
+  const events = streamChat(body, opts);
+  const first = await events.next();
+  if (first.done) return;
+  if (first.value.type === "error" && first.value.code === "http_404") {
+    onThreadLost();
+    return yield* streamChat({ ...body, threadId: undefined }, opts);
+  }
+  yield first.value;
+  yield* events;
 }
 
 /** POSTs a non-streaming request (history actions) and returns the JSON body. */

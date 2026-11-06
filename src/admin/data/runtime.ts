@@ -4,11 +4,11 @@
 // (agent, config version, mode), cached in memory.
 import { type Agent, type AuthResult, createAgent } from "../../server/index.js";
 import { DEFAULT_TRACE_LEVEL } from "../config.js";
+import { ANON_THREAD_TTL_MS, ANON_USER_PREFIX, PRUNE_ODDS } from "../retention.js";
 import type { AdminDeps } from "../deps.js";
 import { embeddingKey } from "../llm.js";
 import type { AgentRecord } from "../store/types.js";
 import { StoreCheckpointer } from "./adapters/checkpointer.js";
-import { EphemeralSaver, NO_THREADS } from "./adapters/ephemeral.js";
 import { TraceHandler } from "./adapters/trace.js";
 import { StoreVectorStore } from "./adapters/vector-store.js";
 import { watch } from "./adapters/watch.js";
@@ -26,7 +26,7 @@ const turnOf = new WeakMap<Request, string>();
 /**
  * What a request may use.
  * - docs: knowledge with a signed-in user's history.
- * - anon: knowledge only, nobody signed in. Nothing is kept: each request is its own user and thread.
+ * - anon: knowledge only, nobody signed in. A conversation is kept for ANON_THREAD_TTL_MS after its last message.
  */
 export type Mode = "docs" | "anon";
 
@@ -40,8 +40,8 @@ export function createRuntime(deps: AdminDeps) {
   async function build(row: AgentRecord, allowedOrigins: string[], mode: Mode): Promise<Agent> {
     const provider = await buildProvider(deps, row, failed);
     const key = embeddingKey(deps, row.config);
-    const ephemeral = mode === "anon" ? new EphemeralSaver() : null;
     const threads = deps.store.threads;
+    const now = deps.now ?? Date.now;
     return createAgent({
       allowedOrigins,
       instructions: row.config.instructions || undefined,
@@ -62,20 +62,30 @@ export function createRuntime(deps: AdminDeps) {
           .search(row.id, vector, k, key)
           .catch((e: unknown) => (failed(row.id, e), Promise.reject(e))),
       ),
-      checkpointer:
-        ephemeral ??
-        watch(new StoreCheckpointer(row.id, threads), ["getTuple", "list", "put", "putWrites"], (e) =>
-          failed(row.id, e),
-        ),
-      threadStore: ephemeral
-        ? NO_THREADS
-        : {
-            list: (userId) => threads.list(row.id, userId),
-            has: (userId, threadId) => threads.has(row.id, userId, threadId),
-            touch: (userId, threadId, title) =>
-              threads.touch(row.id, userId, threadId, title.slice(0, TITLE_MAX), Date.now()),
-            delete: (userId, threadId) => threads.delete(row.id, userId, threadId),
-          },
+      checkpointer: watch(new StoreCheckpointer(row.id, threads), ["getTuple", "list", "put", "putWrites"], (e) =>
+        failed(row.id, e),
+      ),
+      threadStore:
+        mode === "anon"
+          ? {
+              // A visitor has no thread list and no title: only the thread id they hold, for ANON_THREAD_TTL_MS.
+              list: async () => [],
+              has: (userId, threadId) => threads.has(row.id, userId, threadId, now() - ANON_THREAD_TTL_MS),
+              touch: async (userId, threadId) => {
+                await threads.touch(row.id, userId, threadId, "", now());
+                // Retention without a cron, like the audit log (retention.ts).
+                if (Math.floor(Math.random() * PRUNE_ODDS) === 0)
+                  await threads.pruneIdle(row.id, ANON_USER_PREFIX, now() - ANON_THREAD_TTL_MS).catch(() => {});
+              },
+              delete: (userId, threadId) => threads.delete(row.id, userId, threadId),
+            }
+          : {
+              list: (userId) => threads.list(row.id, userId),
+              has: (userId, threadId) => threads.has(row.id, userId, threadId),
+              touch: (userId, threadId, title) =>
+                threads.touch(row.id, userId, threadId, title.slice(0, TITLE_MAX), Date.now()),
+              delete: (userId, threadId) => threads.delete(row.id, userId, threadId),
+            },
       // Preview turns (D-31) show the owner the retrieved passages. Decided here from the user id the
       // server assigned, never from anything the client sent.
       exposeKnowledge: ({ userId }) => isPreviewUser(userId),

@@ -10,11 +10,20 @@ import { useMemo, useRef } from "react";
 import { turnHooks } from "./hooks.js";
 import { AssistantMessage, UserMessage } from "./Messages.js";
 import { applyEvent, toInitialMessages, type Part } from "./parts.js";
-import { streamChat } from "./transport.js";
+import { streamTurn } from "./transport.js";
+import { MAX_MESSAGE_CHARS } from "../protocol.js";
 import type { AgentChatProps, Session } from "./types.js";
 
 /** One conversation: streams turns. */
-export function Chat(props: AgentChatProps & { endpoint: string; session: Session; onThread: (id: string) => void }) {
+export function Chat(
+  props: AgentChatProps & {
+    endpoint: string;
+    session: Session;
+    onThread: (id: string) => void;
+    /** The server no longer has the conversation; the next message starts a new one. */
+    onThreadLost?: () => void;
+  },
+) {
   const { endpoint, hooks, credentials, headers } = props;
   const latest = useRef(props);
   latest.current = props;
@@ -34,7 +43,7 @@ export function Chat(props: AgentChatProps & { endpoint: string; session: Sessio
         let parts: Part[] = [];
         const turn = turnHooks(p.hooks);
         try {
-          for await (const ev of streamChat(
+          for await (const ev of streamTurn(
             { threadId: threadId.current, message: text, context: ctx },
             {
               endpoint: p.endpoint,
@@ -42,6 +51,10 @@ export function Chat(props: AgentChatProps & { endpoint: string; session: Sessio
               headers: p.headers,
               getHeaders: p.getHeaders,
               signal: abortSignal,
+            },
+            () => {
+              threadId.current = undefined;
+              p.onThreadLost?.();
             },
           )) {
             parts = applyEvent(parts, ev);
@@ -74,7 +87,12 @@ export function Chat(props: AgentChatProps & { endpoint: string; session: Sessio
           <ThreadPrimitive.Messages components={{ UserMessage, AssistantMessage }} />
         </ThreadPrimitive.Viewport>
         <ComposerPrimitive.Root className="sa-composer">
-          <ComposerPrimitive.Input className="sa-input" rows={2} placeholder={props.placeholder ?? "Message…"} />
+          <ComposerPrimitive.Input
+            className="sa-input"
+            rows={2}
+            maxLength={MAX_MESSAGE_CHARS}
+            placeholder={props.placeholder ?? "Message…"}
+          />
           <div className="sa-composer-bar">
             <span className="sa-hint">Enter to send · Shift+Enter for a new line</span>
             <ComposerPrimitive.Send className="sa-send" aria-label="Send" title="Send">

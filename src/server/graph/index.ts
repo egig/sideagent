@@ -1,4 +1,4 @@
-import { AIMessage, SystemMessage, type ToolMessage, type BaseMessage } from "@langchain/core/messages";
+import { SystemMessage, type ToolMessage, type BaseMessage } from "@langchain/core/messages";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { MemorySaver, type BaseCheckpointSaver, type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { RunnableLambda } from "@langchain/core/runnables";
@@ -10,8 +10,9 @@ import { buildSystemPrompt } from "../security/policy.js";
 import { toolResult, type ToolContext } from "./tools/context.js";
 import { declineReply } from "./decline.js";
 import { runSearch, SEARCH_TOOL_DEF } from "./tools/search.js";
-import { forModel, isSummary, summarize } from "./summarize.js";
-import type { RunContext } from "./types.js";
+import { declineMessage, modelView, withoutDeclines } from "./model-view.js";
+import { isSummary, summarize } from "./summarize.js";
+import type { GateVerdict, RunContext } from "./types.js";
 
 export type { RunContext } from "./types.js";
 
@@ -50,21 +51,22 @@ export function buildGraph({ config, checkpointer, knowledge, model }: GraphDeps
     async wrapModelCall(request, handler) {
       const { configurable, writer, signal } = request.runtime;
       const { run } = turnOf(configurable);
+      const { scope } = config;
+      const verdict = scope ? await gateVerdict(request.messages, run, knowledge, scope, { writer }) : "grounded";
+      if (verdict === "off") {
+        // Nothing in the documentation is close, so the model is not called. The fixed reply is written to the
+        // stream here: a message returned from middleware is not emitted in "messages" mode.
+        const text = scope!.naturalReply
+          ? await declineReply(model, lastQuestion(request.messages), scope!.offTopic, signal)
+          : scope!.offTopic;
+        writer?.({ type: "text.delta", text });
+        return declineMessage(text);
+      }
       // A plain-string SystemMessage: `systemPrompt` would become a content-block array.
       const systemMessage = new SystemMessage(
-        buildSystemPrompt(config.instructions, run.context, !!config.scope, !!config.summarize),
+        buildSystemPrompt(config.instructions, run.context, !!scope, !!config.summarize, verdict === "uncertain"),
       );
-      const { scope } = config;
-      if (scope && !(await isGrounded(request.messages, run, knowledge, scope.minScore, { writer }))) {
-        // Nothing backs this turn, so the model is not called. The fixed reply is written to the stream
-        // here: a message returned from middleware is not emitted in "messages" mode.
-        const text = scope.naturalReply
-          ? await declineReply(model, lastQuestion(request.messages), scope.offTopic, signal)
-          : scope.offTopic;
-        writer?.({ type: "text.delta", text });
-        return new AIMessage(text);
-      }
-      return handler({ ...request, messages: forModel(request.messages), systemMessage });
+      return handler({ ...request, messages: modelView(request.messages), systemMessage });
     },
 
     async wrapToolCall(request) {
@@ -97,49 +99,72 @@ export function buildGraph({ config, checkpointer, knowledge, model }: GraphDeps
 
 /** The text of the user's last message, summaries excluded. */
 function lastQuestion(messages: BaseMessage[]): string {
-  let at = messages.length - 1;
-  while (at >= 0 && (messages[at]!.getType() !== "human" || isSummary(messages[at]!))) at--;
+  const at = lastHuman(messages);
   return at >= 0 ? messageText(messages[at]!.content).trim() : "";
 }
 
+/** The user's last message in `messages`, summaries excluded, and where it is. */
+function lastHuman(messages: BaseMessage[], before = messages.length): number {
+  let at = before - 1;
+  while (at >= 0 && (messages[at]!.getType() !== "human" || isSummary(messages[at]!))) at--;
+  return at;
+}
+
 /**
- * The relevance gate (config.scope). A turn is backed when a search in it found a passage at or above
- * minScore, or the user's message itself matches a passage. The last check runs once per request.
+ * The relevance gate (config.scope). It decides before the model runs, so it must never refuse what the
+ * model could still resolve:
+ * - grounded: a search in this turn found a passage at or above minScore, or the user's message alone matches
+ *   one. The latter runs once per request.
+ * - uncertain: the message alone is weaker, but it, or it together with the previous question (a follow-up
+ *   such as "and for production?"), reaches clarifyScore. The model gets it, with the scope rules.
+ * - off: below clarifyScore. The fixed reply is sent.
  */
-async function isGrounded(
+async function gateVerdict(
   messages: BaseMessage[],
   run: RunContext,
   knowledge: KnowledgeBase,
-  minScore: number,
+  scope: NonNullable<AgentConfig["scope"]>,
   cfg: Pick<LangGraphRunnableConfig, "writer">,
-): Promise<boolean> {
-  let at = messages.length - 1;
-  while (at >= 0 && (messages[at]!.getType() !== "human" || isSummary(messages[at]!))) at--;
-  const turn = messages.slice(at + 1);
-  for (const m of turn) {
-    if (m.getType() === "tool" && (m as ToolMessage).artifact?.relevant) return true;
+): Promise<GateVerdict> {
+  const at = lastHuman(messages);
+  for (const m of messages.slice(at + 1)) {
+    if (m.getType() === "tool" && (m as ToolMessage).artifact?.relevant) return "grounded";
   }
   const question = at >= 0 ? messageText(messages[at]!.content).trim().slice(0, 300) : "";
-  if (!question) return false;
+  if (!question) return "off";
   run.gate ??= (async () => {
-    const hits = await knowledge.search(question);
+    // Earlier refusals do not count as context: the question they answered was off topic.
+    const before = withoutDeclines(messages.slice(0, at));
+    const prevAt = lastHuman(before);
+    const previous = prevAt >= 0 ? messageText(before[prevAt]!.content).trim().slice(0, 300) : "";
+    const clarifyScore = scope.clarifyScore ?? scope.minScore / 2;
+    // With clarifyScore at minScore there is no middle band, so the earlier question is not needed.
+    const queries = previous && clarifyScore < scope.minScore ? [question, `${previous}\n${question}`] : [question];
+    const found = await Promise.all(
+      queries.map(async (query) => {
+        const hits = await knowledge.search(query);
+        return { query, hits, top: Math.max(0, ...hits.map((h) => h.score)) };
+      }),
+    );
+    const alone = found[0]!;
+    const best = found.reduce((a, b) => (b.top > a.top ? b : a));
     if (run.exposeKnowledge) {
       // Shown like a search the model made, so the owner sees what retrieval did even when the gate stops the turn.
-      const relevant = hits.filter((h) => h.score >= minScore);
+      const relevant = best.hits.filter((h) => h.score >= scope.minScore);
       cfg.writer?.({ type: "tool.start", callId: "gate", tool: SEARCH_TOOL });
       cfg.writer?.({
         type: "tool.complete",
         callId: "gate",
         tool: SEARCH_TOOL,
         status: 200,
-        args: { query: question },
+        args: { query: best.query },
         result: { sources: uniqueSources(relevant) },
       });
       cfg.writer?.({
         type: "knowledge.hits",
         callId: "gate",
-        query: question,
-        hits: hits.map((h) => ({
+        query: best.query,
+        hits: best.hits.map((h) => ({
           title: h.meta.title,
           ...(h.meta.url ? { url: h.meta.url } : {}),
           score: h.score,
@@ -147,7 +172,10 @@ async function isGrounded(
         })),
       });
     }
-    return hits.some((h) => h.score >= minScore);
+    // Only the message alone can be "grounded": a match that needs the earlier messages is never enough to skip the model's judgement.
+    if (alone.top >= scope.minScore) return "grounded";
+    if (clarifyScore >= scope.minScore) return "off";
+    return best.top >= clarifyScore ? "uncertain" : "off";
   })();
   return run.gate;
 }

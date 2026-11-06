@@ -1,9 +1,10 @@
-import { and, desc, eq, lt } from "drizzle-orm";
+import { and, desc, eq, gte, like, lt } from "drizzle-orm";
 import type { AdminStore, CheckpointWithWrites } from "../types.js";
 import type { PgDb } from "./db.js";
 import * as t from "./schema.js";
 
 const THREAD_LIST_MAX = 50;
+const PRUNE_BATCH = 200;
 
 /** The thread row with its checkpoints and writes. */
 async function dropThread(tx: PgDb, agentId: string, id: string) {
@@ -45,11 +46,18 @@ export const threadsStore = (db: PgDb): AdminStore["threads"] => ({
       .limit(THREAD_LIST_MAX);
     return rows;
   },
-  async has(agentId, userId, id) {
+  async has(agentId, userId, id, since) {
     const rows = await db
       .select({ id: t.thread.id })
       .from(t.thread)
-      .where(and(eq(t.thread.agentId, agentId), eq(t.thread.userId, userId), eq(t.thread.id, id)))
+      .where(
+        and(
+          eq(t.thread.agentId, agentId),
+          eq(t.thread.userId, userId),
+          eq(t.thread.id, id),
+          since === undefined ? undefined : gte(t.thread.updatedAt, since),
+        ),
+      )
       .limit(1);
     return rows.length > 0;
   },
@@ -71,6 +79,18 @@ export const threadsStore = (db: PgDb): AdminStore["threads"] => ({
         .where(and(eq(t.thread.agentId, agentId), eq(t.thread.userId, userId), eq(t.thread.id, id)));
       if (!owned.length) return;
       await dropThread(tx, agentId, id);
+    });
+  },
+  async pruneIdle(agentId, userPrefix, before) {
+    // The prefix is literal text, not a pattern.
+    const prefix = `${userPrefix.replace(/[\\%_]/g, "\\$&")}%`;
+    await db.transaction(async (tx) => {
+      const idle = await tx
+        .select({ id: t.thread.id })
+        .from(t.thread)
+        .where(and(eq(t.thread.agentId, agentId), like(t.thread.userId, prefix), lt(t.thread.updatedAt, before)))
+        .limit(PRUNE_BATCH);
+      for (const { id } of idle) await dropThread(tx, agentId, id);
     });
   },
   async destroyUser(agentId, userId) {

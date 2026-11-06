@@ -67,6 +67,13 @@ await server.listen(8788);
 
 A database is an implementation of `AdminStore` (agents, usage counters, audit and traces, knowledge with vector search, threads and checkpoints). `sideagent/server/store` exports the type and `runStoreContract` / `runThreadContract`, the behaviour every store must have (they need `vitest`); run them against yours.
 
+## How a conversation behaves
+
+- **Follow-ups and unclear questions.** A message that matches the knowledge only weakly is not refused at once. If it, together with the previous question, is close to the knowledge, the model gets it with the scope rules and may ask what the user means. Only a message with nothing close to it gets the fixed "off topic" reply, and the model is not called. Refusals stay visible to the user but are not shown to the model on later turns.
+- **Anonymous visitors** continue a conversation through the id of its thread, which only that visitor holds. The conversation is stored in your database, like a signed-in user's, and deleted an hour after its last message (a visitor who returns later starts a new one, which the chat does by itself). It holds the visitor's messages, so count it in your privacy notice. Anonymous visitors have no history list.
+- **One turn per thread.** A second message sent to a thread while its turn is still running is refused with `409`. Turns per user are limited too (`429`). Both limits are per process: behind several instances, send each thread to the same instance or add a shared limit in `rateLimit`.
+- **A turn the browser abandons** (tab closed, request aborted) stops the model and tools and is recorded in the audit log with the reason `client_aborted`. A tool call that never finished is shown to the model as interrupted, so the thread keeps working.
+
 ## Security defaults
 
 - Every dashboard query is scoped by `scope`. Another scope's agent answers like a missing one: 404.

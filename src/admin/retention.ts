@@ -14,3 +14,10 @@ export const AUDIT_RANGES = {
 export const AUDIT_RESULTS = ["ok", "denied", "limited", "error"] as const;
 /** Retention without a cron: one write in this many trims its agent's old rows. */
 export const PRUNE_ODDS = 20;
+/**
+ * How long an anonymous visitor's conversation is kept after its last message. It is customer text from someone
+ * who never signed in, so it goes sooner than anything else; a visitor who comes back later starts a new one.
+ */
+export const ANON_THREAD_TTL_MS = 60 * 60_000;
+/** Every anonymous visitor's user id starts with this (data/router.ts). */
+export const ANON_USER_PREFIX = "anonymous:";

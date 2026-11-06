@@ -6,6 +6,7 @@ import { checkOrigin, preflight } from "../security/origin.js";
 import { json } from "./json.js";
 import { readChatBody } from "./request.js";
 import { handleThreadAction } from "./thread-routes.js";
+import { createSlots } from "./slots.js";
 import { runTurn, type TurnErrorContext } from "./turn.js";
 
 export interface AuthResult {
@@ -27,7 +28,7 @@ export interface HandlerDeps {
 /** The agent endpoint. Each step either rejects the request or narrows what the next step may assume. */
 export function createHandler(deps: HandlerDeps) {
   const { config, graph, threads, getAuth, beforeTurn, exposeKnowledge, callbacks } = deps;
-  const active = new Map<string, number>();
+  const slots = createSlots(config.limits.maxConcurrentTurnsPerUser);
 
   return async function handler(request: Request): Promise<Response> {
     const { ok: originOk, cors } = checkOrigin(request, config.allowedOrigins);
@@ -63,26 +64,41 @@ export function createHandler(deps: HandlerDeps) {
       return json(429, { error: (e as Error).message || "rejected" }, cors);
     }
 
-    if ((active.get(userId) ?? 0) >= config.limits.maxConcurrentTurnsPerUser) {
-      return json(429, { error: "too many concurrent turns" }, cors);
+    const slot = slots.reserve(userId, body.threadId);
+    if ("denied" in slot) {
+      return slot.denied === "thread"
+        ? json(409, { error: "a turn is already running for this thread" }, cors)
+        : json(429, { error: "too many concurrent turns" }, cors);
     }
 
-    // A per-request switch that only the host can flip. A throwing callback means no; it is never read from
-    // the request body.
-    const asked = { request, userId };
-    let expose = false;
+    // From here the slot is held until the stream ends (turn.ts), or released at once if the turn never starts.
     try {
-      expose = (await exposeKnowledge?.(asked)) === true;
-    } catch {
-      /* stays false */
-    }
-    let traced: Callbacks | undefined;
-    try {
-      traced = await callbacks?.(asked);
-    } catch {
-      /* no tracing */
-    }
+      // A per-request switch that only the host can flip. A throwing callback means no; it is never read from
+      // the request body.
+      const asked = { request, userId };
+      let expose = false;
+      try {
+        expose = (await exposeKnowledge?.(asked)) === true;
+      } catch {
+        /* stays false */
+      }
+      let traced: Callbacks | undefined;
+      try {
+        traced = await callbacks?.(asked);
+      } catch {
+        /* no tracing */
+      }
 
-    return runTurn(request, body, { userId, exposeKnowledge: expose, callbacks: traced }, { ...deps, active }, cors);
+      return await runTurn(
+        request,
+        body,
+        { userId, exposeKnowledge: expose, callbacks: traced },
+        { ...deps, release: slot.release },
+        cors,
+      );
+    } catch (e) {
+      slot.release();
+      throw e;
+    }
   };
 }

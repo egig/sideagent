@@ -69,6 +69,13 @@ export const configSchema = z
     scope: z
       .object({
         minScore: z.number().min(0).max(1).default(0.45),
+        /**
+         * A message that matches below `minScore` but at least this much (alone, or together with the previous
+         * question) is not refused: the model gets it with the scope rules and may ask what the user means. Below
+         * it the fixed reply is sent. Default: half of `minScore`. Set it equal to `minScore` to refuse everything
+         * under `minScore`, as before.
+         */
+        clarifyScore: z.number().min(0).max(1).optional(),
         offTopic: z
           .string()
           .min(1)
@@ -143,6 +150,9 @@ export function parseConfig(
   const { summarize, limits } = result.data;
   if (summarize && summarize.keepMessages < limits.maxSteps * 2 + 1)
     fail(`summarize.keepMessages must be at least limits.maxSteps * 2 + 1 (${limits.maxSteps * 2 + 1})`);
+  const scope = result.data.scope;
+  if (scope?.clarifyScore !== undefined && scope.clarifyScore > scope.minScore)
+    fail(`scope.clarifyScore must be at most scope.minScore (${scope.minScore})`);
   if (llm && injected.model)
     fail(
       "llm and model are mutually exclusive: pass llm for an OpenAI-compatible endpoint, or model for your own chat model",
