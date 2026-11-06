@@ -30,18 +30,39 @@ export function auditStream(
       return block;
     }
   };
-  const out = res.body!.pipeThrough(
-    new TransformStream<Uint8Array, Uint8Array>({
-      transform(chunk, controller) {
-        const blocks = (tail + decoder.decode(chunk, { stream: true })).split("\n\n");
+  // A hand-written stream rather than a TransformStream: a transform's flush does not run when the browser
+  // cancels, and a cancelled turn has still spent tokens, so it needs its row too.
+  const reader = res.body!.getReader();
+  let logged = false;
+  const finish = async (cancelled: boolean) => {
+    if (logged) return;
+    logged = true;
+    await opts.log(
+      reason ? { result: "error", reason } : { result: "ok", ...(cancelled && { reason: "client_aborted" }) },
+    );
+  };
+  const out = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read();
+        if (done) {
+          if (tail) controller.enqueue(encoder.encode(rewrite(tail)));
+          await finish(false);
+          controller.close();
+          return;
+        }
+        const blocks = (tail + decoder.decode(value, { stream: true })).split("\n\n");
         tail = blocks.pop()!;
         if (blocks.length) controller.enqueue(encoder.encode(blocks.map((b) => `${rewrite(b)}\n\n`).join("")));
-      },
-      async flush(controller) {
-        if (tail) controller.enqueue(encoder.encode(rewrite(tail)));
-        await opts.log(reason ? { result: "error", reason } : { result: "ok" });
-      },
-    }),
-  );
+      } catch (e) {
+        await finish(false);
+        controller.error(e);
+      }
+    },
+    async cancel(why) {
+      await finish(true);
+      await reader.cancel(why);
+    },
+  });
   return new Response(out, { status: res.status, headers: res.headers });
 }

@@ -35,6 +35,13 @@ describe("parseConfig", () => {
       expect(() => parseConfig({ ...base, [key]: key === "allow" ? [] : "x" }, true)).toThrow();
     }
   });
+  it("accepts a clarifyScore up to minScore and no higher", () => {
+    expect(parseConfig({ ...base, scope: { minScore: 0.5, clarifyScore: 0.5 } }, true).scope?.clarifyScore).toBe(0.5);
+    expect(() => parseConfig({ ...base, scope: { minScore: 0.5, clarifyScore: 0.6 } }, true)).toThrow(
+      "scope.clarifyScore must be at most scope.minScore (0.5)",
+    );
+  });
+
   it("fills in scope defaults", () => {
     expect(parseConfig({ ...base, scope: {} }, true).scope?.minScore).toBe(0.45);
   });

@@ -1,4 +1,7 @@
-/** Events streamed from server to client over SSE. Shared with the client as types only. */
+/** The longest message a turn accepts, in characters. */
+export const MAX_MESSAGE_CHARS = 8000;
+
+/** Events streamed from server to client over SSE. Shared with the client, mostly as types. */
 export type AgentEvent =
   | { type: "turn.start"; threadId: string }
   | { type: "text.delta"; text: string }

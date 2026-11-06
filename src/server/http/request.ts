@@ -1,9 +1,14 @@
 import { z } from "zod";
+import { MAX_MESSAGE_CHARS } from "../../protocol.js";
 
 const chatBody = z.union([
   z.object({ action: z.literal("threads.list") }),
   z.object({ action: z.enum(["threads.get", "threads.delete"]), threadId: z.string() }),
-  z.object({ threadId: z.string().optional(), message: z.string().min(1).max(8000), context: z.unknown().optional() }),
+  z.object({
+    threadId: z.string().optional(),
+    message: z.string().min(1).max(MAX_MESSAGE_CHARS),
+    context: z.unknown().optional(),
+  }),
 ]);
 
 export type ChatBody = z.infer<typeof chatBody>;

@@ -31,6 +31,8 @@ Pass `storageKey` (the user's ID) so the last conversation the chat remembers in
 
 ## Layout
 
+If the connection breaks while an answer streams, the chat shows "The connection was interrupted" instead of passing the partial answer off as complete. If the server no longer has the conversation (restart, expiry), the chat starts a new one with your next message.
+
 Hide the floating launcher with `launcher={false}` and open the panel from your own button through `useAgent().setOpen`. Turn off chat history with `history={false}`. Hide the New chat button with `newChatButton={false}`. Add your own buttons to the panel header with `headerActions`.
 
 ### Docked sidebar

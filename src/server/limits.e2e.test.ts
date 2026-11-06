@@ -69,6 +69,11 @@ describe("turn limits", () => {
   it("reports step_limit when the model keeps searching", async () => {
     const errors = await turn(loopLlm, { maxSteps: 1 });
     expect(errors.map((e) => e.code)).toEqual(["step_limit"]);
+    // Fixed wording: the framework's own error names its internals and a troubleshooting link.
+    expect(errors[0]!.message).toBe(
+      "The agent needed too many steps for this question. Try a simpler or more specific one.",
+    );
+    expect(errors[0]!.message).not.toMatch(/recursion|langchain|http/i);
   });
 
   it("reports timeout when the turn runs too long", async () => {

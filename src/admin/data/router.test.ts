@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { publishableKey } from "../../keys.js";
+import { ANON_THREAD_TTL_MS } from "../retention.js";
 import { mockEmbeddingsHandler } from "../../testing/mock-llm.js";
 import {
   BASE,
@@ -77,12 +78,84 @@ describe("data plane", () => {
 
   it("answers off-topic questions without calling the model", async () => {
     const { id } = await liveKnowledgeAgent();
-    const res = await ask(id, { message: "write me a poem" });
+    const res = await ask(id, { message: "what is 2+2" });
     expect(res.status).toBe(200);
     const evs = await events(res);
     expect(evs.map((e) => e.type)).toEqual(["turn.start", "text.delta", "turn.end"]);
     expect(evs[1]!.text).toContain("only answer questions about");
     expect(modelCalls).toBe(0);
+  });
+
+  describe("anonymous conversations", () => {
+    const threadOf = async (res: Response) =>
+      (await events(res)).find((e) => e.type === "turn.start") as unknown as { threadId: string };
+
+    it("keeps the context of a thread for the visitor who holds its id", async () => {
+      const { id } = await liveKnowledgeAgent();
+      const first = await threadOf(await ask(id, { message: REFUND_QUESTION }));
+      const calls = modelCalls;
+      // Alone, this has nothing to do with the documentation (the next test); after the first message it is a follow-up.
+      const res = await ask(id, { threadId: first.threadId, message: "how long does it take?" });
+      expect(res.status).toBe(200);
+      const again = await threadOf(res);
+      expect(again.threadId).toBe(first.threadId);
+      expect(modelCalls).toBeGreaterThan(calls);
+    });
+
+    it("refuses the same follow-up from a visitor with no thread", async () => {
+      const { id } = await liveKnowledgeAgent();
+      const calls = modelCalls;
+      const evs = await events(await ask(id, { message: "how long does it take?" }));
+      expect(evs[1]!.text).toContain("only answer questions about");
+      expect(modelCalls).toBe(calls);
+    });
+
+    it("gives each visitor without a thread a thread of their own", async () => {
+      const { id } = await liveKnowledgeAgent();
+      const a = await threadOf(await ask(id, { message: REFUND_QUESTION }));
+      const b = await threadOf(await ask(id, { message: REFUND_QUESTION }));
+      expect(a.threadId).not.toBe(b.threadId);
+    });
+
+    it("answers 404 to a thread it does not have, and treats any other id as no thread", async () => {
+      const { id } = await liveKnowledgeAgent();
+      const unknown = `anonymous%3A${crypto.randomUUID()}:${crypto.randomUUID()}`;
+      expect((await ask(id, { threadId: unknown, message: REFUND_QUESTION })).status).toBe(404);
+      // A signed-in user's id, or junk, never reaches another user's thread: it just starts a new one.
+      for (const threadId of ["alice%40example.com:" + crypto.randomUUID(), "../etc", "anonymous"]) {
+        const res = await ask(id, { threadId, message: REFUND_QUESTION });
+        expect(res.status).toBe(200);
+        expect((await threadOf(res)).threadId).not.toBe(threadId);
+      }
+    });
+
+    it("keeps the thread in the database, without the visitor's words as a title", async () => {
+      const { id } = await liveKnowledgeAgent();
+      const { threadId } = await threadOf(await ask(id, { message: REFUND_QUESTION }));
+      const user = decodeURIComponent(threadId.split(":")[0]!);
+      expect(user).toMatch(/^anonymous:/);
+      expect(await store.threads.has(id, user, threadId)).toBe(true);
+      expect(await store.threads.list(id, user)).toEqual([{ id: threadId, title: "", updatedAt: expect.any(Number) }]);
+      expect(await store.threads.getCheckpoint(id, threadId, "", null)).not.toBeNull();
+    });
+
+    it("forgets a thread an hour after its last message, and a new message renews it", async () => {
+      let clock = Date.now();
+      setDeps({ now: () => clock });
+      const { id } = await liveKnowledgeAgent();
+      const { threadId } = await threadOf(await ask(id, { message: REFUND_QUESTION }));
+      clock += ANON_THREAD_TTL_MS - 1000;
+      expect((await ask(id, { threadId, message: REFUND_QUESTION })).status).toBe(200);
+      clock += ANON_THREAD_TTL_MS - 1000;
+      expect((await ask(id, { threadId, message: REFUND_QUESTION })).status).toBe(200);
+      clock += ANON_THREAD_TTL_MS + 1000;
+      expect((await ask(id, { threadId, message: REFUND_QUESTION })).status).toBe(404);
+    });
+
+    it("offers no thread list or history to an anonymous visitor", async () => {
+      const { id } = await liveKnowledgeAgent();
+      expect((await ask(id, { action: "threads.list" })).status).toBe(501);
+    });
   });
 
   it("hides unknown, draft and deactivated agents the same way", async () => {
@@ -270,6 +343,35 @@ describe("data plane", () => {
         ]),
       );
       expect(JSON.stringify(audit)).not.toContain("hunter2");
+    });
+
+    it("records a turn the browser cancelled", async () => {
+      const { id, cookie } = await liveKnowledgeAgent();
+      const res = await app.fetch(
+        new Request(`${BASE}/v1/agents/${id}`, {
+          method: "POST",
+          body: JSON.stringify({ message: REFUND_QUESTION }),
+          headers: {
+            "content-type": "application/json",
+            "x-forwarded-for": `10.0.1.${++ipCounter}`,
+            "x-sideagent-key": keyOf(id),
+            origin: ORIGIN,
+          },
+        }),
+      );
+      const reader = res.body!.getReader();
+      await reader.read();
+      await reader.cancel();
+      await vi.waitFor(async () => {
+        const audit = await body<{ events: { event: string; result: string; reason: string | null }[] }>(
+          call(`/api/agents/${id}/audit`, {}, cookie),
+        );
+        expect(audit.events.map((e) => [e.event, e.result, e.reason])).toContainEqual([
+          "chat.turn",
+          "ok",
+          "client_aborted",
+        ]);
+      });
     });
 
     it("is tenant-scoped", async () => {

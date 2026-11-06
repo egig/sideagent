@@ -4,6 +4,7 @@ import { GraphRecursionError } from "@langchain/langgraph";
 import type { AgentEvent } from "../../protocol.js";
 import type { AgentConfig } from "../config.js";
 import { MODEL_NODE, type AgentGraph } from "../graph/index.js";
+import { messageText } from "../message-text.js";
 import { threadPrefix, titleFrom, type ThreadStore } from "../threads.js";
 import type { TurnBody } from "./request.js";
 
@@ -20,8 +21,8 @@ export interface TurnDeps {
   graph: AgentGraph;
   threads: ThreadStore;
   onError?: (ctx: TurnErrorContext) => void | Promise<void>;
-  /** Turns in flight per user; incremented here, decremented when the stream ends. */
-  active: Map<string, number>;
+  /** Gives back the slot the handler reserved for this turn (see slots.ts). Called once the stream ends. */
+  release: () => void;
 }
 
 export interface TurnAuth {
@@ -38,7 +39,7 @@ export async function runTurn(
   deps: TurnDeps,
   cors: Record<string, string>,
 ): Promise<Response> {
-  const { config, graph, threads, active, onError } = deps;
+  const { config, graph, threads, release, onError } = deps;
   const { userId } = auth;
   const threadId = body.threadId ?? `${threadPrefix(userId)}${crypto.randomUUID()}`;
   const runCfg = {
@@ -53,7 +54,6 @@ export async function runTurn(
   };
 
   await threads.touch(userId, threadId, titleFrom(body.message));
-  active.set(userId, (active.get(userId) ?? 0) + 1);
   const timeout = new AbortController();
   let timedOut = false;
   const timer = setTimeout(() => {
@@ -63,6 +63,8 @@ export async function runTurn(
   request.signal.addEventListener("abort", () => timeout.abort(), { once: true });
 
   const encoder = new TextEncoder();
+  // The reader left (closed the tab, aborted fetch): stop the model and the tools instead of finishing for nobody.
+  let cancelled = false;
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const send = (e: AgentEvent) => {
@@ -88,27 +90,42 @@ export async function runTurn(
           if (mode === "custom") send(chunk as AgentEvent);
           else if (mode === "messages") {
             const [msg, meta] = chunk;
-            if (meta?.langgraph_node === MODEL_NODE && typeof msg.content === "string" && msg.content) {
-              send({ type: "text.delta", text: msg.content });
-            }
+            // Content is a string for most providers and an array of blocks for others (Anthropic, some
+            // gateways); only the text blocks are for the user.
+            const text = meta?.langgraph_node === MODEL_NODE ? messageText(msg.content) : "";
+            if (text) send({ type: "text.delta", text });
           }
         }
       } catch (e) {
         const code = e instanceof GraphRecursionError ? "step_limit" : timedOut ? "timeout" : "error";
-        const message = code === "step_limit" ? (e as Error).message : timedOut ? "turn timed out" : undefined;
-        send({ type: "error", code, message: message ?? "The agent failed. Try again." });
+        // Fixed wording: the raw step-limit error names framework internals and a troubleshooting URL.
+        const message =
+          code === "step_limit"
+            ? "The agent needed too many steps for this question. Try a simpler or more specific one."
+            : code === "timeout"
+              ? "turn timed out"
+              : "The agent failed. Try again.";
+        send({ type: "error", code, message });
         // A client that went away is not a failure.
-        if (!request.signal.aborted) {
+        if (!request.signal.aborted && !cancelled) {
           void Promise.resolve()
             .then(() => onError?.({ code, error: e, userId, threadId }))
             .catch(() => {});
         }
       } finally {
         clearTimeout(timer);
-        active.set(userId, Math.max(0, (active.get(userId) ?? 1) - 1));
+        release();
         send({ type: "turn.end" });
-        controller.close();
+        try {
+          controller.close();
+        } catch {
+          /* the reader cancelled */
+        }
       }
+    },
+    cancel() {
+      cancelled = true;
+      timeout.abort();
     },
   });
 

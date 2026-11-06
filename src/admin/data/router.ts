@@ -4,7 +4,9 @@
 // agents included. The key proves nothing; it catches a key used against the wrong agent or host.
 // Every turn runs on the library (runtime.ts, D-24), which holds the prompt rules and the relevance
 // gate (D-20). Who the end user is depends on the agent's auth mode:
-// - anonymous: nobody. No history. Each request is its own user and thread.
+// - anonymous: nobody. No history list. A visitor continues a conversation only by the unguessable id of its
+//   thread, kept in the database for ANON_THREAD_TTL_MS after its last message; without one, each request is a new
+//   visitor.
 // - jwks, userinfo: the bearer token in Authorization, verified by end-user-auth.ts (D-29), names the
 //   user, who gets history.
 // - The dashboard's own agent (APP_PUBLISHABLE_KEY): the better-auth session cookie, from the dashboard
@@ -18,10 +20,12 @@ import { normalizeConfig } from "../config.js";
 import type { AdminDeps } from "../deps.js";
 import { anonAvailable } from "../llm.js";
 import type { AgentRecord, AuditInput } from "../store/types.js";
+import { ANON_USER_PREFIX } from "../retention.js";
 import { dohResolve } from "../security/url-guard.js";
 import { checkChallengeToken, CHALLENGE_HEADER, issueChallengeToken } from "../security/challenge.js";
 import { createAccess, type Identity } from "./access.js";
 import { auditStream } from "./audit.js";
+import { anonUserOf } from "./anon.js";
 import { createRuntime, type Mode } from "./runtime.js";
 import { createEndUserAuth } from "./end-user-auth.js";
 import { corsHeaders, uniform, uniformFrom } from "./http.js";
@@ -180,12 +184,14 @@ export function dataPlaneRouter(deps: AdminDeps) {
       await log({ result: "denied", reason: "origin_not_allowed" }, "request");
       return uniform(c, 403, "forbidden");
     }
-    // An anonymous visitor is a new user each request, with a new thread.
-    const turnUser = userId ?? `anonymous:${crypto.randomUUID()}`;
+    // An anonymous visitor is whoever holds the id of a live thread of theirs; otherwise a new one with a new thread.
+    // A stale or foreign id makes the library answer 404, as for a signed-in user.
+    const priorAnon = userId || !isMessage ? null : anonUserOf((raw as { threadId?: unknown }).threadId);
+    const turnUser = userId ?? priorAnon ?? `${ANON_USER_PREFIX}${crypto.randomUUID()}`;
     const request = new Request(c.req.url, {
       method: "POST",
       headers: c.req.raw.headers,
-      body: JSON.stringify(userId ? raw : { ...raw, threadId: undefined }),
+      body: JSON.stringify(userId || priorAnon ? raw : { ...raw, threadId: undefined }),
     });
     try {
       if (userId) await track(row.id, userId);

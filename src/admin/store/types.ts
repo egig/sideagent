@@ -203,10 +203,16 @@ export type CheckpointWithWrites = CheckpointRow & { writes: WriteRow[] };
 export interface ThreadStorage {
   /** The user's newest threads, at most 50. */
   list(agentId: string, userId: string): Promise<ThreadMeta[]>;
-  has(agentId: string, userId: string, id: string): Promise<boolean>;
+  /** With `since`, only a thread last used at or after that time (ms) counts. */
+  has(agentId: string, userId: string, id: string, since?: number): Promise<boolean>;
   touch(agentId: string, userId: string, id: string, title: string, at: number): Promise<void>;
   /** Deletes the thread with its checkpoints and writes. */
   delete(agentId: string, userId: string, id: string): Promise<void>;
+  /**
+   * Deletes the agent's threads of users whose id starts with `userPrefix` and that were last used before
+   * `before` (ms), with their checkpoints and writes. At most 200 per call; call again for more.
+   */
+  pruneIdle(agentId: string, userPrefix: string, before: number): Promise<void>;
   /** Every thread, checkpoint and write the user has under the agent. */
   destroyUser(agentId: string, userId: string): Promise<void>;
   getCheckpoint(
