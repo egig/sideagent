@@ -18,6 +18,8 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${port}`,
     trace: "off",
+    // Kept in test-results/, which CI uploads when a run fails.
+    screenshot: "only-on-failure",
     ...devices["Desktop Chrome"],
   },
   webServer: {
