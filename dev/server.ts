@@ -8,6 +8,7 @@ import { getRequestListener } from "@hono/node-server";
 import { createServer as createVite } from "vite";
 import { adminUiHtml } from "../src/admin/ui.js";
 import type { PgDb } from "../src/admin/store/pg/index.js";
+import { builtinModelFromEnv } from "../src/cli-builtin.js";
 import { createServer } from "../src/create-server.js";
 
 try {
@@ -49,6 +50,7 @@ const app = createServer({
     github: pair(env.GITHUB_CLIENT_ID, env.GITHUB_CLIENT_SECRET),
     google: pair(env.GOOGLE_CLIENT_ID, env.GOOGLE_CLIENT_SECRET),
   },
+  builtinModel: builtinModelFromEnv(env),
   onError: ({ agentId, code }) => console.error("agent turn error", { agentId, code }),
 });
 await app.ready;

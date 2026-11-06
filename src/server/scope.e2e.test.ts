@@ -104,6 +104,10 @@ describe("scope: naturalReply", () => {
     expect(sent.tools).toBeUndefined();
     expect(sent.messages.map((m) => m.role)).toEqual(["system", "user"]);
     expect(sent.messages[0]!.content).toContain("never answer it");
+    // The reply always asks what the user wants to know, so a first message is never a dead end.
+    expect(sent.messages[0]!.content).toContain("asking what they would like to know");
+    // A greeting is greeted back, not refused.
+    for (const kind of ["Intro:", "Outro:", "Off topic:"]) expect(sent.messages[0]!.content).toContain(kind);
   });
 
   it("keeps answering a question the documentation backs", async () => {

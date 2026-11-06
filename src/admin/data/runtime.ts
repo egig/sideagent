@@ -51,7 +51,7 @@ export function createRuntime(deps: AdminDeps) {
       // The library wants at least one source to turn knowledge on. This one is embedded once and
       // never stored (writes are no-ops); searches go to the agent's own knowledge.
       // Keeps the agent on the documentation, in code (D-20).
-      scope: { minScore: MIN_SCORE, offTopic: OFF_TOPIC },
+      scope: { minScore: MIN_SCORE, offTopic: OFF_TOPIC, naturalReply: true },
       knowledge: {
         topK: TOP_K,
         sources: [{ id: "placeholder", title: "placeholder", content: "placeholder" }],

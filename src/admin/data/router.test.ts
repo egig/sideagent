@@ -76,14 +76,15 @@ describe("data plane", () => {
     expect(modelCalls).toBeGreaterThan(0);
   });
 
-  it("answers off-topic questions without calling the model", async () => {
+  it("answers off-topic questions with a short model-written decline, not a full turn", async () => {
     const { id } = await liveKnowledgeAgent();
     const res = await ask(id, { message: "what is 2+2" });
     expect(res.status).toBe(200);
     const evs = await events(res);
     expect(evs.map((e) => e.type)).toEqual(["turn.start", "text.delta", "turn.end"]);
-    expect(evs[1]!.text).toContain("only answer questions about");
-    expect(modelCalls).toBe(0);
+    expect(evs[1]!.text).toBe("Hello from the mock model.");
+    // One call writes the decline; the agent itself never runs.
+    expect(modelCalls).toBe(1);
   });
 
   describe("anonymous conversations", () => {
@@ -106,8 +107,9 @@ describe("data plane", () => {
       const { id } = await liveKnowledgeAgent();
       const calls = modelCalls;
       const evs = await events(await ask(id, { message: "how long does it take?" }));
-      expect(evs[1]!.text).toContain("only answer questions about");
-      expect(modelCalls).toBe(calls);
+      expect(evs[1]!.text).toBe("Hello from the mock model.");
+      // A decline costs one call; a continued thread would have run the agent (at least one call, plus a search).
+      expect(modelCalls).toBe(calls + 1);
     });
 
     it("gives each visitor without a thread a thread of their own", async () => {

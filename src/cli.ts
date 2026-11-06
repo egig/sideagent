@@ -7,9 +7,12 @@
 //   PORT               default 8788
 //   SIDEAGENT_LOG_SIGN_IN_LINKS   "true" prints email sign-in links to the log (no mail sender here; anyone who reads the log can sign in)
 //   SIGNUP             "true" lets new people create accounts
+//   LLM_API_KEY / LLM_MODEL / EMBEDDING_MODEL   turn on the built-in model (any OpenAI-compatible API); all three required
+//   LLM_BASE_URL   optional, default OpenAI; BUILTIN_MONTHLY_LIMIT   messages per owner per month, default 100 (counted in memory)
 //   GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET / GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET   social sign-in
 import { createServer } from "./create-server-node.js";
 import type { PgDb } from "./admin/store/pg/index.js";
+import { builtinModelFromEnv } from "./cli-builtin.js";
 
 // A `.env` in the working directory fills in what the shell did not set (real environment variables win).
 // Needs Node 20.12+; missing file or older Node is fine.
@@ -61,6 +64,7 @@ const server = createServer({
     github: pair(env.GITHUB_CLIENT_ID, env.GITHUB_CLIENT_SECRET),
     google: pair(env.GOOGLE_CLIENT_ID, env.GOOGLE_CLIENT_SECRET),
   },
+  builtinModel: builtinModelFromEnv(env),
   onError: ({ agentId, code }) => console.error("agent turn error", { agentId, code }),
 });
 
