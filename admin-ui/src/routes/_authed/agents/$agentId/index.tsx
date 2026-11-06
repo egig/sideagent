@@ -6,9 +6,10 @@ import type { Agent, AgentDetail, ReadinessItem } from "@shared/api";
 import { agentQuery, agentsQuery, setActive } from "~/app/api/agents";
 import type { SettingsTab } from "~/app/settings/tabs";
 import { errorMessage } from "~/app/api/client";
-import { auditQuery } from "~/app/api/agents";
+import { statsQuery } from "~/app/api/agents";
+import { Stats } from "~/app/overview/stats";
 import { Embed } from "~/app/embed";
-import { filters, useSetupProgress } from "~/app/setup/progress";
+import { useSetupProgress } from "~/app/setup/progress";
 import { Alert, Callout, CopyButton, Icon, Page } from "~/app/ui";
 import { useT } from "~/i18n";
 
@@ -67,6 +68,7 @@ function Overview() {
       {toggle.error && <Alert>{errorMessage(toggle.error, active ? t.deactivateFailed : t.activateFailed)}</Alert>}
       {!active && <SetupCallout agentId={agentId} detail={data} />}
       {active && <Attention agentId={agentId} failed={agent.knowledge.failed} />}
+      {active && <Stats agentId={agentId} />}
       <AlertDialog.Root open={needsSetup} onOpenChange={setNeedsSetup}>
         <AlertDialog.Portal>
           <AlertDialog.Backdrop className="fixed inset-0 z-40 bg-scrim" />
@@ -163,8 +165,8 @@ function SetupCallout({ agentId, detail }: { agentId: string; detail: AgentDetai
 // What to fix on a live agent, each with the place to fix it.
 function Attention({ agentId, failed }: { agentId: string; failed: number }) {
   const t = useT().overview;
-  const refused = useQuery(auditQuery(agentId, filters("", "denied", "7d")));
-  const denied = refused.data?.total ?? 0;
+  const { data } = useQuery(statsQuery(agentId, "7d"));
+  const denied = data?.current.refused ?? 0;
   if (!failed && !denied) return null;
   return (
     <section className="card" aria-labelledby="attention-heading">

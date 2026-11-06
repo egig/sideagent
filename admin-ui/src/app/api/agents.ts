@@ -4,6 +4,8 @@ import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import type {
   Agent,
   AgentDetail,
+  AgentStats,
+  StatsRange,
   AgentSummary,
   AuditPage,
   AuditRange,
@@ -59,6 +61,13 @@ export const auditQuery = (id: string, f: AuditFilters) =>
       if (f.user) q.set("user", f.user);
       return api<AuditPage>(path(id, `/audit?${q}`));
     },
+    placeholderData: keepPreviousData,
+  });
+
+export const statsQuery = (id: string, range: StatsRange) =>
+  queryOptions({
+    queryKey: ["agents", id, "stats", range],
+    queryFn: () => api<AgentStats>(path(id, `/stats?range=${range}`)),
     placeholderData: keepPreviousData,
   });
 

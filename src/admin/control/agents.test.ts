@@ -39,6 +39,7 @@ describe("agents API", () => {
       ["DELETE", "/api/agents/agt_x/knowledge/src_x"],
       ["POST", "/api/agents/agt_x/knowledge/reindex"],
       ["GET", "/api/agents/agt_x/audit"],
+      ["GET", "/api/agents/agt_x/stats"],
       ["GET", "/api/agents/agt_x/traces"],
       ["GET", "/api/agents/agt_x/traces/t"],
       ["POST", "/api/agents/agt_x/preview"],
@@ -507,6 +508,27 @@ describe("agents API", () => {
     });
   });
 
+  describe("stats", () => {
+    it("counts the public endpoint's turns and refusals for the Overview", async () => {
+      const cookie = await signIn("a@example.com");
+      const a = await create(cookie);
+      await store.audit.recordEvent({ agentId: a.id, event: "chat.turn", result: "ok", durationMs: 40 });
+      await store.audit.recordEvent({
+        agentId: a.id,
+        event: "request",
+        result: "denied",
+        reason: "origin_not_allowed",
+      });
+      await store.audit.recordEvent({ agentId: a.id, event: "preview.turn", result: "ok", durationMs: 5 });
+      const week = await body<{ range: string; current: object }>(call(`/api/agents/${a.id}/stats`, {}, cookie));
+      expect(week).toMatchObject({ range: "7d", current: { turns: 1, ok: 1, refused: 1, medianMs: 40 } });
+      const day = await body<{ range: string }>(call(`/api/agents/${a.id}/stats?range=24h`, {}, cookie));
+      expect(day.range).toBe("24h");
+      // An unknown range falls back to the default, as the audit filters do.
+      expect((await body<{ range: string }>(call(`/api/agents/${a.id}/stats?range=1y`, {}, cookie))).range).toBe("7d");
+    });
+  });
+
   describe("scope", () => {
     it("shares one workspace between signed-in users by default", async () => {
       setDeps({ scope: undefined });
@@ -562,6 +584,7 @@ describe("agents API", () => {
         ["POST", "/activate"],
         ["POST", "/deactivate"],
         ["GET", "/audit"],
+        ["GET", "/stats"],
         ["GET", "/traces"],
         ["GET", "/traces/t1"],
         ["POST", "/preview"],

@@ -96,6 +96,17 @@ test("a new agent goes from the model to a live request, one step at a time", as
   await expect(page).toHaveURL(new RegExp(`/agents/${agentId}$`));
   await expect(page.getByRole("link", { name: "Continue setup" })).toHaveCount(0);
   await expect(page.getByRole("navigation", { name: "Agent" }).getByRole("link", { name: "Setup" })).toHaveCount(0);
+
+  // The Overview counts the public endpoint only: one turn and one refusal, not the preview turn.
+  const stat = (id: string) => page.locator(`[data-stat="${id}"] dd`).first();
+  await expect(stat("turns")).toHaveText("1");
+  await expect(stat("success")).toHaveText("100%");
+  await expect(stat("refused")).toHaveText("1");
+  await expect(page.locator('[data-stat="turns"]')).toContainText("No earlier data to compare");
+  await expect(page.getByText("1 request was refused in the last 7 days.")).toBeVisible();
+  await page.getByRole("button", { name: "24 hours" }).click();
+  await expect(page.locator('[data-stat="turns"]')).toContainText("Chat turns");
+  await expect(stat("turns")).toHaveText("1");
 });
 
 test("a wrong API key is caught by the connection test, before any knowledge fails", async ({ page }) => {

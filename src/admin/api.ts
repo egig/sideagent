@@ -119,6 +119,29 @@ export interface AuditEvent {
   traceId: string | null;
 }
 
+/** Counts from the audit log over one window. Turns are the public endpoint's own; preview turns are left out. */
+export interface UsageWindow {
+  /** Chat turns on the public endpoint, whatever their result. */
+  turns: number;
+  ok: number;
+  errors: number;
+  /** Requests refused (origin, key, end-user token, bot challenge), on any event. */
+  refused: number;
+  /** Requests over a cap. */
+  limited: number;
+  /** Median duration of the successful turns, in ms; null without any. */
+  medianMs: number | null;
+}
+
+export type StatsRange = "24h" | "7d";
+
+/** GET /api/agents/:id/stats: this window and the one before it, for the Overview. */
+export interface AgentStats {
+  range: StatsRange;
+  current: UsageWindow;
+  previous: UsageWindow;
+}
+
 export interface AuditPage {
   events: AuditEvent[];
   total: number;
