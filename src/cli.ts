@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// `npx sideagent`: the server from environment variables. The same as createServer from sideagent/server/node.
+// `npx sideagent`: the server from environment variables (a `.env` in the working directory is read too).
+// The same as createServer from sideagent/server/node.
 //   SIDEAGENT_SECRET   at least 32 characters, required in production (openssl rand -base64 32)
 //   DATABASE_URL       Postgres with pgvector; without it, an in-memory database that dies with the process (dev only)
 //   PUBLIC_URL         the server's public origin, default http://localhost:$PORT
@@ -9,6 +10,14 @@
 //   GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET / GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET   social sign-in
 import { createServer } from "./create-server-node.js";
 import type { PgDb } from "./admin/store/pg/index.js";
+
+// A `.env` in the working directory fills in what the shell did not set (real environment variables win).
+// Needs Node 20.12+; missing file or older Node is fine.
+try {
+  process.loadEnvFile?.(".env");
+} catch (e) {
+  if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
+}
 
 const env = process.env;
 const production = env.NODE_ENV === "production";

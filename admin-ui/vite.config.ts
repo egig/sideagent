@@ -30,7 +30,8 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
-  // `pnpm dev`: the API runs from dev/server.ts. Requests keep their Origin, so the admin's same-origin check passes.
+  // `pnpm dev` runs this config as middleware inside dev/server.ts, one port for API and dashboard. The proxy only
+  // matters when `vite` runs on its own; requests keep their Origin, so the admin's same-origin check passes.
   server: {
     port: 5174,
     proxy: {

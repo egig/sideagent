@@ -44,7 +44,7 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p admin-ui",
     "format": "prettier --write src admin-ui",
     "format:check": "prettier --check src admin-ui",
-    "dev": "trap 'kill 0' EXIT; PUBLIC_URL=http://localhost:5174 tsx watch src/cli.ts & vite -c admin-ui/vite.config.ts",
+    "dev": "tsx watch dev/server.ts",
     "admin:start": "NODE_ENV=production tsx src/cli.ts",
     "eval:skill": "cd skills/sideagent && claude plugin eval . --scaffold --allow-tools Write Edit --trust-plugin --no-publish",
     "build:ui": "vite build -c admin-ui/vite.config.ts"
