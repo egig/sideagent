@@ -21,8 +21,9 @@ services:
 
   # The admin: dashboard, API and agent endpoints.
   #   docker compose up
-  # Set BETTER_AUTH_SECRET and CONFIG_KEK (openssl rand -base64 32) in .env, or it uses throwaway ones.
-  # Sign-in links are printed in this service's logs: docker compose logs -f admin
+  # Set SIDEAGENT_SECRET (openssl rand -base64 32) in .env; production refuses to start without it.
+  # Email sign-in links are printed in this service's log (docker compose logs -f admin); remove
+  # SIDEAGENT_LOG_SIGN_IN_LINKS once you use GitHub or Google sign-in, or a mail sender from code (sideagent/server).
   admin:
     build:
       context: .
@@ -34,6 +35,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-sideagent}:${POSTGRES_PASSWORD:-sideagent}@db:5432/${POSTGRES_DB:-sideagent}
       PORT: "8788"
+      SIDEAGENT_LOG_SIGN_IN_LINKS: "true"
       PUBLIC_URL: ${ADMIN_PUBLIC_URL:-http://localhost:8788}
     ports:
       - "${ADMIN_PORT:-8788}:8788"

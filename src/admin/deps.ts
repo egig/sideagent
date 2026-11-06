@@ -61,6 +61,8 @@ export interface AdminDeps {
   /** The dashboard's own assistant: its publishable key. Its requests carry the dashboard session instead of an end-user token (D-23). */
   appPublishableKey?: string;
   now?: () => number;
+  /** Hears every failed turn: the agent, an error code and the error itself, which can echo keys and customer text, so log it, never return it. */
+  onError?: (info: { agentId: string; code: string; threadId?: string; error: unknown }) => void;
   /** Logs on `localhost` only; production errors may echo request details. */
   debug?: boolean;
 }

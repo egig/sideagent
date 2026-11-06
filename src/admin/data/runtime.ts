@@ -86,9 +86,13 @@ export function createRuntime(deps: AdminDeps) {
       },
       // The browser only hears "the agent failed". With `debug` the log gets the error itself; off otherwise,
       // because provider errors can echo keys and customer text.
-      onError: deps.debug
-        ? ({ error, code, threadId }) => console.error("agent turn error", { agentId: row.id, code, threadId }, error)
-        : undefined,
+      onError:
+        deps.onError || deps.debug
+          ? ({ error, code, threadId }) => {
+              deps.onError?.({ agentId: row.id, code, threadId, error });
+              if (deps.debug) console.error("agent turn error", { agentId: row.id, code, threadId }, error);
+            }
+          : undefined,
       // What happened under the hood, per the agent's tracing level (D-35). One row per turn, written when the turn ends.
       callbacks: ({ request, userId }) => {
         const level = row.config.tracing ?? DEFAULT_TRACE_LEVEL;

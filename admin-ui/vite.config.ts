@@ -16,7 +16,7 @@ export default defineConfig({
       "~": resolve(import.meta.dirname, "src"),
       "@shared/api": resolve(import.meta.dirname, "../src/admin/api.ts"),
       "@shared/limits": resolve(import.meta.dirname, "../src/admin/limits.ts"),
-      sideagent: resolve(import.meta.dirname, "../src/index.ts"),
+      sideagent: resolve(import.meta.dirname, "../src/client/internal.ts"),
     },
     dedupe: ["react", "react-dom"],
   },

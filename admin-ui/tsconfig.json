@@ -8,7 +8,7 @@
       "~/*": ["src/*"],
       "@shared/api": ["../src/admin/api.ts"],
       "@shared/limits": ["../src/admin/limits.ts"],
-      "sideagent": ["../src/index.ts"]
+      "sideagent": ["../src/client/internal.ts"]
     }
   },
   "include": ["src", "vite.config.ts"]

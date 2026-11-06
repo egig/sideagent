@@ -1,0 +1,25 @@
+// sideagent/server/store: the port to write your own database adapter against, and the behaviour it must have.
+export type {
+  AdminStore,
+  AgentRecord,
+  AgentChange,
+  AgentStorage,
+  AuditInput,
+  AuditQuery,
+  AuditStorage,
+  CheckpointRow,
+  CheckpointWithWrites,
+  Hit,
+  IndexedChunks,
+  KnowledgeCounts,
+  KnowledgeStorage,
+  QueuedSource,
+  SourceInput,
+  ThreadMeta,
+  ThreadStorage,
+  TraceQuery,
+  UsageCount,
+  UsageStorage,
+  WriteRow,
+} from "./admin/store/types.js";
+export * from "./admin/store/contract.js";

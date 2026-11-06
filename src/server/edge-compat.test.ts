@@ -34,13 +34,10 @@ describe.skipIf(!existsSync(join(__dirname, "../../dist/workers-ai/index.js")))(
   const dist = join(__dirname, "../../dist");
   const pkg = JSON.parse(readFileSync(join(__dirname, "../../package.json"), "utf8"));
 
-  it("maps workerd and worker before browser, to the real server build", () => {
-    const keys = Object.keys(pkg.exports["./server"]);
+  it("maps workerd and worker to the real server build", () => {
     expect(pkg.exports["./server"].workerd).toBe("./dist/server/index.js");
     expect(pkg.exports["./server"].worker).toBe("./dist/server/index.js");
-    expect(keys.indexOf("workerd")).toBeLessThan(keys.indexOf("browser"));
-    expect(keys.indexOf("worker")).toBeLessThan(keys.indexOf("browser"));
-    expect(pkg.exports["./server"].browser).toBe("./dist/server/browser.js");
+    expect(pkg.exports["./server"].browser).toBeUndefined();
   });
 
   for (const entry of ["server/index.js", "workers-ai/index.js"]) {

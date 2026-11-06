@@ -5,55 +5,41 @@ description: Add an AI docs assistant, chat agent or help bot to an existing app
 
 # Add a docs agent to an app with sideagent
 
-sideagent turns your documentation (markdown and URLs) plus an OpenAI-compatible LLM into a secure agent endpoint (`sideagent/server`) and a React chat UI (`sideagent`). The agent answers from the docs and shows its sources. It cannot call the app's API or change data: there is no tool calling beyond knowledge search. Full docs: https://egig.github.io/sideagent/llms-full.txt
+sideagent has two pieces. A **server** you run (`createServer` from `sideagent/server`, or `npx sideagent`) holds the dashboard where agents, knowledge and the model are set up, and serves each agent's endpoint. A React component, `<AgentChat publishableKey="pk_…" />`, is the chat. The agent answers from the documentation and shows its sources. It cannot call the app's API or change data: there is no tool calling beyond knowledge search. Full docs: https://egig.github.io/sideagent/llms-full.txt
 
 ## Steps
 
-Do them in order. Do not skip the review in step 7.
+Do them in order. Do not skip the review in step 6.
 
-1. **Detect the stack.** Find the server framework (Next.js App Router, Hono, Express), the frontend (React?) and the documentation: a docs folder, markdown files, or public docs URLs. No docs: ask the user what the agent should answer from. sideagent needs documentation and a React frontend; tell the user if either is missing.
+1. **Detect the stack.** Find the frontend (React?), the auth the app already has (where a logged-in user's token or session comes from) and the documentation: a docs folder, markdown files, or public docs URLs. sideagent needs documentation and a React frontend; tell the user if either is missing.
 2. **Install.** `npm i sideagent` (use the project's package manager).
-3. **Choose the knowledge.** Pass markdown as strings (`knowledge.sources`: `{ id, title, content }`; read files at startup, because the edge has no filesystem) and public pages as `knowledge.urls`. Start with a few good pages. Leave out anything private: the agent may quote any passage it can search.
-4. **Add the server route** at `/agent`:
+3. **Server.** The simplest is `npx sideagent` as its own process. To run it inside the app's Node process instead:
    ```ts
-   import { createAgent, nextRoute /* or honoHandler, expressHandler */ } from "sideagent/server";
+   import { createServer } from "sideagent/server/node";
 
-   const agent = await createAgent({
-     llm: { baseUrl: process.env.LLM_BASE_URL ?? "https://api.openai.com/v1", apiKey: process.env.LLM_API_KEY!, model: process.env.LLM_MODEL ?? "gpt-4o-mini" },
-     knowledge: {
-       embeddings: { model: "text-embedding-3-small" }, // baseUrl and apiKey default to llm's
-       sources,                                          // [{ id, title, content }]
-       urls: ["https://docs.example.com/guide"],
-     },
-     scope: {},                                          // keeps the agent on the docs
-     allowedOrigins: [process.env.APP_ORIGIN!],
-     getAuth: async (req) => {
-       const session = await verifySession(req); // use the app's existing auth
-       if (!session) throw new Error("no session");
-       return { userId: session.userId };
-     },
+   const server = createServer({
+     database: process.env.DATABASE_URL!,        // Postgres with pgvector
+     publicUrl: process.env.SIDEAGENT_URL!,      // where the browser reaches it, e.g. https://agent.example.com
+     secret: process.env.SIDEAGENT_SECRET!,      // openssl rand -base64 32
    });
-   export const { POST, OPTIONS } = nextRoute(agent); // Next.js; Hono: app.on(["POST","OPTIONS"], "/agent", honoHandler(agent))
+   await server.listen(8788);
    ```
-   Express needs `express.json()` first, then `app.post` and `app.options` with `expressHandler(agent)`.
-5. **Mount the UI** once in the app shell:
+   Other runtimes (Workers, Next, Hono) mount `createServer(...).fetch` from `sideagent/server`. The server must be reachable at `publicUrl` on its own origin (keys name its host).
+4. **Mount the chat** once in the app shell, with the key from the dashboard:
    ```tsx
    import { AgentProvider } from "sideagent";
-   <AgentProvider endpoint="/agent" mode="sidebar">
+   <AgentProvider publishableKey={import.meta.env.VITE_SIDEAGENT_KEY} getToken={() => auth.getAccessToken()} storageKey={user.id} mode="sidebar">
      <App />
    </AgentProvider>
    ```
-   Use `<AgentChat endpoint="/agent" />` for a floating chat without docking. Different origin plus cookies: add `credentials="include"`. For an agent hosted on sideagent admin, pass `publishableKey="pk_…"` instead of `endpoint`.
-6. **Env vars.** Add `LLM_API_KEY` and `APP_ORIGIN` to `.env.example`. Never hardcode keys. Never send `LLM_API_KEY` to the browser.
-7. **Verify, then hand over for review.**
-   - Run the project's typecheck and tests.
-   - Call `await agent.doctor()` and confirm `ok: true` and that every source has chunks.
-   - Show the user the list of sources and ask them to confirm none is private.
+   Use `<AgentChat publishableKey=… />` for a floating chat without docking. Omit `getToken` for public docs. The publishable key is public; it can live in client env. If the repo has no React frontend, still show this snippet in your reply and say where it goes once there is one.
+5. **Env vars.** Add `DATABASE_URL`, `SIDEAGENT_URL`, `SIDEAGENT_SECRET` and the public key variable to `.env.example`. Never hardcode secrets.
+6. **Hand over for review.** The knowledge is added in the dashboard, not in code. Tell the user to: open the dashboard, create an agent, set the model and key, add the docs (pages or markdown), list the app's origin under allowed origins, pick User auth to match the app (a JWT or userinfo mode if the chat sends `getToken`), switch the agent to Active and copy its key. Ask them to confirm no knowledge source is private. Run the project's typecheck and tests.
 
 ## Rules
 
-- The agent only answers from knowledge. If the user asks for an agent that creates, edits or deletes data, or calls the app's API, say in one sentence that sideagent does not support that, and build the docs agent. Never invent `spec`, `allow`, `baseUrl` or `approvalSecret`: they do not exist.
-- `getAuth` must return a stable per-user `userId`. `anonymous: true` is only for public docs.
-- Do not use `instructions` or `context` for security. Keep private material out of `knowledge`.
-- Production needs persistent `checkpointer`, `threadStore` and `vectorStore`, plus `beforeTurn` rate limits. See the Deployments and Persistence docs.
-- Edge and serverless: pass knowledge as strings and build the agent once per instance.
+- The agent only answers from knowledge. If the user asks for an agent that creates, edits or deletes data, or calls the app's API, say in one sentence that sideagent does not support that, and build the docs agent.
+- There is no `createAgent`, `endpoint` prop, `honoHandler`, `nextRoute`, `expressHandler`, `getAuth`, `getHeaders`, `spec`, `allow`, `baseUrl` or `approvalSecret`. Do not invent them.
+- Never put the model's API key in code or in the browser: it is entered in the dashboard and stored encrypted.
+- Keep private material out of knowledge: the agent may quote any passage it finds.
+- Production needs `SIDEAGENT_SECRET`, a persistent `DATABASE_URL`, HTTPS, and sign-up closed once the team has accounts. See the Deployments docs.

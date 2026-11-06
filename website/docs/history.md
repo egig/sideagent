@@ -3,15 +3,12 @@ sidebar_position: 7
 title: Chat history
 ---
 
-`AgentChat` has a History button (list, open, delete) and reopens the last conversation after a refresh. Messages live in your LangGraph `checkpointer`; the list lives in a `threadStore` (in-memory by default). Both must be persistent in production. See [Persistence](./persistence.md) for setup:
+`AgentChat` has a History button (list, open, delete) and reopens the last conversation after a refresh. The server keeps the messages and the list in its database. Users only see their own threads.
 
-```ts
-createAgent({ …, checkpointer: new PostgresSaver(…), threadStore: myThreadStore }); // ThreadStore: list / has / touch / delete
-```
+Turn history off with `history={false}`: no History button, and the chat does not remember or reopen the last conversation, so every visit starts fresh. The server still keeps its threads.
 
 ## Limits
 
-- The default `threadStore` is in-memory. History is lost on restart, and not shared between instances. Use a persistent one in production.
-- A persistent `checkpointer` is required too. Without it, a thread listed in history may have no messages.
-- Users only see their own threads.
-- With [`summarize`](./server.md#long-threads-summarize) on, older messages of a long thread are replaced by a summary and no longer appear in its history.
+- Anonymous visitors (agents with no user auth) keep nothing: each request is its own user and thread.
+- Threads are bound to the user the server derived from `getToken`'s token. Another user cannot open them.
+- A signed-in user's threads are deleted when the agent is deleted.
