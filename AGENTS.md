@@ -6,7 +6,7 @@ Library that embeds a docs chat agent in an app, in two pieces: a server (`sidea
 
 - `pnpm install`
 - `pnpm test` — vitest (uses `src/testing/mock-llm.ts`, no API key needed)
-- `pnpm test:e2e` — Playwright against `e2e/server.ts` (in-memory database, faked DNS and fetch, dashboard from Vite); tests are `e2e/*.pw.ts`
+- `pnpm test:e2e` — Playwright against `e2e/support/server.ts` (in-memory database, faked DNS and fetch, dashboard from Vite); specs are `e2e/specs/**/*.spec.ts`, page objects in `e2e/pages/`
 - `pnpm typecheck`
 - `pnpm format` / `pnpm format:check` — Prettier (width 120) over `src/` and `admin-ui/`
 - `pnpm build` — tsup to `dist/`
@@ -30,7 +30,7 @@ Public entry points are only: `sideagent` (`src/index.ts`), `sideagent/server` (
   - `control/` — dashboard API; `data/` — `/v1/agents/:id` (request flow in `router.ts`; `access.ts` origin, key and end-user checks; `quota.ts` caps; `audit.ts` audit row; `runtime.ts` + `provider.ts` the library runtime; `adapters/` store-to-LangChain/LangGraph glue); `auth/` — bundled better-auth sign-in
   - `config.ts`, `retention.ts`, `knowledge/` — validation, retention constants, ingestion; `security/` — sealed secrets (`crypto.ts`), SSRF guard with DNS (`url-guard.ts`, `guarded-fetch.ts`), bot challenge (`challenge.ts`)
 - `admin-ui/` — the dashboard SPA (Vite, built to `dist/admin-ui`; its own `tsconfig.json`). New agents open `routes/_authed/agents/$agentId/setup.tsx`, the guided setup; its progress comes from the server (`app/setup/progress.ts`: readiness plus audit events), and its steps reuse the same forms as Knowledge and Settings
-- `e2e/` — Playwright tests of the dashboard (`*.pw.ts`) and the server they run against
+- `e2e/` — Playwright tests of the dashboard (`specs/**/*.spec.ts`, `pages/`) and the server (`support/`) they run against
 - `src/workers-ai/` — Cloudflare Workers AI: `chat.ts` chat model, `retrieval.ts` embeddings and reranker
 - `src/protocol.ts` — wire types shared by both sides
 - `src/testing/` — mock LLM, exported as `sideagent/testing`

@@ -10,15 +10,15 @@ import { vector } from "@electric-sql/pglite-pgvector";
 import { getRequestListener } from "@hono/node-server";
 import { drizzle } from "drizzle-orm/pglite";
 import { createServer as createVite } from "vite";
-import { adminUiHtml } from "../src/admin/ui.js";
-import type { PgDb } from "../src/admin/store/pg/index.js";
-import { createServer } from "../src/create-server.js";
-import { mockEmbeddingsHandler, mockLlmHandler } from "../src/testing/mock-llm.js";
-import { DOCS_PAGE, LLM_BASE_URL, WRONG_KEY } from "./constants.js";
+import { adminUiHtml } from "../../src/admin/ui.js";
+import type { PgDb } from "../../src/admin/store/pg/index.js";
+import { createServer } from "../../src/create-server.js";
+import { mockEmbeddings, mockEmbeddingsHandler, mockLlmHandler } from "../../src/testing/mock-llm.js";
+import { BUILTIN_LIMIT, DOCS_PAGE, GOOD_KEY, LLM_BASE_URL, WRONG_KEY } from "./constants.js";
 
 const E2E_PORT = Number(process.env.E2E_PORT ?? 8799);
 const publicUrl = `http://localhost:${E2E_PORT}`;
-const adminUi = fileURLToPath(new URL("../admin-ui/", import.meta.url));
+const adminUi = fileURLToPath(new URL("../../admin-ui/", import.meta.url));
 
 const DOCS: Record<string, string> = {
   [DOCS_PAGE]:
@@ -39,6 +39,23 @@ const fakeFetch: typeof fetch = async (input, init) => {
   return new Response("not found", { status: 404 });
 };
 
+// With E2E_BUILTIN=1 the host also offers its own model (the scripted one), as a Cloudflare host would. The default
+// server has none, so a new agent starts without a model.
+const builtinModel =
+  process.env.E2E_BUILTIN === "1"
+    ? {
+        model: "e2e-builtin-chat",
+        embeddingModel: "e2e-builtin-embed",
+        models: () => ({
+          llm: { baseUrl: LLM_BASE_URL, apiKey: GOOD_KEY, model: "e2e-builtin-chat", fetch: fakeFetch },
+          embeddings: mockEmbeddings,
+        }),
+        embed: async (texts: string[]) => (await mockEmbeddings.embedDocuments(texts)).map((v) => Float32Array.from(v)),
+        consume: async () => ({ allowed: true }),
+        usage: async () => ({ month: new Date().toISOString().slice(0, 7), used: 3, limit: BUILTIN_LIMIT }),
+      }
+    : undefined;
+
 const links = new Map<string, string>();
 
 const app = createServer({
@@ -49,13 +66,14 @@ const app = createServer({
   // Every host is public except *.private.example, as in the unit tests.
   resolve: async (host) => (host.endsWith("private.example") ? ["10.0.0.9"] : ["93.184.216.34"]),
   fetch: fakeFetch,
+  builtinModel,
 });
 await app.ready;
 
 const api = getRequestListener(app.fetch);
 const http = createHttp();
 const vite = await createVite({
-  configFile: fileURLToPath(new URL("../admin-ui/vite.config.ts", import.meta.url)),
+  configFile: fileURLToPath(new URL("../../admin-ui/vite.config.ts", import.meta.url)),
   appType: "custom",
   logLevel: "warn",
   server: { middlewareMode: true, hmr: false },

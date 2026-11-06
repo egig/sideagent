@@ -5,3 +5,5 @@ export const WRONG_KEY = "sk-wrong-key-0000";
 export const GOOD_KEY = "sk-e2e-good-key-1234";
 export const DOCS_PAGE = "https://docs.example.com/refunds";
 export const APP_ORIGIN = "https://app.example.com";
+/** The monthly cap the builtin-model server reports. */
+export const BUILTIN_LIMIT = 100;
