@@ -87,13 +87,18 @@ describe("workersAiBuiltin (the Cloudflare docs recipe)", () => {
     await expect(workersAiBuiltin({ AI, BUILTIN_METER: broken }, 1).consume("o1")).rejects.toThrow("HTTP 500");
   });
 
-  it("is the code the Cloudflare docs show", () => {
-    const docs = readFileSync(join(__dirname, "../../website/docs/cloudflare-workers.md"), "utf8");
-    const shown = /```ts title="src\/builtin\.ts"\n([\s\S]*?)```/.exec(docs)?.[1];
-    const source = readFileSync(join(__dirname, "builtin-example.ts"), "utf8")
-      .replace(/^(\/\/.*\n)+/, "")
-      .replace('"../create-server.js"', '"sideagent/server"')
-      .replace('"./index.js"', '"sideagent/workers-ai"');
-    expect(shown).toBe(source);
-  });
+  for (const page of [
+    "docs/cloudflare-workers.md",
+    "i18n/id/docusaurus-plugin-content-docs/current/cloudflare-workers.md",
+  ]) {
+    it(`is the code ${page} shows`, () => {
+      const docs = readFileSync(join(__dirname, "../../website", page), "utf8");
+      const shown = /```ts title="src\/builtin\.ts"\n([\s\S]*?)```/.exec(docs)?.[1];
+      const source = readFileSync(join(__dirname, "builtin-example.ts"), "utf8")
+        .replace(/^(\/\/.*\n)+/, "")
+        .replace('"../create-server.js"', '"sideagent/server"')
+        .replace('"./index.js"', '"sideagent/workers-ai"');
+      expect(shown).toBe(source);
+    });
+  }
 });

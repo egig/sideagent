@@ -12,12 +12,25 @@ const config = {
   onBrokenLinks: "throw",
   onBrokenAnchors: "warn",
   markdown: { hooks: { onBrokenMarkdownLinks: "throw" } },
+  i18n: {
+    defaultLocale: "en",
+    locales: ["en", "id"],
+    localeConfigs: {
+      en: { label: "English", htmlLang: "en" },
+      id: { label: "Bahasa Indonesia", htmlLang: "id" },
+    },
+  },
   presets: [
     [
       "classic",
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
-        docs: { routeBasePath: "/", sidebarPath: "./sidebars.js", editUrl: "https://github.com/egig/sideagent/edit/main/website/" },
+        docs: {
+          routeBasePath: "/",
+          sidebarPath: "./sidebars.js",
+          editUrl: "https://github.com/egig/sideagent/edit/main/website/",
+          editLocalizedFiles: true,
+        },
         blog: false,
         theme: { customCss: "./src/css/custom.css" },
       }),
@@ -28,6 +41,7 @@ const config = {
       title: "sideagent",
       items: [
         { type: "docSidebar", sidebarId: "docs", position: "left", label: "Docs" },
+        { type: "localeDropdown", position: "right" },
         { href: "https://github.com/egig/sideagent", label: "GitHub", position: "right" },
       ],
     },

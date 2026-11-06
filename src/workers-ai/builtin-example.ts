@@ -1,5 +1,5 @@
-// Reference `builtinModel` for Cloudflare, not exported: website/docs/cloudflare-workers.md shows this file and
-// builtin-example.test.ts keeps the two identical (imports aside) and checks that it works.
+// Reference `builtinModel` for Cloudflare, not exported. The Cloudflare docs pages (English and Indonesian) show this
+// file; builtin-example.test.ts keeps them identical (imports aside) and checks that it works.
 import type { BuiltinModel } from "../create-server.js";
 import { workersAiChatModel, workersAiEmbeddings, type WorkersAiBinding } from "./index.js";
 
