@@ -44,7 +44,7 @@ await server.listen(8788);
 | `secret` | required | One master secret. The key that wraps stored LLM keys and the one that signs sign-in cookies are derived from it, so rotating it signs everyone out **and makes stored LLM keys unreadable**. |
 | `auth` | bundled sign-in | Either `{ sendMagicLink, github, google, signup }` for the bundled sign-in, or `{ session(request) }` to use your own (SSO proxy, Auth.js...) instead. |
 | `scope(user, request)` | one shared workspace | Which agents a user sees. Users with the same scope share them. Return `user.id` for one workspace per user, or an organisation id for teams. Another scope's agent answers 404. |
-| `builtinModel` | none | Your own model, offered next to each owner's endpoint and metered per owner (`BuiltinModel`). On Cloudflare, build it with `sideagent/workers-ai`. |
+| `builtinModel` | none | Your own model, offered next to each owner's endpoint and metered per owner (`BuiltinModel`). On Cloudflare, see the [Workers AI recipe](./cloudflare-workers.md#workers-ai-as-the-built-in-model). |
 | `challenge` | none | A bot challenge anonymous visitors solve before they chat (`turnstileChallenge`). Without it, anonymous agents are open. |
 | `rateLimit`, `clientIp` | per-process limiter, `x-forwarded-for` | Behind a proxy that sets another header, read that one. |
 | `anonDailyMessages` | 25 | Anonymous messages one agent answers per UTC day. |

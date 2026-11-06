@@ -16,7 +16,7 @@ git clone https://github.com/egig/sideagent.git
 cd sideagent
 ```
 
-If you want the admin inside your own server instead, skip to [Embed the admin in your own server](#embed-the-admin-in-your-own-server).
+If you want the admin inside your own server instead, skip to [Embed the server in your own code](#embed-the-server-in-your-own-code).
 
 ## 2. Set the secrets
 
@@ -125,7 +125,7 @@ Check it end to end:
 
 1. Open your site from one of the allowed origins and ask a question that your knowledge answers.
 2. Open the agent's **Audit log** in the dashboard. You should see a *Chat turn* with result *OK*.
-3. A *Denied* row with `Origin is not in the allowed list` means step 6.3 is wrong: scheme, host or port differ.
+3. A *Denied* row with `Origin is not in the allowed list` means step 6.4 is wrong: scheme, host or port differ.
 
 ## Running it
 

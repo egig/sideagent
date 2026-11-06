@@ -34,7 +34,7 @@ Public entry points are only: `sideagent` (`src/index.ts`), `sideagent/server` (
 - `src/workers-ai/` — Cloudflare Workers AI: `chat.ts` chat model, `retrieval.ts` embeddings and reranker
 - `src/protocol.ts` — wire types shared by both sides
 - `src/testing/` — mock LLM, exported as `sideagent/testing`
-- `website/docs/` — Docusaurus docs (source of `llms.txt`)
+- `website/docs/` — Docusaurus docs (source of `llms.txt`); `website/i18n/id/` — the Indonesian translation (`docusaurus-plugin-content-docs/current/` for pages, JSON files for theme and navbar strings)
 
 Tests sit next to the code they cover (`*.test.ts`). `e2e.test.ts` drives the full handler.
 
@@ -67,7 +67,7 @@ Tests sit next to the code they cover (`*.test.ts`). `e2e.test.ts` drives the fu
 - `src/admin/` layering (see `src/admin/README.md`): `store` imports no service, `control` and `data` never import each other, `security` imports no service, and the library is reached only through `server/index.js` (enforced by `admin/layering.test.ts`).
 - Everything in `src/server/` (non-test) must run on edge runtimes: no `node:*` imports, `Buffer`, or `process.` (enforced by `edge-compat.test.ts`, which scans subfolders).
 - `src/client/` must not import server code (enforced by `client-isolation.test.ts`).
-- Update `website/docs/` and README when public API changes.
+- Update `website/docs/` and README when public API changes, and the same page under `website/i18n/id/docusaurus-plugin-content-docs/current/`. Translate prose only: code blocks stay byte-identical and translated headings keep the English anchor (`## Judul {#english-slug}`); `src/docs-i18n.test.ts` enforces both. Technical terms stay in English inside the Indonesian prose: Knowledge Base (for "knowledge"), knowledge search, agent, dashboard, sign-in/sign-up/sign-out, endpoint, thread, turn, request/response, browser, database, error, preview, audit log, rate limit, key/API key/publishable key, secret, embedding, passage, tool, origin, redirect, workspace, built-in model, provider. Dashboard labels (**New agent**, **Knowledge**) stay as the UI shows them.
 - `src/admin/` is new code that was moved from the hosted product, so comments cite its decision numbers (`D-12`); keep them. Schema changes to Postgres append a step to `store/pg/migrations.ts`, never edit a shipped one, and update `store/pg/schema.ts` to match (the contract tests catch drift).
 - Run `pnpm test && pnpm typecheck && pnpm format:check` before finishing, and `pnpm test:e2e` after dashboard changes.
 
