@@ -1,4 +1,4 @@
-// Postgres migrations, applied in order and recorded in sideagent._migrations.
+// Postgres migrations, applied in order and recorded in sideagent._migration.
 // Append only. Never edit or reorder a shipped step. Keep steps additive: a new column with a default, a new table,
 // a new index. Old and new code run side by side during a deploy, so rename or drop across two releases.
 // Each statement is its own string: drivers differ in whether they accept several in one call.
@@ -6,7 +6,7 @@ export const MIGRATIONS: string[][] = [
   [
     `CREATE EXTENSION IF NOT EXISTS vector`,
     `CREATE SCHEMA IF NOT EXISTS sideagent`,
-    `CREATE TABLE sideagent."agent" (
+    `CREATE TABLE IF NOT EXISTS sideagent."agent" (
       "id" text PRIMARY KEY,
       "ownerId" text NOT NULL,
       "name" text NOT NULL,
@@ -19,12 +19,12 @@ export const MIGRATIONS: string[][] = [
       "createdAt" timestamptz NOT NULL,
       "updatedAt" timestamptz NOT NULL)`,
     `CREATE INDEX "agent_ownerId_idx" ON sideagent."agent" ("ownerId")`,
-    `CREATE TABLE sideagent."agentUsage" (
+    `CREATE TABLE IF NOT EXISTS sideagent."agentUsage" (
       "agentId" text NOT NULL REFERENCES sideagent."agent" ("id") ON DELETE CASCADE,
       "day" text NOT NULL,
       "messages" integer NOT NULL,
       PRIMARY KEY ("agentId", "day"))`,
-    `CREATE TABLE sideagent."auditEvent" (
+    `CREATE TABLE IF NOT EXISTS sideagent."auditEvent" (
       "id" text PRIMARY KEY,
       "agentId" text NOT NULL REFERENCES sideagent."agent" ("id") ON DELETE CASCADE,
       "at" timestamptz NOT NULL,
@@ -34,7 +34,7 @@ export const MIGRATIONS: string[][] = [
       "reason" text,
       "durationMs" integer)`,
     `CREATE INDEX "auditEvent_agent_at_idx" ON sideagent."auditEvent" ("agentId", "at")`,
-    `CREATE TABLE sideagent."auditTrace" (
+    `CREATE TABLE IF NOT EXISTS sideagent."auditTrace" (
       "id" text PRIMARY KEY,
       "agentId" text NOT NULL REFERENCES sideagent."agent" ("id") ON DELETE CASCADE,
       "at" timestamptz NOT NULL,
@@ -49,11 +49,11 @@ export const MIGRATIONS: string[][] = [
       "outputTokens" integer,
       "spans" jsonb NOT NULL)`,
     `CREATE INDEX "auditTrace_agent_at_idx" ON sideagent."auditTrace" ("agentId", "at")`,
-    `CREATE TABLE sideagent."agentUser" (
+    `CREATE TABLE IF NOT EXISTS sideagent."agentUser" (
       "agentId" text NOT NULL REFERENCES sideagent."agent" ("id") ON DELETE CASCADE,
       "userId" text NOT NULL,
       PRIMARY KEY ("agentId", "userId"))`,
-    `CREATE TABLE sideagent."knowledgeSource" (
+    `CREATE TABLE IF NOT EXISTS sideagent."knowledgeSource" (
       "id" text PRIMARY KEY,
       "agentId" text NOT NULL REFERENCES sideagent."agent" ("id") ON DELETE CASCADE,
       "kind" text NOT NULL,
@@ -68,7 +68,7 @@ export const MIGRATIONS: string[][] = [
       "createdAt" timestamptz NOT NULL,
       "indexedAt" timestamptz)`,
     `CREATE INDEX "knowledgeSource_agent_idx" ON sideagent."knowledgeSource" ("agentId", "createdAt")`,
-    `CREATE TABLE sideagent."knowledgeChunk" (
+    `CREATE TABLE IF NOT EXISTS sideagent."knowledgeChunk" (
       "id" text PRIMARY KEY,
       "agentId" text NOT NULL REFERENCES sideagent."agent" ("id") ON DELETE CASCADE,
       "sourceId" text NOT NULL REFERENCES sideagent."knowledgeSource" ("id") ON DELETE CASCADE,
@@ -80,7 +80,7 @@ export const MIGRATIONS: string[][] = [
   ],
   // Threads, LangGraph checkpoints and pending writes (D-24). Payloads are the serializer's bytes as base64.
   [
-    `CREATE TABLE sideagent."thread" (
+    `CREATE TABLE IF NOT EXISTS sideagent."thread" (
       "agentId" text NOT NULL REFERENCES sideagent."agent" ("id") ON DELETE CASCADE,
       "userId" text NOT NULL,
       "id" text NOT NULL,
@@ -88,7 +88,7 @@ export const MIGRATIONS: string[][] = [
       "updatedAt" bigint NOT NULL,
       PRIMARY KEY ("agentId", "id"))`,
     `CREATE INDEX "thread_user_idx" ON sideagent."thread" ("agentId", "userId", "updatedAt")`,
-    `CREATE TABLE sideagent."checkpoint" (
+    `CREATE TABLE IF NOT EXISTS sideagent."checkpoint" (
       "agentId" text NOT NULL REFERENCES sideagent."agent" ("id") ON DELETE CASCADE,
       "threadId" text NOT NULL,
       "ns" text NOT NULL,
@@ -98,7 +98,7 @@ export const MIGRATIONS: string[][] = [
       "checkpoint" text NOT NULL,
       "metadata" text NOT NULL,
       PRIMARY KEY ("agentId", "threadId", "ns", "checkpointId"))`,
-    `CREATE TABLE sideagent."checkpointWrite" (
+    `CREATE TABLE IF NOT EXISTS sideagent."checkpointWrite" (
       "agentId" text NOT NULL REFERENCES sideagent."agent" ("id") ON DELETE CASCADE,
       "threadId" text NOT NULL,
       "ns" text NOT NULL,
@@ -113,7 +113,7 @@ export const MIGRATIONS: string[][] = [
   ],
   // Sign-in tables of the bundled auth (better-auth 1.7.14: core plus database rate limiting). Camel-case columns, as it expects.
   [
-    `CREATE TABLE sideagent."user" (
+    `CREATE TABLE IF NOT EXISTS sideagent."user" (
       "id" text PRIMARY KEY,
       "name" text NOT NULL,
       "email" text NOT NULL UNIQUE,
@@ -121,7 +121,7 @@ export const MIGRATIONS: string[][] = [
       "image" text,
       "createdAt" timestamptz NOT NULL,
       "updatedAt" timestamptz NOT NULL)`,
-    `CREATE TABLE sideagent."session" (
+    `CREATE TABLE IF NOT EXISTS sideagent."session" (
       "id" text PRIMARY KEY,
       "expiresAt" timestamptz NOT NULL,
       "token" text NOT NULL UNIQUE,
@@ -131,7 +131,7 @@ export const MIGRATIONS: string[][] = [
       "createdAt" timestamptz NOT NULL,
       "updatedAt" timestamptz NOT NULL)`,
     `CREATE INDEX "session_userId_idx" ON sideagent."session" ("userId")`,
-    `CREATE TABLE sideagent."account" (
+    `CREATE TABLE IF NOT EXISTS sideagent."account" (
       "id" text PRIMARY KEY,
       "accountId" text NOT NULL,
       "providerId" text NOT NULL,
@@ -146,7 +146,7 @@ export const MIGRATIONS: string[][] = [
       "createdAt" timestamptz NOT NULL,
       "updatedAt" timestamptz NOT NULL)`,
     `CREATE INDEX "account_userId_idx" ON sideagent."account" ("userId")`,
-    `CREATE TABLE sideagent."verification" (
+    `CREATE TABLE IF NOT EXISTS sideagent."verification" (
       "id" text PRIMARY KEY,
       "identifier" text NOT NULL,
       "value" text NOT NULL,
@@ -154,7 +154,7 @@ export const MIGRATIONS: string[][] = [
       "createdAt" timestamptz NOT NULL,
       "updatedAt" timestamptz NOT NULL)`,
     `CREATE INDEX "verification_identifier_idx" ON sideagent."verification" ("identifier")`,
-    `CREATE TABLE sideagent."rateLimit" (
+    `CREATE TABLE IF NOT EXISTS sideagent."rateLimit" (
       "id" text PRIMARY KEY,
       "key" text NOT NULL UNIQUE,
       "count" integer NOT NULL,

@@ -12,16 +12,16 @@ export async function migrate(db: PgDb) {
     await tx.execute(sql.raw(`CREATE SCHEMA IF NOT EXISTS sideagent`));
     await tx.execute(
       sql.raw(
-        `CREATE TABLE IF NOT EXISTS sideagent._migrations (step integer PRIMARY KEY, at timestamptz NOT NULL DEFAULT now())`,
+        `CREATE TABLE IF NOT EXISTS sideagent._migration (step integer PRIMARY KEY, at timestamptz NOT NULL DEFAULT now())`,
       ),
     );
-    const done = rowsOf<{ step: number }>(await tx.execute(sql.raw(`SELECT step FROM sideagent._migrations`))).map(
-      (r) => Number(r.step),
+    const done = rowsOf<{ step: number }>(await tx.execute(sql.raw(`SELECT step FROM sideagent._migration`))).map((r) =>
+      Number(r.step),
     );
     for (const [i, statements] of MIGRATIONS.entries()) {
       if (done.includes(i + 1)) continue;
       for (const statement of statements) await tx.execute(sql.raw(statement));
-      await tx.execute(sql`INSERT INTO sideagent._migrations (step) VALUES (${i + 1})`);
+      await tx.execute(sql`INSERT INTO sideagent._migration (step) VALUES (${i + 1})`);
     }
   });
 }
