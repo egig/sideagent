@@ -140,7 +140,7 @@ docker compose up -d --build
 
 **Skala**: rate limiter dan batas turn bersamaan berlaku per proses. Dengan beberapa instance admin, masing-masing menghitung sendiri.
 
-**Privasi**: trace (tab Traces) tidak menyimpan teks pada level *Metadata* dan menyimpan teks yang disamarkan pada level *Full content*. Pilih level yang telah disetujui pengguna Anda. Audit log tidak pernah menyimpan teks pesan.
+**Privasi**: trace (dibuka dari sebuah turn di **Audit log**, tempat Anda juga mengatur level) tidak menyimpan teks pada level *Metadata* dan menyimpan teks yang disamarkan pada level *Full content*. Pilih level yang telah disetujui pengguna Anda. Audit log tidak pernah menyimpan teks pesan.
 
 ## Menyematkan server di kode Anda sendiri {#embed-the-server-in-your-own-code}
 

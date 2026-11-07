@@ -63,10 +63,6 @@ function Shell() {
               <Icon name="file" />
               {t.shell.audit}
             </Link>
-            <Link to="/agents/$agentId/traces" params={{ agentId }} className="nav-item">
-              <Icon name="activity" />
-              {t.shell.traces}
-            </Link>
             <Link to="/agents/$agentId/settings" params={{ agentId }} className="nav-item">
               <Icon name="sliders" />
               {t.shell.settings}

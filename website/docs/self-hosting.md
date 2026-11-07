@@ -140,7 +140,7 @@ docker compose up -d --build
 
 **Scale**: the rate limiter and the concurrent-turn limit are per process. With several admin instances, each counts on its own.
 
-**Privacy**: traces (Traces tab) keep no text at *Metadata* and redacted text at *Full content*. Pick the level your users agreed to. The audit log never stores message text.
+**Privacy**: traces (opened from a turn in the **Audit log**, where you also set the level) keep no text at *Metadata* and redacted text at *Full content*. Pick the level your users agreed to. The audit log never stores message text.
 
 ## Embed the server in your own code
 

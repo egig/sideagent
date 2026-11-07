@@ -415,6 +415,37 @@ describe("data plane", () => {
       expect(audit.events.find((e) => e.event === "chat.turn")?.traceId).toBe(page.traces[0]!.id);
     });
 
+    it("shows the relevance gate as a span with its verdict, and no text, at metadata", async () => {
+      const { id, cookie } = await liveKnowledgeAgent();
+      await (await ask(id, { message: REFUND_QUESTION })).text();
+      await (await ask(id, { message: "what is 2+2" })).text();
+      const page = await body<{ traces: { id: string; toolCalls: number }[] }>(
+        call(`/api/agents/${id}/traces`, {}, cookie),
+      );
+      type Gate = { kind: string; verdict?: string; found?: number; input?: string; output?: string };
+      const gates: Gate[] = [];
+      for (const t of page.traces) {
+        const one = await body<{ spans: Gate[] }>(call(`/api/agents/${id}/traces/${t.id}`, {}, cookie));
+        gates.push(...one.spans.filter((s) => s.kind === "gate"));
+      }
+      expect(gates.map((g) => g.verdict).sort()).toEqual(["grounded", "off"]);
+      expect(gates.find((g) => g.verdict === "grounded")!.found).toBeGreaterThan(0);
+      expect(gates.every((g) => g.input === undefined && g.output === undefined)).toBe(true);
+      // The gate is not a tool call.
+      expect(page.traces.every((t) => t.toolCalls <= 1)).toBe(true);
+    });
+
+    it("records the question the gate checked at full content", async () => {
+      const { id, cookie } = await liveKnowledgeAgent();
+      await call(`/api/agents/${id}/tracing`, { method: "PUT", json: { level: "full" } }, cookie);
+      await (await ask(id, { message: REFUND_QUESTION })).text();
+      const page = await body<{ traces: { id: string }[] }>(call(`/api/agents/${id}/traces`, {}, cookie));
+      const one = await body<{ spans: { kind: string; input?: string }[] }>(
+        call(`/api/agents/${id}/traces/${page.traces[0]!.id}`, {}, cookie),
+      );
+      expect(one.spans.find((s) => s.kind === "gate")?.input).toContain(REFUND_QUESTION);
+    });
+
     it("keeps nothing when tracing is off", async () => {
       const { id, cookie } = await liveKnowledgeAgent();
       await call(`/api/agents/${id}/tracing`, { method: "PUT", json: { level: "off" } }, cookie);

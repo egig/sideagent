@@ -14,4 +14,4 @@ export type {
   VectorStore,
   KnowledgeSourceInput,
 } from "./knowledge/index.js";
-export { TOOL_TAG } from "./graph/index.js";
+export { GATE_TAG, TOOL_TAG } from "./graph/index.js";

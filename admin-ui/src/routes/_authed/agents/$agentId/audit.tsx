@@ -4,13 +4,16 @@ import { useQuery } from "@tanstack/react-query";
 import type { AuditEvent } from "@shared/api";
 import { auditQuery, type AuditFilters } from "~/app/api/agents";
 import { useFormatDate } from "~/app/display";
-import { Spans } from "~/app/traces";
+import { Spans, TracingBar } from "~/app/traces";
 import { Alert, Page, SelectInput } from "~/app/ui";
 import { useT } from "~/i18n";
 
 export const Route = createFileRoute("/_authed/agents/$agentId/audit")({
   component: AuditLog,
 });
+
+// Events that are a turn of the agent: the only ones a trace can exist for.
+const TURNS = new Set(["chat.turn", "preview.turn"]);
 
 const INITIAL: AuditFilters = { result: "", event: "", user: "", range: "7d", page: 1 };
 
@@ -41,6 +44,7 @@ function AuditLog() {
   return (
     <Page title={t.title}>
       <p className="m-0 text-ink-muted">{t.lead}</p>
+      <TracingBar agentId={agentId} />
       <section className="card" aria-labelledby="events-heading">
         <h2 id="events-heading" className="sr-only">
           {t.events}
@@ -170,16 +174,18 @@ function AuditRow({ agentId, e }: { agentId: string; e: AuditEvent }) {
           {e.durationMs === null ? common.none : `${e.durationMs} ms`}
         </td>
         <td className="whitespace-nowrap px-4 py-3">
-          {e.traceId && (
+          {e.traceId ? (
             <button type="button" className="btn" aria-expanded={open} onClick={() => setOpen(!open)}>
               {open ? t.hideTrace : t.showTrace}
             </button>
+          ) : (
+            TURNS.has(e.event) && <span className="text-[13px] text-ink-subtle">{t.noTrace}</span>
           )}
         </td>
       </tr>
       {open && e.traceId && (
         <tr>
-          <td colSpan={7} className="p-0">
+          <td colSpan={6} className="p-0">
             <Spans agentId={agentId} traceId={e.traceId} />
           </td>
         </tr>

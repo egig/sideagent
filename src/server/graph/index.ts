@@ -19,6 +19,9 @@ export type { RunContext } from "./types.js";
 /** Tag on the span of a tool call, so a trace handler can tell it from LangChain's own steps. */
 export const TOOL_TAG = "sideagent:tool";
 
+/** Tag on the span of the relevance gate. Its output is the verdict and a count, never text. */
+export const GATE_TAG = "sideagent:gate";
+
 /** The node that calls the model; http/turn.ts streams text only from it. */
 export const MODEL_NODE = "model_request";
 
@@ -132,7 +135,8 @@ async function gateVerdict(
   }
   const question = at >= 0 ? messageText(messages[at]!.content).trim().slice(0, 300) : "";
   if (!question) return "off";
-  run.gate ??= (async () => {
+  // Its own traced span, so a trace shows why a turn was declined. Callbacks see a child of the model step.
+  run.gate ??= RunnableLambda.from(async (): Promise<{ verdict: GateVerdict; passages: number }> => {
     // Earlier refusals do not count as context: the question they answered was off topic.
     const before = withoutDeclines(messages.slice(0, at));
     const prevAt = lastHuman(before);
@@ -173,10 +177,14 @@ async function gateVerdict(
       });
     }
     // Only the message alone can be "grounded": a match that needs the earlier messages is never enough to skip the model's judgement.
-    if (alone.top >= scope.minScore) return "grounded";
-    if (clarifyScore >= scope.minScore) return "off";
-    return best.top >= clarifyScore ? "uncertain" : "off";
-  })();
+    const passages = best.hits.filter((h) => h.score >= scope.minScore).length;
+    if (alone.top >= scope.minScore) return { verdict: "grounded", passages };
+    if (clarifyScore >= scope.minScore) return { verdict: "off", passages };
+    return { verdict: best.top >= clarifyScore ? "uncertain" : "off", passages };
+  })
+    .withConfig({ runName: "gate", tags: [GATE_TAG] })
+    .invoke({ question })
+    .then((r) => r.verdict);
   return run.gate;
 }
 

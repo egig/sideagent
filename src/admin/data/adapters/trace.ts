@@ -4,7 +4,7 @@
 import { BaseCallbackHandler } from "@langchain/core/callbacks/base";
 import type { BaseMessage } from "@langchain/core/messages";
 import type { LLMResult } from "@langchain/core/outputs";
-import { TOOL_TAG } from "../../../server/index.js";
+import { GATE_TAG, TOOL_TAG } from "../../../server/index.js";
 import type { Trace, TraceLevel, TraceSpan } from "../../api.js";
 
 /** Per-field and per-turn limits, so one turn is one bounded row (a row stays far under any database's size limit). */
@@ -215,10 +215,11 @@ export class TraceHandler extends BaseCallbackHandler {
       this.threadId = typeof thread === "string" ? thread.slice(0, 256) : null;
     }
     this.parents.set(runId, parentRunId);
-    if (!tags?.includes(TOOL_TAG)) return;
+    const kind = tags?.includes(TOOL_TAG) ? "tool" : tags?.includes(GATE_TAG) ? "gate" : undefined;
+    if (!kind) return;
     this.begin(runId, parentRunId, {
-      kind: "tool",
-      name: name ?? "tool",
+      kind,
+      name: name ?? kind,
       startedAt: Date.now(),
       input: this.text(clip(inputs)),
     });
@@ -226,13 +227,22 @@ export class TraceHandler extends BaseCallbackHandler {
 
   override async handleChainEnd(outputs: unknown, runId: string) {
     const o = this.open.get(runId);
-    if (o?.kind === "tool") {
+    if (o?.kind === "gate") {
+      // A verdict and a count: no text, so they are kept at "metadata" too.
+      const g = outputs as { verdict?: unknown; passages?: unknown } | null;
+      const verdict =
+        g?.verdict === "grounded" || g?.verdict === "uncertain" || g?.verdict === "off" ? g.verdict : undefined;
+      this.finish(runId, "ok", {
+        ...(verdict && { verdict }),
+        ...(typeof g?.passages === "number" && { found: g.passages }),
+      });
+    } else if (o?.kind === "tool") {
+      const sources = (outputs as { artifact?: { sources?: unknown } } | null)?.artifact?.sources;
       const content = (outputs as { content?: unknown } | null)?.content;
-      this.finish(
-        runId,
-        "ok",
-        this.full() ? { output: this.text(typeof content === "string" ? content : clip(outputs)) } : {},
-      );
+      this.finish(runId, "ok", {
+        ...(Array.isArray(sources) && { found: sources.length }),
+        ...(this.full() && { output: this.text(typeof content === "string" ? content : clip(outputs)) }),
+      });
     }
     if (runId === this.root) await this.flush();
   }
@@ -260,7 +270,7 @@ export class TraceHandler extends BaseCallbackHandler {
           status,
           durationMs: Date.now() - this.startedAt,
           llmCalls: llm.length,
-          toolCalls: spans.length - llm.length,
+          toolCalls: spans.filter((s) => s.kind === "tool").length,
           inputTokens: sum("inputTokens"),
           outputTokens: sum("outputTokens"),
           spans,

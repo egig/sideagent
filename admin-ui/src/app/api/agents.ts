@@ -16,7 +16,6 @@ import type {
   LlmCheck,
   Trace,
   TraceLevel,
-  TracePage,
 } from "@shared/api";
 import { api } from "./client";
 
@@ -68,17 +67,6 @@ export const statsQuery = (id: string, range: StatsRange) =>
   queryOptions({
     queryKey: ["agents", id, "stats", range],
     queryFn: () => api<AgentStats>(path(id, `/stats?range=${range}`)),
-    placeholderData: keepPreviousData,
-  });
-
-export const tracesQuery = (id: string, page: number, status: string) =>
-  queryOptions({
-    queryKey: ["agents", id, "traces", page, status],
-    queryFn: () => {
-      const q = new URLSearchParams({ page: String(page) });
-      if (status) q.set("status", status);
-      return api<TracePage>(path(id, `/traces?${q}`));
-    },
     placeholderData: keepPreviousData,
   });
 

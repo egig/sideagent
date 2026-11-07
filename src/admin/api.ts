@@ -159,8 +159,8 @@ export interface TraceSpan {
   id: string;
   /** The nearest recorded span above this one; null for a top-level span. */
   parentId: string | null;
-  kind: "llm" | "tool";
-  /** The model, or the search the model called. */
+  kind: "llm" | "tool" | "gate";
+  /** The model, the search the model called, or `gate` for the relevance check before the model. */
   name: string;
   /** Milliseconds from the start of the turn. */
   startMs: number;
@@ -168,6 +168,10 @@ export interface TraceSpan {
   status: "ok" | "error";
   inputTokens?: number;
   outputTokens?: number;
+  /** Gate only: what it decided. Kept at every level, since it holds no text. */
+  verdict?: "grounded" | "uncertain" | "off";
+  /** Gate: passages at or above the relevance score. Search: sources found. A count, kept at every level. */
+  found?: number;
   /** Error class only at `metadata`; the redacted message at `full`. */
   error?: string;
   /** Present at `full` only, redacted and cut to a fixed length. */

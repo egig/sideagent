@@ -21,7 +21,6 @@ import { Route as AuthedAgentsAgentIdAuditRouteImport } from './routes/_authed/a
 import { Route as AuthedAgentsAgentIdKnowledgeRouteImport } from './routes/_authed/agents/$agentId/knowledge'
 import { Route as AuthedAgentsAgentIdSettingsRouteImport } from './routes/_authed/agents/$agentId/settings'
 import { Route as AuthedAgentsAgentIdSetupRouteImport } from './routes/_authed/agents/$agentId/setup'
-import { Route as AuthedAgentsAgentIdTracesRouteImport } from './routes/_authed/agents/$agentId/traces'
 
 const AuthedRoute = AuthedRouteImport.update({
   id: '/_authed',
@@ -87,12 +86,6 @@ const AuthedAgentsAgentIdSetupRoute =
     path: '/setup',
     getParentRoute: () => AuthedAgentsAgentIdRoute,
   } as any)
-const AuthedAgentsAgentIdTracesRoute =
-  AuthedAgentsAgentIdTracesRouteImport.update({
-    id: '/traces',
-    path: '/traces',
-    getParentRoute: () => AuthedAgentsAgentIdRoute,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthedIndexRoute
@@ -105,7 +98,6 @@ export interface FileRoutesByFullPath {
   '/agents/$agentId/knowledge': typeof AuthedAgentsAgentIdKnowledgeRoute
   '/agents/$agentId/settings': typeof AuthedAgentsAgentIdSettingsRoute
   '/agents/$agentId/setup': typeof AuthedAgentsAgentIdSetupRoute
-  '/agents/$agentId/traces': typeof AuthedAgentsAgentIdTracesRoute
   '/agents/$agentId/': typeof AuthedAgentsAgentIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -118,7 +110,6 @@ export interface FileRoutesByTo {
   '/agents/$agentId/knowledge': typeof AuthedAgentsAgentIdKnowledgeRoute
   '/agents/$agentId/settings': typeof AuthedAgentsAgentIdSettingsRoute
   '/agents/$agentId/setup': typeof AuthedAgentsAgentIdSetupRoute
-  '/agents/$agentId/traces': typeof AuthedAgentsAgentIdTracesRoute
   '/agents/$agentId': typeof AuthedAgentsAgentIdIndexRoute
 }
 export interface FileRoutesById {
@@ -134,7 +125,6 @@ export interface FileRoutesById {
   '/_authed/agents/$agentId/knowledge': typeof AuthedAgentsAgentIdKnowledgeRoute
   '/_authed/agents/$agentId/settings': typeof AuthedAgentsAgentIdSettingsRoute
   '/_authed/agents/$agentId/setup': typeof AuthedAgentsAgentIdSetupRoute
-  '/_authed/agents/$agentId/traces': typeof AuthedAgentsAgentIdTracesRoute
   '/_authed/agents/$agentId/': typeof AuthedAgentsAgentIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -150,7 +140,6 @@ export interface FileRouteTypes {
     | '/agents/$agentId/knowledge'
     | '/agents/$agentId/settings'
     | '/agents/$agentId/setup'
-    | '/agents/$agentId/traces'
     | '/agents/$agentId/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -163,7 +152,6 @@ export interface FileRouteTypes {
     | '/agents/$agentId/knowledge'
     | '/agents/$agentId/settings'
     | '/agents/$agentId/setup'
-    | '/agents/$agentId/traces'
     | '/agents/$agentId'
   id:
     | '__root__'
@@ -178,7 +166,6 @@ export interface FileRouteTypes {
     | '/_authed/agents/$agentId/knowledge'
     | '/_authed/agents/$agentId/settings'
     | '/_authed/agents/$agentId/setup'
-    | '/_authed/agents/$agentId/traces'
     | '/_authed/agents/$agentId/'
   fileRoutesById: FileRoutesById
 }
@@ -275,13 +262,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAgentsAgentIdSetupRouteImport
       parentRoute: typeof AuthedAgentsAgentIdRoute
     }
-    '/_authed/agents/$agentId/traces': {
-      id: '/_authed/agents/$agentId/traces'
-      path: '/traces'
-      fullPath: '/agents/$agentId/traces'
-      preLoaderRoute: typeof AuthedAgentsAgentIdTracesRouteImport
-      parentRoute: typeof AuthedAgentsAgentIdRoute
-    }
   }
 }
 
@@ -290,7 +270,6 @@ interface AuthedAgentsAgentIdRouteChildren {
   AuthedAgentsAgentIdKnowledgeRoute: typeof AuthedAgentsAgentIdKnowledgeRoute
   AuthedAgentsAgentIdSettingsRoute: typeof AuthedAgentsAgentIdSettingsRoute
   AuthedAgentsAgentIdSetupRoute: typeof AuthedAgentsAgentIdSetupRoute
-  AuthedAgentsAgentIdTracesRoute: typeof AuthedAgentsAgentIdTracesRoute
   AuthedAgentsAgentIdIndexRoute: typeof AuthedAgentsAgentIdIndexRoute
 }
 
@@ -299,7 +278,6 @@ const AuthedAgentsAgentIdRouteChildren: AuthedAgentsAgentIdRouteChildren = {
   AuthedAgentsAgentIdKnowledgeRoute: AuthedAgentsAgentIdKnowledgeRoute,
   AuthedAgentsAgentIdSettingsRoute: AuthedAgentsAgentIdSettingsRoute,
   AuthedAgentsAgentIdSetupRoute: AuthedAgentsAgentIdSetupRoute,
-  AuthedAgentsAgentIdTracesRoute: AuthedAgentsAgentIdTracesRoute,
   AuthedAgentsAgentIdIndexRoute: AuthedAgentsAgentIdIndexRoute,
 }
 
