@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, type ReactNode, type SVGProps } from "react";
+import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar";
 import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { Menu } from "@base-ui/react/menu";
 import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
@@ -361,6 +363,109 @@ export function Section({
       </div>
       <div className="flex min-w-0 flex-[2_1_360px] flex-col gap-5">{children}</div>
     </div>
+  );
+}
+
+// Modal form shell: title, body, and a footer for the actions. Closes on Escape, backdrop click and the X.
+export function Dialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  children,
+  footer,
+  onSubmit,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  description?: ReactNode;
+  children: ReactNode;
+  footer: ReactNode;
+  onSubmit: () => void;
+}) {
+  const t = useT();
+  return (
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Backdrop className="fixed inset-0 z-40 bg-scrim transition-opacity data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
+        <DialogPrimitive.Popup className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[20px] border border-line bg-surface-raised shadow-lg outline-none transition-opacity data-[ending-style]:opacity-0 data-[starting-style]:opacity-0">
+          <form
+            className="m-0 flex min-h-0 flex-1 flex-col"
+            onSubmit={(e) => {
+              e.preventDefault();
+              onSubmit();
+            }}
+          >
+            <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-1">
+              <div>
+                <DialogPrimitive.Title className="m-0 text-[17px] leading-6 font-semibold">
+                  {title}
+                </DialogPrimitive.Title>
+                {description && (
+                  <DialogPrimitive.Description className="m-0 mt-1 text-[13px] leading-[18px] text-ink-muted">
+                    {description}
+                  </DialogPrimitive.Description>
+                )}
+              </div>
+              <DialogPrimitive.Close
+                aria-label={t.common.close}
+                className="-mt-1 -mr-2 inline-flex size-9 flex-none cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-ink-muted hover:bg-selected hover:text-ink"
+              >
+                <Icon name="x" />
+              </DialogPrimitive.Close>
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 py-4">{children}</div>
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-line bg-surface-subtle px-6 py-4">
+              {footer}
+            </div>
+          </form>
+        </DialogPrimitive.Popup>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
+  );
+}
+
+// Confirmation for a destructive action: title, a line saying what happens, Cancel and the action itself.
+export function ConfirmDialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  confirmLabel,
+  pending,
+  error,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  description: ReactNode;
+  confirmLabel: string;
+  pending: boolean;
+  error?: ReactNode;
+  onConfirm: () => void;
+}) {
+  const t = useT();
+  return (
+    <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
+      <AlertDialog.Portal>
+        <AlertDialog.Backdrop className="fixed inset-0 z-40 bg-scrim" />
+        <AlertDialog.Popup className="fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-[440px] -translate-x-1/2 -translate-y-1/2 rounded-[20px] border border-line bg-surface-raised p-6 shadow-lg outline-none">
+          <AlertDialog.Title className="m-0 text-[17px] leading-6 font-semibold">{title}</AlertDialog.Title>
+          <AlertDialog.Description className="mt-1 mb-0 text-ink-muted">{description}</AlertDialog.Description>
+          {error && <div className="mt-4">{error}</div>}
+          <div className="mt-6 flex flex-wrap justify-end gap-2">
+            <AlertDialog.Close className="btn" disabled={pending}>
+              {t.common.cancel}
+            </AlertDialog.Close>
+            <button type="button" className="btn btn-danger" onClick={onConfirm} disabled={pending}>
+              {confirmLabel}
+            </button>
+          </div>
+        </AlertDialog.Popup>
+      </AlertDialog.Portal>
+    </AlertDialog.Root>
   );
 }
 

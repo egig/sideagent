@@ -1,13 +1,13 @@
 // Knowledge sources: the list with its status, and the form that adds a page or pasted text. Used by the
 // Knowledge page and by step 2 of setup.
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Agent, KnowledgeSource } from "@shared/api";
 import { addKnowledge, agentQuery, knowledgeQuery, reindexKnowledge, removeKnowledge } from "~/app/api/agents";
 import { useFormatDate } from "~/app/display";
 import { errorMessage, fieldErrors } from "~/app/api/client";
-import { Alert, Callout, Field, Icon, Segmented } from "~/app/ui";
+import { Alert, Callout, ConfirmDialog, Dialog, Field, Icon, Segmented } from "~/app/ui";
 import { formatNumber, useLocale, useT } from "~/i18n";
 
 const TEXT_MAX = 200_000;
@@ -154,39 +154,33 @@ function SourceRow({
         )}
       </td>
       <td className="px-4 py-3 text-right whitespace-nowrap">
-        {confirming ? (
-          <span className="inline-flex gap-2">
-            <button type="button" className="btn" onClick={() => setConfirming(false)}>
-              {common.cancel}
-            </button>
-            <button
-              type="button"
-              className="btn btn-danger"
-              disabled={remove.isPending}
-              onClick={() => remove.mutate()}
-            >
-              {common.remove}
-            </button>
-          </span>
-        ) : (
-          <button
-            type="button"
-            className="inline-flex size-10 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-ink-muted hover:bg-selected hover:text-ink"
-            aria-label={common.removeLabel(label)}
-            onClick={() => setConfirming(true)}
-          >
-            <Icon name="x" />
-          </button>
-        )}
-        {remove.error && <span className="block text-[13px] text-danger">{t.notRemoved}</span>}
+        <button
+          type="button"
+          className="inline-flex size-10 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-ink-muted hover:bg-selected hover:text-ink"
+          aria-label={common.removeLabel(label)}
+          onClick={() => setConfirming(true)}
+        >
+          <Icon name="x" />
+        </button>
+        <ConfirmDialog
+          open={confirming}
+          onOpenChange={setConfirming}
+          title={t.removeTitle}
+          description={t.removeHint(label)}
+          confirmLabel={common.remove}
+          pending={remove.isPending}
+          error={remove.error && <Alert>{t.notRemoved}</Alert>}
+          onConfirm={() => remove.mutate()}
+        />
       </td>
     </tr>
   );
 }
 
 function AddSource({ agentId, onAdded }: { agentId: string; onAdded: () => Promise<unknown> }) {
-  const t = useT().knowledge;
+  const { common, knowledge: t } = useT();
   const locale = useLocale();
+  const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<"url" | "text">("url");
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
@@ -195,89 +189,104 @@ function AddSource({ agentId, onAdded }: { agentId: string; onAdded: () => Promi
     mutationFn: () =>
       addKnowledge(agentId, kind === "url" ? { kind, url: url.trim() } : { kind, title: title.trim(), content }),
     onSuccess: async () => {
-      setUrl("");
-      setTitle("");
-      setContent("");
+      setOpen(false);
       await onAdded();
     },
   });
   const errors = fieldErrors(add.error) ?? {};
 
-  function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    add.mutate();
+  function onOpenChange(next: boolean) {
+    setOpen(next);
+    // A fresh form each time it opens; a failed attempt does not linger.
+    if (next) {
+      setKind("url");
+      setUrl("");
+      setTitle("");
+      setContent("");
+      add.reset();
+    }
   }
 
   return (
-    <form className="m-0 flex flex-col gap-4 rounded-b-xl border-t border-line bg-canvas px-5 py-5" onSubmit={onSubmit}>
-      <Segmented
-        label={t.sourceType}
-        value={kind}
-        onChange={(v) => {
-          setKind(v);
-          add.reset();
-        }}
-        options={[
-          { value: "url", label: t.webPage },
-          { value: "text", label: t.pasteText },
-        ]}
-      />
-      {add.error && !Object.keys(errors).length && <Alert>{errorMessage(add.error, t.addFailed)}</Alert>}
-      {kind === "url" ? (
-        <div className="flex flex-wrap items-start gap-2">
-          <div className="min-w-0 flex-[1_1_320px]">
-            <Field id="source-url" label={t.pageUrl} hint={t.pageUrlHint} error={errors.url}>
-              <input
-                id="source-url"
-                className="input font-mono"
-                type="url"
-                required
-                placeholder="https://docs.your-company.com/faq"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-              />
-            </Field>
-          </div>
-          <button type="submit" className="btn btn-primary mt-[26px]" disabled={add.isPending}>
-            <Icon name="plus" />
-            {add.isPending ? t.adding : t.addSource}
-          </button>
-        </div>
-      ) : (
-        <>
-          <Field id="source-title" label={t.titleLabel} hint={t.titleHint} error={errors.title}>
-            <input
-              id="source-title"
-              className="input"
-              required
-              maxLength={200}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </Field>
-          <Field
-            id="source-content"
-            label={t.text}
-            hint={t.textHint(formatNumber(content.length, locale))}
-            error={errors.content}
-          >
-            <textarea
-              id="source-content"
-              className="input min-h-40 py-2 font-mono text-[13px]"
-              required
-              maxLength={TEXT_MAX}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-            />
-          </Field>
-          <div>
+    <div className="border-t border-line bg-canvas px-5 py-4">
+      <button type="button" className="btn btn-primary" onClick={() => onOpenChange(true)}>
+        <Icon name="plus" />
+        {t.addSource}
+      </button>
+      <Dialog
+        open={open}
+        onOpenChange={onOpenChange}
+        title={t.addSource}
+        description={t.addSourceHint}
+        onSubmit={() => add.mutate()}
+        footer={
+          <>
+            <button type="button" className="btn" onClick={() => onOpenChange(false)}>
+              {common.cancel}
+            </button>
             <button type="submit" className="btn btn-primary" disabled={add.isPending}>
-              <Icon name="plus" />
               {add.isPending ? t.adding : t.addSource}
             </button>
-          </div>
-        </>
-      )}
-    </form>
+          </>
+        }
+      >
+        <Segmented
+          label={t.sourceType}
+          value={kind}
+          onChange={(v) => {
+            setKind(v);
+            add.reset();
+          }}
+          options={[
+            { value: "url", label: t.webPage },
+            { value: "text", label: t.pasteText },
+          ]}
+        />
+        {add.error && !Object.keys(errors).length && <Alert>{errorMessage(add.error, t.addFailed)}</Alert>}
+        {kind === "url" ? (
+          <Field id="source-url" label={t.pageUrl} hint={t.pageUrlHint} error={errors.url}>
+            <input
+              id="source-url"
+              className="input font-mono"
+              type="url"
+              required
+              autoFocus
+              placeholder="https://docs.your-company.com/faq"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+            />
+          </Field>
+        ) : (
+          <>
+            <Field id="source-title" label={t.titleLabel} hint={t.titleHint} error={errors.title}>
+              <input
+                id="source-title"
+                className="input"
+                required
+                autoFocus
+                maxLength={200}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </Field>
+            <Field
+              id="source-content"
+              label={t.text}
+              hint={t.textHint(formatNumber(content.length, locale))}
+              error={errors.content}
+            >
+              <textarea
+                id="source-content"
+                className="input min-h-40 py-2 font-mono text-[13px]"
+                required
+                maxLength={TEXT_MAX}
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+              />
+            </Field>
+          </>
+        )}
+      </Dialog>
+    </div>
   );
 }

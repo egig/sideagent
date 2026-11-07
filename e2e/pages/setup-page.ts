@@ -96,16 +96,23 @@ export class LlmStep extends Step {
 }
 
 export class KnowledgeStep extends Step {
-  async addPage(url: string) {
-    await this.card.getByLabel("Page URL").fill(url);
+  private async openDialog() {
     await this.card.getByRole("button", { name: "Add source" }).click();
+    return this.page.getByRole("dialog", { name: "Add source" });
+  }
+
+  async addPage(url: string) {
+    const dialog = await this.openDialog();
+    await dialog.getByLabel("Page URL").fill(url);
+    await dialog.getByRole("button", { name: "Add source" }).click();
   }
 
   async addText(title: string, content: string) {
-    await this.card.getByRole("button", { name: "Paste text" }).click();
-    await this.card.getByLabel("Title").fill(title);
-    await this.card.getByLabel("Text", { exact: true }).fill(content);
-    await this.card.getByRole("button", { name: "Add source" }).click();
+    const dialog = await this.openDialog();
+    await dialog.getByRole("button", { name: "Paste text" }).click();
+    await dialog.getByLabel("Title").fill(title);
+    await dialog.getByLabel("Text", { exact: true }).fill(content);
+    await dialog.getByRole("button", { name: "Add source" }).click();
   }
 
   async saveInstructions(text: string) {
