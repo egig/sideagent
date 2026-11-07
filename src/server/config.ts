@@ -76,13 +76,8 @@ export const configSchema = z
          * under `minScore`, as before.
          */
         clarifyScore: z.number().min(0).max(1).optional(),
-        offTopic: z
-          .string()
-          .min(1)
-          .max(500)
-          .default(
-            "I can only answer questions about this product's documentation. Try asking about how it works or how to set it up.",
-          ),
+        /** Markdown. The fixed reply for a message the knowledge does not back; the chat renders it, links included. */
+        offTopic: z.string().min(1).max(500).default("I can't help with that."),
         /**
          * Have the model write the off-topic reply, in the user's language, instead of sending `offTopic`. The
          * model sees only the last user message, with no tools or passages. `offTopic` stays the fallback. Costs

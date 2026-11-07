@@ -3,6 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { agentQuery } from "~/app/api/agents";
 import { NeedsModel, Sources } from "~/app/knowledge/sources";
 import { Instructions } from "~/app/settings/instructions";
+import { OffTopic } from "~/app/settings/off-topic";
 import { Page, StatusBadge } from "~/app/ui";
 import { useT } from "~/i18n";
 
@@ -23,6 +24,7 @@ function Knowledge() {
       <Sources agentId={agentId} />
       {/* key: a different agent starts the form fresh. */}
       <Instructions key={agent.id} agent={agent} />
+      <OffTopic key={agent.id} agent={agent} />
     </Page>
   );
 }

@@ -376,6 +376,13 @@ export const en = {
       originsHint: "Exact match, including scheme and port. HTTPS, except localhost for testing.",
       instructions: "Instructions",
       instructionsHint: (n: string, max: string) => `${n} of ${max} characters. Added to the system prompt.`,
+      offTopic: "Off-topic reply",
+      offTopicExplanation:
+        "Sent when a question has nothing to do with your knowledge. Supports Markdown, so you can link to support.",
+      offTopicPlaceholder:
+        "I can't help with that. Contact our customer support at [support@example.com](mailto:support@example.com).",
+      offTopicHint: (n: string, max: string) =>
+        `${n} of ${max} characters. Leave empty for a short default written by the model in the user's language.`,
     },
     llm: {
       provider: "Provider",

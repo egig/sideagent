@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { checkUrlSyntax } from "./security/url-guard.js";
 import { MODE_LABEL, TRACE_LEVELS, type TraceLevel, type LlmConfig, type ReadinessItem } from "./api.js";
-import { ALGORITHMS, DEFAULT_ALGORITHMS, INSTRUCTIONS_MAX, NAME_MAX, ORIGINS_MAX } from "./limits.js";
+import { ALGORITHMS, DEFAULT_ALGORITHMS, INSTRUCTIONS_MAX, NAME_MAX, OFF_TOPIC_MAX, ORIGINS_MAX } from "./limits.js";
 
 export type { LlmConfig, ReadinessItem };
 
@@ -55,6 +55,7 @@ export const generalInput = z
       .max(ORIGINS_MAX, `${ORIGINS_MAX} origins at most.`)
       .transform((list) => [...new Set(list)]),
     instructions: z.string().max(INSTRUCTIONS_MAX, `${INSTRUCTIONS_MAX} characters at most.`),
+    offTopic: z.string().trim().max(OFF_TOPIC_MAX, `${OFF_TOPIC_MAX} characters at most.`),
   })
   .partial()
   .strict();
@@ -119,6 +120,8 @@ export type AuthConfig = z.output<typeof authInput>;
 export interface AgentConfig {
   allowedOrigins: string[];
   instructions: string;
+  /** Markdown reply for a message the knowledge does not back. Absent or empty: the default (and a model-written decline). */
+  offTopic?: string;
   /** Null until the integrator sets up their provider (a host without a built-in model). */
   llm: LlmConfig | null;
   auth: AuthConfig | null;

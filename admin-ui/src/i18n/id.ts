@@ -374,6 +374,13 @@ export const id: Messages = {
       originsHint: "Harus sama persis, termasuk skema dan port. HTTPS, kecuali localhost untuk pengujian.",
       instructions: "Instruksi",
       instructionsHint: (n, max) => `${n} dari ${max} karakter. Ditambahkan ke system prompt.`,
+      offTopic: "Balasan di luar topik",
+      offTopicExplanation:
+        "Dikirim saat pertanyaan tidak berkaitan dengan Knowledge Base Anda. Mendukung Markdown, sehingga Anda bisa menautkan ke dukungan.",
+      offTopicPlaceholder:
+        "Saya tidak bisa membantu itu. Hubungi dukungan pelanggan kami di [support@example.com](mailto:support@example.com).",
+      offTopicHint: (n, max) =>
+        `${n} dari ${max} karakter. Kosongkan untuk balasan singkat bawaan yang ditulis model dalam bahasa pengguna.`,
     },
     llm: {
       provider: "Provider",

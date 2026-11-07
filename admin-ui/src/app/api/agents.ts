@@ -94,8 +94,10 @@ const send = <T = AgentDetail>(method: string, url: string, json?: unknown) =>
   api<T>(url, { method, ...(json !== undefined && { body: JSON.stringify(json) }) });
 
 export const createAgent = (input: { name: string }) => send("POST", "/agents", input);
-export const updateGeneral = (id: string, input: Partial<Pick<Agent, "name" | "allowedOrigins" | "instructions">>) =>
-  send("PATCH", path(id), input);
+export const updateGeneral = (
+  id: string,
+  input: Partial<Pick<Agent, "name" | "allowedOrigins" | "instructions" | "offTopic">>,
+) => send("PATCH", path(id), input);
 export const updateTracing = (id: string, level: TraceLevel) => send("PUT", path(id, "/tracing"), { level });
 export const updateLlm = (
   id: string,

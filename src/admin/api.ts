@@ -52,6 +52,8 @@ export interface Agent extends AgentSummary {
   endpoint: string;
   allowedOrigins: string[];
   instructions: string;
+  /** Empty: the built-in default. */
+  offTopic: string;
   llm: LlmConfig | null;
   llmKey: { last4: string } | null;
   knowledge: KnowledgeCounts;

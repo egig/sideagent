@@ -40,7 +40,7 @@ export function crudRoutes(deps: AdminDeps) {
 
   app.get("/:id", async (c) => respond(c, deps, await loadRow(c, deps)));
 
-  // General: name, allowed origins, instructions.
+  // General: name, allowed origins, instructions, off-topic reply.
   app.patch("/:id", async (c) => {
     const body = await parseBody(c, generalInput);
     if (!body.ok) return body.response;

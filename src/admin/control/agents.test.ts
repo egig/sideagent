@@ -89,6 +89,7 @@ describe("agents API", () => {
       expect((await patch({ allowedOrigins })).status).toBe(400);
     }
     expect((await patch({ instructions: "x".repeat(8001) })).status).toBe(400);
+    expect((await patch({ offTopic: "x".repeat(501) })).status).toBe(400);
     expect((await patch({ unknownField: 1 })).status).toBe(400);
     const ok = await body(
       patch({

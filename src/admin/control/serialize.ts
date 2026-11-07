@@ -22,6 +22,7 @@ export async function toJson(deps: AdminDeps, a: AgentRecord, knowledge: Knowled
       endpoint: `${origin.origin}/v1/agents/${a.id}`,
       allowedOrigins: a.config.allowedOrigins,
       instructions: a.config.instructions,
+      offTopic: a.config.offTopic ?? "",
       llm: a.config.llm,
       llmKey: a.llmKeyLast4 ? { last4: a.llmKeyLast4 } : null,
       auth: a.config.auth,

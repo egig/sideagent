@@ -87,6 +87,17 @@ describe("data plane", () => {
     expect(modelCalls).toBe(1);
   });
 
+  it("sends the integrator's own off-topic reply as written, without a model call", async () => {
+    const { id, cookie } = await liveKnowledgeAgent();
+    const reply = "Can't help. Contact [support](https://example.com/support).";
+    expect((await call(`/api/agents/${id}`, { method: "PATCH", json: { offTopic: reply } }, cookie)).status).toBe(200);
+    const calls = modelCalls;
+    const evs = await events(await ask(id, { message: "what is 2+2" }));
+    expect(evs.map((e) => e.type)).toEqual(["turn.start", "text.delta", "turn.end"]);
+    expect(evs[1]!.text).toBe(reply);
+    expect(modelCalls).toBe(calls);
+  });
+
   describe("anonymous conversations", () => {
     const threadOf = async (res: Response) =>
       (await events(res)).find((e) => e.type === "turn.start") as unknown as { threadId: string };
