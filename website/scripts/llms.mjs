@@ -15,7 +15,7 @@ const docs = readdirSync(join(root, "docs"))
     const pos = Number(fm.match(/^sidebar_position:\s*(\d+)/m)?.[1] ?? 99);
     const slug = f === "intro.md" ? "" : f.replace(/\.md$/, "");
     const body = raw.slice(m?.[0].length ?? 0).trim();
-    return { title, pos, url: `${site}/${slug}`, body, summary: body.split("\n").find((l) => l && !l.startsWith("#") && /^[A-Z`][^<{]*\. ?/.test(l) && !l.startsWith("```")) ?? "" };
+    return { title, pos, url: `${site}/docs/${slug}`, body, summary: body.split("\n").find((l) => l && !l.startsWith("#") && /^[A-Z`][^<{]*\. ?/.test(l) && !l.startsWith("```")) ?? "" };
   })
   .sort((a, b) => a.pos - b.pos);
 

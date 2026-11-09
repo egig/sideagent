@@ -6,7 +6,7 @@ Add a docs chat to your app. A server you run holds the dashboard, the knowledge
 npm i sideagent
 ```
 
-Docs: https://egig.github.io/sideagent/
+Docs: https://egig.github.io/sideagent/docs/
 
 ## Server (`sideagent/server`)
 
@@ -96,6 +96,6 @@ pnpm typecheck
 
 ## For AI agents
 
-- Skill: `npx skills add egig/sideagent`, then ask your coding agent to "add an AI assistant to this app". See [Quickstart](https://egig.github.io/sideagent/quickstart).
+- Skill: `npx skills add egig/sideagent`, then ask your coding agent to "add an AI assistant to this app". See [Quickstart](https://egig.github.io/sideagent/docs/quickstart).
 - [`AGENTS.md`](AGENTS.md): commands, layout and rules for coding agents working on this repo.
 - [`llms.txt`](https://egig.github.io/sideagent/llms.txt) and [`llms-full.txt`](https://egig.github.io/sideagent/llms-full.txt): the docs in LLM-friendly form.
