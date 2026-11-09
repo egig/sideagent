@@ -32,7 +32,6 @@ export function roadmapAreas() {
     insights: translate({ id: "roadmap.area.insights", message: "Insights" }),
     support: translate({ id: "roadmap.area.support", message: "Support" }),
     knowledge: translate({ id: "roadmap.area.knowledge", message: "Knowledge" }),
-    enterprise: translate({ id: "roadmap.area.enterprise", message: "Enterprise" }),
     quality: translate({ id: "roadmap.area.quality", message: "Quality" }),
     hosting: translate({ id: "roadmap.area.hosting", message: "Hosting" }),
   };
@@ -121,33 +120,6 @@ export function roadmapItems() {
       title: translate({ id: "roadmap.refresh.title", message: "Scheduled refresh" }),
       body: translate({ id: "roadmap.refresh.body", message: "Re-fetch help-centre pages on a schedule." }),
       why: translate({ id: "roadmap.refresh.why", message: "Answers follow your docs as they change." }),
-    },
-    {
-      status: "explore",
-      area: "enterprise",
-      title: translate({ id: "roadmap.sso.title", message: "Single sign-on for the dashboard" }),
-      body: translate({ id: "roadmap.sso.body", message: "SAML or OIDC sign-in for your team members." }),
-      why: translate({ id: "roadmap.sso.why", message: "Your IT team manages dashboard access from one place." }),
-    },
-    {
-      status: "explore",
-      area: "enterprise",
-      title: translate({ id: "roadmap.auditExport.title", message: "Audit log export" }),
-      body: translate({
-        id: "roadmap.auditExport.body",
-        message: "Send audit records to your own storage or monitoring tools.",
-      }),
-      why: translate({ id: "roadmap.auditExport.why", message: "Keeps records beyond the built-in 30-day retention." }),
-    },
-    {
-      status: "explore",
-      area: "enterprise",
-      title: translate({ id: "roadmap.retention.title", message: "Retention controls" }),
-      body: translate({
-        id: "roadmap.retention.body",
-        message: "Set how long conversations and traces are kept, per agent.",
-      }),
-      why: translate({ id: "roadmap.retention.why", message: "Matches each customer's own data policy." }),
     },
     {
       status: "live",

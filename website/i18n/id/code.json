@@ -629,9 +629,6 @@
   "roadmap.area.knowledge": {
     "message": "Knowledge Base"
   },
-  "roadmap.area.enterprise": {
-    "message": "Enterprise"
-  },
   "roadmap.area.quality": {
     "message": "Kualitas"
   },
@@ -700,33 +697,6 @@
   },
   "roadmap.refresh.why": {
     "message": "Jawaban mengikuti dokumentasi Anda saat berubah."
-  },
-  "roadmap.sso.title": {
-    "message": "Single sign-on untuk dashboard"
-  },
-  "roadmap.sso.body": {
-    "message": "Sign-in SAML atau OIDC untuk anggota tim Anda."
-  },
-  "roadmap.sso.why": {
-    "message": "Tim TI Anda mengelola akses dashboard dari satu tempat."
-  },
-  "roadmap.auditExport.title": {
-    "message": "Ekspor audit log"
-  },
-  "roadmap.auditExport.body": {
-    "message": "Kirim catatan audit ke penyimpanan atau alat pemantauan Anda sendiri."
-  },
-  "roadmap.auditExport.why": {
-    "message": "Menyimpan catatan melewati masa retensi bawaan 30 hari."
-  },
-  "roadmap.retention.title": {
-    "message": "Pengaturan retensi"
-  },
-  "roadmap.retention.body": {
-    "message": "Atur berapa lama percakapan dan trace disimpan, per agent."
-  },
-  "roadmap.retention.why": {
-    "message": "Sesuai dengan kebijakan data masing-masing pelanggan."
   },
   "roadmap.sources.title": {
     "message": "Sumber di setiap jawaban"
