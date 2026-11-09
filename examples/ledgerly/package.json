@@ -1,0 +1,38 @@
+{
+  "name": "ledgerly-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "deploy:app": "vite build && wrangler deploy -c wrangler.app.jsonc",
+    "deploy:server": "wrangler deploy -c wrangler.server.jsonc",
+    "demo": "pnpm --dir ../.. exec playwright test -c examples/ledgerly/demo/playwright.config.ts"
+  },
+  "dependencies": {
+    "better-auth": "^1.7.14",
+    "drizzle-orm": "^0.45.4",
+    "hono": "^4.6.0",
+    "jose": "^6.2.15",
+    "pg": "^8.13.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "sideagent": "link:../.."
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "^5.6.0",
+    "vite": "^7.0.0",
+    "wrangler": "^4.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "drizzle-orm": "link:../../node_modules/drizzle-orm"
+    }
+  }
+}

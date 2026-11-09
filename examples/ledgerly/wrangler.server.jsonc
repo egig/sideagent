@@ -1,0 +1,19 @@
+{
+  // The sideagent server: dashboard API, agent endpoints and the dashboard itself, on one origin.
+  "name": "ledgerly-sideagent",
+  "main": "worker/index.ts",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "../../dist/admin-ui",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/v1/*"]
+  },
+  "ai": { "binding": "AI" },
+  // Create with: wrangler hyperdrive create ledgerly --connection-string "postgres://…neon.tech/…?sslmode=require"
+  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "REPLACE_WITH_HYPERDRIVE_ID" }],
+  "durable_objects": { "bindings": [{ "name": "BUILTIN_METER", "class_name": "BuiltinMeter" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["BuiltinMeter"] }],
+  "vars": { "PUBLIC_URL": "https://ledgerly-sideagent.REPLACE.workers.dev" }
+  // Secrets (wrangler secret put -c wrangler.server.jsonc …): SIDEAGENT_SECRET, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET
+}
