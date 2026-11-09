@@ -327,28 +327,28 @@
     "description": "The title of the tag list page"
   },
   "landing.hero.title": {
-    "message": "Pusat bantuan Anda, menjawab langsung di dalam aplikasi."
+    "message": "Bantuan instan dari Knowledge Base Anda, langsung di dalam aplikasi"
   },
   "landing.hero.lede": {
-    "message": "sideagent menambahkan asisten ke produk Anda yang menjawab dari pusat bantuan Anda sendiri. Setiap jawaban menunjukkan sumbernya, dan pertanyaan yang tidak tercakup dokumentasi Anda akan ditolak."
+    "message": "sideagent menanamkan asisten AI ke produk Anda. Asisten ini menjawab langsung dari Knowledge Base Anda dan selalu menyertakan sumbernya. Pertanyaan di luar dokumentasi akan ditolak dengan sendirinya."
   },
   "landing.hero.start": {
-    "message": "Mulai"
+    "message": "Mulai Cepat"
   },
   "landing.hero.github": {
     "message": "Lihat di GitHub"
   },
   "landing.hero.fine": {
-    "message": "Open source dengan lisensi MIT. Pasang dengan {command}."
+    "message": "Open source, berlisensi MIT. Pasang dengan {command}."
   },
   "landing.problem.title": {
-    "message": "Pengguna Anda menanyakan ke tim support hal yang sudah dijelaskan pusat bantuan Anda."
+    "message": "Pengguna masih sering bertanya ke support, padahal jawabannya sudah ada di Knowledge Base?"
   },
   "landing.problem.p1": {
-    "message": "Setiap pertanyaan itu menghabiskan waktu tim support dan kesabaran pengguna. Jawabannya sudah ada, tetapi berada di halaman yang tidak pernah dibuka pengguna."
+    "message": "Pertanyaan yang sama terus berulang. Tim support kehabisan waktu, pengguna pun kehilangan kesabaran. Padahal jawabannya sudah ada, hanya terkubur di halaman yang jarang dibuka."
   },
   "landing.problem.p2": {
-    "message": "sideagent menghadirkan halaman itu ke layar tempat pertanyaan muncul."
+    "message": "sideagent membawa dokumentasi itu ke tempat pengguna bertanya: di dalam aplikasi Anda."
   },
   "landing.how.step": {
     "message": "Langkah {n}"
@@ -357,25 +357,25 @@
     "message": "Pasang di stack Anda sendiri."
   },
   "landing.how.lede": {
-    "message": "Satu paket berisi kedua bagian: server yang Anda pasang di backend, dan chat React untuk frontend. Tidak perlu menyiapkan data pelatihan. sideagent membaca pusat bantuan yang sudah Anda miliki."
+    "message": "Satu package untuk dua kebutuhan: server backend dan komponen chat React untuk frontend. Tidak perlu melatih model. sideagent langsung membaca Knowledge Base yang sudah Anda punya."
   },
   "landing.how.install.title": {
-    "message": "Pasang paketnya"
+    "message": "Install package"
   },
   "landing.how.install.body": {
-    "message": "Paket yang sama melayani backend dan frontend Anda."
+    "message": "Backend dan frontend memakai package yang sama."
   },
   "landing.how.server.title": {
-    "message": "Pasang server"
+    "message": "Siapkan server"
   },
   "landing.how.server.body": {
-    "message": "Satu panggilan memberi Anda dashboard beserta sign-in, endpoint agent, dan audit log. Server membutuhkan Postgres dengan pgvector, URL publik, dan secret minimal 32 karakter. Jalankan di Node, atau pasang {fetch} di Hono, Next.js, atau Cloudflare Workers."
+    "message": "Satu fungsi sudah menyediakan dashboard, sign-in, endpoint agent, dan audit log. Server membutuhkan database Postgres dengan extension pgvector, URL publik, dan secret minimal 32 karakter. Jalankan langsung di Node, atau pakai {fetch} di Hono, Next.js, maupun Cloudflare Workers."
   },
   "landing.how.dashboard.title": {
-    "message": "Siapkan agent di dashboard"
+    "message": "Atur agent di dashboard"
   },
   "landing.how.dashboard.body": {
-    "message": "Tambahkan URL pusat bantuan atau Markdown, pilih model, daftarkan situs yang boleh menampilkan chat, dan coba pertanyaan di preview. Ubah agent menjadi Active lalu salin publishable key-nya."
+    "message": "Masukkan URL Knowledge Base atau file Markdown, pilih model AI, dan daftarkan origin yang diizinkan. Coba jawabannya lewat preview. Jika sudah puas, ubah status agent menjadi Active lalu salin publishable key."
   },
   "landing.how.dashboard.knowledge": {
     "message": "Knowledge Base: URL atau Markdown, masing-masing ditandai Queued, Indexed, atau Failed"
@@ -390,127 +390,127 @@
     "message": "Preview, lalu Active"
   },
   "landing.how.chat.title": {
-    "message": "Tambahkan chat ke aplikasi Anda"
+    "message": "Sematkan chat di aplikasi Anda"
   },
   "landing.how.chat.body": {
-    "message": "Publishable key aman berada di browser. Berikan {getToken} agar setiap percakapan menjadi milik pengguna yang sedang sign-in."
+    "message": "Publishable key aman ditaruh di sisi browser. Cukup sediakan fungsi {getToken} agar setiap sesi chat terhubung ke pengguna yang sedang sign-in."
   },
   "landing.how.cloud": {
-    "message": "Di sideagent Cloud, yang segera hadir, langkah 1 dan 2 sudah dikerjakan untuk Anda: tambahkan Knowledge Base, atur aturannya, lalu tempelkan komponennya."
+    "message": "sideagent Cloud segera hadir dan akan melewati langkah 1 dan 2. Anda tinggal menambahkan Knowledge Base, mengatur aturan, lalu menyematkan komponennya."
   },
   "landing.security.origin.title": {
-    "message": "Hanya situs yang Anda daftarkan yang bisa memakai chat"
+    "message": "Pembatasan origin"
   },
   "landing.security.origin.body": {
-    "message": "Request dari origin lain, atau dengan method atau content type yang salah, ditolak."
+    "message": "Hanya domain yang sudah Anda daftarkan yang bisa memuat widget chat."
   },
   "landing.security.threads.title": {
-    "message": "Percakapan milik penggunanya"
+    "message": "Thread terisolasi"
   },
   "landing.security.threads.body": {
-    "message": "Seorang pelanggan tidak bisa membuka atau melanjutkan thread milik pelanggan lain."
+    "message": "Pengguna tidak bisa membuka atau melanjutkan thread milik pengguna lain."
   },
   "landing.security.untrusted.title": {
-    "message": "Dokumentasi sampai ke model sebagai data tak tepercaya"
+    "message": "Dokumen diperlakukan sebagai data tak tepercaya"
   },
   "landing.security.untrusted.body": {
-    "message": "Instruksi yang tersembunyi di halaman yang diambil dibungkus dan diberi label sebagai data, sehingga membatasi prompt injection."
+    "message": "Dokumen yang diambil dibungkus dan ditandai sebagai data, bukan instruksi, sehingga prompt injection tidak berpengaruh."
   },
   "landing.security.ssrf.title": {
-    "message": "URL yang diambil melewati penjaga SSRF"
+    "message": "Perlindungan SSRF"
   },
   "landing.security.ssrf.body": {
-    "message": "Menambahkan URL ke Knowledge Base tidak bisa membuat server membaca jaringan internal Anda."
+    "message": "URL yang Anda tambahkan ke Knowledge Base tidak bisa dipakai untuk menjangkau jaringan internal server."
   },
   "landing.security.passages.title": {
-    "message": "Passage mentah tidak sampai ke browser"
+    "message": "Passage mentah tidak dikirim"
   },
   "landing.security.passages.body": {
-    "message": "Pengguna menerima jawaban dan judul sumber, bukan hasil pencarian di baliknya."
+    "message": "Pengguna hanya menerima jawaban akhir dan judul sumber, bukan hasil pencarian mentah di balik layar."
   },
   "landing.security.errors.title": {
-    "message": "Error provider tetap di server"
+    "message": "Error provider disamarkan"
   },
   "landing.security.errors.body": {
-    "message": "Pengguna tidak pernah melihat error model mentah atau detail provider."
+    "message": "Pesan error asli dari provider AI tidak pernah sampai ke pengguna."
   },
   "landing.security.keys.title": {
-    "message": "Key model disegel"
+    "message": "API key tersegel"
   },
   "landing.security.keys.body": {
-    "message": "Key dienkripsi di database dan tidak pernah dikembalikan oleh dashboard."
+    "message": "API key dienkripsi di database dan tidak pernah dikirim balik ke dashboard."
   },
   "landing.security.title": {
     "message": "Aman sejak awal."
   },
   "landing.security.lede": {
-    "message": "Asisten di dalam produk Anda berbicara atas nama perusahaan Anda. Perlindungan ini aktif sejak pemasangan pertama, tanpa perlu dikonfigurasi."
+    "message": "Asisten AI di produk Anda berbicara atas nama perusahaan. Karena itu, perlindungan berikut sudah aktif secara default, tanpa konfigurasi tambahan."
   },
   "landing.benefits.support.title": {
-    "message": "Lebih sedikit pertanyaan berulang ke tim support"
+    "message": "Tim support lebih ringan"
   },
   "landing.benefits.support.body": {
-    "message": "Pengguna mendapat jawaban di dalam aplikasi, kapan saja, tanpa membuka tiket. Tim Anda bisa fokus pada kasus yang memang perlu ditangani orang."
+    "message": "Pengguna bisa menemukan jawaban sendiri di dalam aplikasi kapan saja, tanpa membuat tiket support. Tim Anda bisa fokus pada kasus yang memang perlu ditangani langsung."
   },
   "landing.benefits.support.who": {
     "message": "Pimpinan tim support"
   },
   "landing.benefits.check.title": {
-    "message": "Jawaban yang bisa diperiksa tim Anda"
+    "message": "Jawaban yang bisa diperiksa"
   },
   "landing.benefits.check.body": {
-    "message": "Setiap jawaban mencantumkan halaman sumbernya. Pertanyaan yang tidak tercakup dokumentasi Anda ditolak, sehingga asisten tidak mengarang harga, kebijakan, atau fitur."
+    "message": "Setiap jawaban menyertakan tautan sumber. Pertanyaan di luar dokumentasi ditolak, jadi asisten tidak mengarang harga, kebijakan, atau fitur."
   },
   "landing.benefits.check.who": {
     "message": "Pemilik produk dan dokumentasi"
   },
   "landing.benefits.review.title": {
-    "message": "Lebih sedikit pertanyaan terbuka saat tinjauan keamanan"
+    "message": "Mudah lolos tinjauan keamanan"
   },
   "landing.benefits.review.body": {
-    "message": "Perlindungan di atas aktif secara default dan kodenya terbuka, sehingga peninjau Anda bisa memeriksanya sendiri."
+    "message": "Perlindungan di atas aktif secara default dan kodenya terbuka, sehingga tim security internal bisa memeriksanya sendiri."
   },
   "landing.benefits.review.who": {
     "message": "Keamanan dan kepatuhan"
   },
   "landing.benefits.users.title": {
-    "message": "Dibuat untuk pengguna yang sign-in"
+    "message": "Terintegrasi dengan autentikasi"
   },
   "landing.benefits.users.body": {
-    "message": "Percakapan terikat pada sesi setiap pengguna, dan riwayat disimpan per pengguna, sehingga asisten cocok di dalam aplikasi yang memerlukan autentikasi."
+    "message": "Percakapan terikat pada sesi pengguna yang sedang aktif, dan riwayatnya tersimpan per pengguna. Cocok untuk aplikasi yang mewajibkan sign-in."
   },
   "landing.benefits.users.who": {
     "message": "Engineering"
   },
   "landing.benefits.data.title": {
-    "message": "Data Anda, model pilihan Anda"
+    "message": "Bebas memilih"
   },
   "landing.benefits.data.body": {
-    "message": "Pilih model dan bayar provider secara langsung. Hosting sendiri jika data harus tetap di server Anda."
+    "message": "Pilih model AI sendiri dan bayar provider secara langsung. Atau self-host sepenuhnya jika data harus tetap di server Anda."
   },
   "landing.benefits.data.who": {
     "message": "Keuangan dan TI"
   },
   "landing.benefits.look.title": {
-    "message": "Tampil seperti produk Anda"
+    "message": "Tampilan bisa disesuaikan"
   },
   "landing.benefits.look.body": {
-    "message": "Tombol mengambang atau sidebar yang menempel di samping aplikasi, mode terang dan gelap, serta warna dan font Anda sendiri melalui variabel CSS."
+    "message": "Pilih widget mengambang atau sidebar, mode terang atau gelap, lalu atur warna dan font lewat CSS variables."
   },
   "landing.benefits.look.who": {
     "message": "Desain"
   },
   "landing.benefits.title": {
-    "message": "Apa yang didapat bisnis Anda."
+    "message": "Manfaat untuk bisnis Anda."
   },
   "landing.plans.title": {
-    "message": "Produk yang sama, dijalankan oleh kami atau oleh Anda."
+    "message": "Produk yang sama, dikelola oleh kami atau oleh Anda."
   },
   "landing.plans.cloud.badge": {
     "message": "Segera hadir"
   },
   "landing.plans.cloud.body": {
-    "message": "Kami menjalankan server, database, dan pembaruan. Anda menambahkan dokumentasi dan menempelkan komponennya."
+    "message": "Kami yang mengurus server, database, dan pembaruan. Anda cukup memasukkan dokumentasi dan menyematkan komponennya."
   },
   "landing.plans.cloud.steps": {
     "message": "Tiga langkah: tambahkan Knowledge Base, atur aturannya, tempelkan komponennya"
@@ -522,13 +522,13 @@
     "message": "Tidak ada server atau database yang perlu dioperasikan"
   },
   "landing.plans.self.title": {
-    "message": "Hosting sendiri"
+    "message": "Self-hosting"
   },
   "landing.plans.self.badge": {
     "message": "Tersedia sekarang"
   },
   "landing.plans.self.body": {
-    "message": "Jalankan di infrastruktur Anda sendiri. Gratis dengan lisensi MIT."
+    "message": "Jalankan gratis di infrastruktur Anda sendiri dengan lisensi MIT."
   },
   "landing.plans.self.runtime": {
     "message": "Postgres dengan pgvector, di Node atau Cloudflare Workers"
@@ -543,7 +543,7 @@
     "message": "Data tetap di server Anda, kecuali yang dikirim ke provider model dan embedding pilihan Anda"
   },
   "landing.plans.self.cta": {
-    "message": "Baca panduan hosting sendiri"
+    "message": "Baca panduan self-hosting"
   },
   "landing.roadmap.title": {
     "message": "Yang sedang kami bangun berikutnya."
@@ -558,7 +558,7 @@
     "message": "Chat dokumentasi untuk aplikasi Anda"
   },
   "landing.meta.description": {
-    "message": "sideagent menambahkan asisten ke produk Anda yang menjawab dari pusat bantuan Anda sendiri dan menunjukkan sumbernya. Open source dengan lisensi MIT."
+    "message": "sideagent menanamkan asisten AI ke produk Anda yang menjawab dari Knowledge Base Anda dan selalu menyertakan sumbernya. Open source, berlisensi MIT."
   },
   "roadmap.why": {
     "message": "Mengapa penting:"
@@ -636,28 +636,28 @@
     "message": "Hosting"
   },
   "roadmap.insights.title": {
-    "message": "Dashboard wawasan"
+    "message": "Insights dashboard"
   },
   "roadmap.insights.body": {
-    "message": "Lihat apa yang ditanyakan pengguna, pertanyaan mana yang tidak terjawab, dan halaman mana yang paling sering dikutip."
+    "message": "Pantau tren pertanyaan pengguna, pertanyaan yang belum terjawab, dan dokumen yang paling sering dikutip."
   },
   "roadmap.insights.why": {
     "message": "Menjadikan asisten sebagai laporan tentang kekurangan dokumentasi Anda."
   },
   "roadmap.feedback.title": {
-    "message": "Umpan balik jawaban"
+    "message": "Feedback jawaban"
   },
   "roadmap.feedback.body": {
-    "message": "Jempol ke atas atau ke bawah pada setiap jawaban, dengan alasan opsional."
+    "message": "Tombol jempol naik/turun di setiap respons, dengan alasan opsional."
   },
   "roadmap.feedback.why": {
     "message": "Tim Anda menemukan jawaban yang lemah dan memperbaiki halaman di baliknya."
   },
   "roadmap.handoff.title": {
-    "message": "Serah terima ke tim Anda"
+    "message": "Human handoff"
   },
   "roadmap.handoff.body": {
-    "message": "Jika dokumentasi tidak mencakup sebuah pertanyaan, tawarkan langkah kontak yang mengirim percakapan ke email atau helpdesk Anda."
+    "message": "Jika dokumen tidak mencakup pertanyaan pengguna, percakapan dialihkan ke email atau helpdesk Anda."
   },
   "roadmap.handoff.why": {
     "message": "Tidak ada pengguna yang menemui jalan buntu, dan tim Anda melihat konteks lengkapnya."
