@@ -325,5 +325,413 @@
   "theme.tags.tagsPageTitle": {
     "message": "Tag",
     "description": "The title of the tag list page"
+  },
+  "landing.hero.title": {
+    "message": "Pusat bantuan Anda, menjawab langsung di dalam aplikasi."
+  },
+  "landing.hero.lede": {
+    "message": "sideagent menambahkan asisten ke produk Anda yang menjawab dari pusat bantuan Anda sendiri. Setiap jawaban menunjukkan sumbernya, dan pertanyaan yang tidak tercakup dokumentasi Anda akan ditolak."
+  },
+  "landing.hero.start": {
+    "message": "Mulai"
+  },
+  "landing.hero.github": {
+    "message": "Lihat di GitHub"
+  },
+  "landing.hero.fine": {
+    "message": "Open source dengan lisensi MIT. Pasang dengan {command}."
+  },
+  "landing.problem.title": {
+    "message": "Pengguna Anda menanyakan ke tim support hal yang sudah dijelaskan pusat bantuan Anda."
+  },
+  "landing.problem.p1": {
+    "message": "Setiap pertanyaan itu menghabiskan waktu tim support dan kesabaran pengguna. Jawabannya sudah ada, tetapi berada di halaman yang tidak pernah dibuka pengguna."
+  },
+  "landing.problem.p2": {
+    "message": "sideagent menghadirkan halaman itu ke layar tempat pertanyaan muncul."
+  },
+  "landing.how.step": {
+    "message": "Langkah {n}"
+  },
+  "landing.how.title": {
+    "message": "Pasang di stack Anda sendiri."
+  },
+  "landing.how.lede": {
+    "message": "Satu paket berisi kedua bagian: server yang Anda pasang di backend, dan chat React untuk frontend. Tidak perlu menyiapkan data pelatihan. sideagent membaca pusat bantuan yang sudah Anda miliki."
+  },
+  "landing.how.install.title": {
+    "message": "Pasang paketnya"
+  },
+  "landing.how.install.body": {
+    "message": "Paket yang sama melayani backend dan frontend Anda."
+  },
+  "landing.how.server.title": {
+    "message": "Pasang server"
+  },
+  "landing.how.server.body": {
+    "message": "Satu panggilan memberi Anda dashboard beserta sign-in, endpoint agent, dan audit log. Server membutuhkan Postgres dengan pgvector, URL publik, dan secret minimal 32 karakter. Jalankan di Node, atau pasang {fetch} di Hono, Next.js, atau Cloudflare Workers."
+  },
+  "landing.how.dashboard.title": {
+    "message": "Siapkan agent di dashboard"
+  },
+  "landing.how.dashboard.body": {
+    "message": "Tambahkan URL pusat bantuan atau Markdown, pilih model, daftarkan situs yang boleh menampilkan chat, dan coba pertanyaan di preview. Ubah agent menjadi Active lalu salin publishable key-nya."
+  },
+  "landing.how.dashboard.knowledge": {
+    "message": "Knowledge Base: URL atau Markdown, masing-masing ditandai Queued, Indexed, atau Failed"
+  },
+  "landing.how.dashboard.model": {
+    "message": "Model dan API key-nya, disegel saat disimpan"
+  },
+  "landing.how.dashboard.origins": {
+    "message": "Origin yang diizinkan untuk chat"
+  },
+  "landing.how.dashboard.active": {
+    "message": "Preview, lalu Active"
+  },
+  "landing.how.chat.title": {
+    "message": "Tambahkan chat ke aplikasi Anda"
+  },
+  "landing.how.chat.body": {
+    "message": "Publishable key aman berada di browser. Berikan {getToken} agar setiap percakapan menjadi milik pengguna yang sedang sign-in."
+  },
+  "landing.how.cloud": {
+    "message": "Di sideagent Cloud, yang segera hadir, langkah 1 dan 2 sudah dikerjakan untuk Anda: tambahkan Knowledge Base, atur aturannya, lalu tempelkan komponennya."
+  },
+  "landing.security.origin.title": {
+    "message": "Hanya situs yang Anda daftarkan yang bisa memakai chat"
+  },
+  "landing.security.origin.body": {
+    "message": "Request dari origin lain, atau dengan method atau content type yang salah, ditolak."
+  },
+  "landing.security.threads.title": {
+    "message": "Percakapan milik penggunanya"
+  },
+  "landing.security.threads.body": {
+    "message": "Seorang pelanggan tidak bisa membuka atau melanjutkan thread milik pelanggan lain."
+  },
+  "landing.security.untrusted.title": {
+    "message": "Dokumentasi sampai ke model sebagai data tak tepercaya"
+  },
+  "landing.security.untrusted.body": {
+    "message": "Instruksi yang tersembunyi di halaman yang diambil dibungkus dan diberi label sebagai data, sehingga membatasi prompt injection."
+  },
+  "landing.security.ssrf.title": {
+    "message": "URL yang diambil melewati penjaga SSRF"
+  },
+  "landing.security.ssrf.body": {
+    "message": "Menambahkan URL ke Knowledge Base tidak bisa membuat server membaca jaringan internal Anda."
+  },
+  "landing.security.passages.title": {
+    "message": "Passage mentah tidak sampai ke browser"
+  },
+  "landing.security.passages.body": {
+    "message": "Pengguna menerima jawaban dan judul sumber, bukan hasil pencarian di baliknya."
+  },
+  "landing.security.errors.title": {
+    "message": "Error provider tetap di server"
+  },
+  "landing.security.errors.body": {
+    "message": "Pengguna tidak pernah melihat error model mentah atau detail provider."
+  },
+  "landing.security.keys.title": {
+    "message": "Key model disegel"
+  },
+  "landing.security.keys.body": {
+    "message": "Key dienkripsi di database dan tidak pernah dikembalikan oleh dashboard."
+  },
+  "landing.security.title": {
+    "message": "Aman sejak awal."
+  },
+  "landing.security.lede": {
+    "message": "Asisten di dalam produk Anda berbicara atas nama perusahaan Anda. Perlindungan ini aktif sejak pemasangan pertama, tanpa perlu dikonfigurasi."
+  },
+  "landing.benefits.support.title": {
+    "message": "Lebih sedikit pertanyaan berulang ke tim support"
+  },
+  "landing.benefits.support.body": {
+    "message": "Pengguna mendapat jawaban di dalam aplikasi, kapan saja, tanpa membuka tiket. Tim Anda bisa fokus pada kasus yang memang perlu ditangani orang."
+  },
+  "landing.benefits.support.who": {
+    "message": "Pimpinan tim support"
+  },
+  "landing.benefits.check.title": {
+    "message": "Jawaban yang bisa diperiksa tim Anda"
+  },
+  "landing.benefits.check.body": {
+    "message": "Setiap jawaban mencantumkan halaman sumbernya. Pertanyaan yang tidak tercakup dokumentasi Anda ditolak, sehingga asisten tidak mengarang harga, kebijakan, atau fitur."
+  },
+  "landing.benefits.check.who": {
+    "message": "Pemilik produk dan dokumentasi"
+  },
+  "landing.benefits.review.title": {
+    "message": "Lebih sedikit pertanyaan terbuka saat tinjauan keamanan"
+  },
+  "landing.benefits.review.body": {
+    "message": "Perlindungan di atas aktif secara default dan kodenya terbuka, sehingga peninjau Anda bisa memeriksanya sendiri."
+  },
+  "landing.benefits.review.who": {
+    "message": "Keamanan dan kepatuhan"
+  },
+  "landing.benefits.users.title": {
+    "message": "Dibuat untuk pengguna yang sign-in"
+  },
+  "landing.benefits.users.body": {
+    "message": "Percakapan terikat pada sesi setiap pengguna, dan riwayat disimpan per pengguna, sehingga asisten cocok di dalam aplikasi yang memerlukan autentikasi."
+  },
+  "landing.benefits.users.who": {
+    "message": "Engineering"
+  },
+  "landing.benefits.data.title": {
+    "message": "Data Anda, model pilihan Anda"
+  },
+  "landing.benefits.data.body": {
+    "message": "Pilih model dan bayar provider secara langsung. Hosting sendiri jika data harus tetap di server Anda."
+  },
+  "landing.benefits.data.who": {
+    "message": "Keuangan dan TI"
+  },
+  "landing.benefits.look.title": {
+    "message": "Tampil seperti produk Anda"
+  },
+  "landing.benefits.look.body": {
+    "message": "Tombol mengambang atau sidebar yang menempel di samping aplikasi, mode terang dan gelap, serta warna dan font Anda sendiri melalui variabel CSS."
+  },
+  "landing.benefits.look.who": {
+    "message": "Desain"
+  },
+  "landing.benefits.title": {
+    "message": "Apa yang didapat bisnis Anda."
+  },
+  "landing.plans.title": {
+    "message": "Produk yang sama, dijalankan oleh kami atau oleh Anda."
+  },
+  "landing.plans.cloud.badge": {
+    "message": "Segera hadir"
+  },
+  "landing.plans.cloud.body": {
+    "message": "Kami menjalankan server, database, dan pembaruan. Anda menambahkan dokumentasi dan menempelkan komponennya."
+  },
+  "landing.plans.cloud.steps": {
+    "message": "Tiga langkah: tambahkan Knowledge Base, atur aturannya, tempelkan komponennya"
+  },
+  "landing.plans.cloud.dashboard": {
+    "message": "Termasuk dashboard, sign-in tim, dan audit log"
+  },
+  "landing.plans.cloud.ops": {
+    "message": "Tidak ada server atau database yang perlu dioperasikan"
+  },
+  "landing.plans.self.title": {
+    "message": "Hosting sendiri"
+  },
+  "landing.plans.self.badge": {
+    "message": "Tersedia sekarang"
+  },
+  "landing.plans.self.body": {
+    "message": "Jalankan di infrastruktur Anda sendiri. Gratis dengan lisensi MIT."
+  },
+  "landing.plans.self.runtime": {
+    "message": "Postgres dengan pgvector, di Node atau Cloudflare Workers"
+  },
+  "landing.plans.self.mount": {
+    "message": "Terpasang di dalam server Anda sendiri: Hono, Next.js, atau Express"
+  },
+  "landing.plans.self.same": {
+    "message": "Dashboard dan pengaturan keamanan default yang sama"
+  },
+  "landing.plans.self.data": {
+    "message": "Data tetap di server Anda, kecuali yang dikirim ke provider model dan embedding pilihan Anda"
+  },
+  "landing.plans.self.cta": {
+    "message": "Baca panduan hosting sendiri"
+  },
+  "landing.roadmap.title": {
+    "message": "Yang sedang kami bangun berikutnya."
+  },
+  "landing.roadmap.lede": {
+    "message": "Prioritas pertama adalah menunjukkan apa yang dihemat oleh asisten."
+  },
+  "landing.roadmap.seeAll": {
+    "message": "Lihat semua"
+  },
+  "landing.meta.title": {
+    "message": "Chat dokumentasi untuk aplikasi Anda"
+  },
+  "landing.meta.description": {
+    "message": "sideagent menambahkan asisten ke produk Anda yang menjawab dari pusat bantuan Anda sendiri dan menunjukkan sumbernya. Open source dengan lisensi MIT."
+  },
+  "roadmap.why": {
+    "message": "Mengapa penting:"
+  },
+  "roadmap.meta.title": {
+    "message": "Roadmap"
+  },
+  "roadmap.meta.description": {
+    "message": "Apa yang direncanakan tim sideagent berikutnya, dan apa yang sudah tersedia hari ini."
+  },
+  "roadmap.back": {
+    "message": "Kembali ke ringkasan"
+  },
+  "roadmap.title": {
+    "message": "Roadmap"
+  },
+  "roadmap.lede": {
+    "message": "Yang kami rencanakan, sesuai urutan yang kami perkirakan. Tidak ada tanggal, dan urutannya bisa berubah."
+  },
+  "roadmap.filter.label": {
+    "message": "Saring menurut area"
+  },
+  "roadmap.filter.all": {
+    "message": "Semua"
+  },
+  "roadmap.empty": {
+    "message": "Belum ada apa pun di area ini."
+  },
+  "roadmap.foot": {
+    "message": "Ada yang dibutuhkan tim Anda tetapi belum tercantum? Buka issue di GitHub."
+  },
+  "roadmap.issue": {
+    "message": "Buka issue"
+  },
+  "landing.demo.sources": {
+    "message": "Sumber"
+  },
+  "roadmap.status.next.title": {
+    "message": "Berikutnya"
+  },
+  "roadmap.status.next.note": {
+    "message": "Direncanakan untuk rilis mendatang."
+  },
+  "roadmap.status.later.title": {
+    "message": "Nanti"
+  },
+  "roadmap.status.later.note": {
+    "message": "Direncanakan setelah item di atas."
+  },
+  "roadmap.status.explore.title": {
+    "message": "Dikaji"
+  },
+  "roadmap.status.explore.note": {
+    "message": "Sedang dipertimbangkan."
+  },
+  "roadmap.status.live.title": {
+    "message": "Tersedia sekarang"
+  },
+  "roadmap.status.live.note": {
+    "message": "Ada di rilis open source hari ini."
+  },
+  "roadmap.area.insights": {
+    "message": "Wawasan"
+  },
+  "roadmap.area.support": {
+    "message": "Support"
+  },
+  "roadmap.area.knowledge": {
+    "message": "Knowledge Base"
+  },
+  "roadmap.area.quality": {
+    "message": "Kualitas"
+  },
+  "roadmap.area.hosting": {
+    "message": "Hosting"
+  },
+  "roadmap.insights.title": {
+    "message": "Dashboard wawasan"
+  },
+  "roadmap.insights.body": {
+    "message": "Lihat apa yang ditanyakan pengguna, pertanyaan mana yang tidak terjawab, dan halaman mana yang paling sering dikutip."
+  },
+  "roadmap.insights.why": {
+    "message": "Menjadikan asisten sebagai laporan tentang kekurangan dokumentasi Anda."
+  },
+  "roadmap.feedback.title": {
+    "message": "Umpan balik jawaban"
+  },
+  "roadmap.feedback.body": {
+    "message": "Jempol ke atas atau ke bawah pada setiap jawaban, dengan alasan opsional."
+  },
+  "roadmap.feedback.why": {
+    "message": "Tim Anda menemukan jawaban yang lemah dan memperbaiki halaman di baliknya."
+  },
+  "roadmap.handoff.title": {
+    "message": "Serah terima ke tim Anda"
+  },
+  "roadmap.handoff.body": {
+    "message": "Jika dokumentasi tidak mencakup sebuah pertanyaan, tawarkan langkah kontak yang mengirim percakapan ke email atau helpdesk Anda."
+  },
+  "roadmap.handoff.why": {
+    "message": "Tidak ada pengguna yang menemui jalan buntu, dan tim Anda melihat konteks lengkapnya."
+  },
+  "roadmap.deflection.title": {
+    "message": "Laporan tiket yang terhindarkan"
+  },
+  "roadmap.deflection.body": {
+    "message": "Perkiraan bulanan jumlah tiket yang terhindarkan, berdasarkan percakapan terjawab yang tidak berlanjut ke tim support."
+  },
+  "roadmap.deflection.why": {
+    "message": "Angka yang bisa dibawa ke rapat anggaran."
+  },
+  "roadmap.context.title": {
+    "message": "Konteks akun hanya-baca"
+  },
+  "roadmap.context.body": {
+    "message": "Izinkan asisten membaca field yang Anda setujui, seperti paket pengguna atau fitur yang aktif, untuk menyesuaikan jawaban."
+  },
+  "roadmap.context.why": {
+    "message": "Jawaban lebih berguna, sementara asisten tetap tidak bisa mengubah apa pun."
+  },
+  "roadmap.helpdesk.title": {
+    "message": "Integrasi helpdesk"
+  },
+  "roadmap.helpdesk.body": {
+    "message": "Buat tiket dengan percakapan terlampir di alat helpdesk yang sudah dipakai tim Anda."
+  },
+  "roadmap.helpdesk.why": {
+    "message": "Serah terima tanpa salin-tempel."
+  },
+  "roadmap.refresh.title": {
+    "message": "Pembaruan terjadwal"
+  },
+  "roadmap.refresh.body": {
+    "message": "Ambil ulang halaman pusat bantuan sesuai jadwal."
+  },
+  "roadmap.refresh.why": {
+    "message": "Jawaban mengikuti dokumentasi Anda saat berubah."
+  },
+  "roadmap.sources.title": {
+    "message": "Sumber di setiap jawaban"
+  },
+  "roadmap.sources.body": {
+    "message": "Setiap jawaban mencantumkan halaman sumbernya, dengan tautan ke URL Anda sendiri."
+  },
+  "roadmap.gate.title": {
+    "message": "Gerbang relevansi"
+  },
+  "roadmap.gate.body": {
+    "message": "Pertanyaan yang tidak tercakup dokumentasi Anda ditolak, bukan ditebak."
+  },
+  "roadmap.threads.title": {
+    "message": "Percakapan per pengguna"
+  },
+  "roadmap.threads.body": {
+    "message": "Thread terikat pada pengguna yang sign-in, dengan riwayat yang bisa dibuka kembali."
+  },
+  "roadmap.audit.title": {
+    "message": "Audit log dan trace"
+  },
+  "roadmap.audit.body": {
+    "message": "Catatan setiap turn untuk debugging dan kepatuhan."
+  },
+  "roadmap.preview.title": {
+    "message": "Preview di dashboard"
+  },
+  "roadmap.preview.body": {
+    "message": "Coba pertanyaan terhadap dokumentasi Anda, dengan passage ditampilkan, sebelum agent aktif."
+  },
+  "roadmap.runtimes.title": {
+    "message": "Node atau Cloudflare Workers"
+  },
+  "roadmap.runtimes.body": {
+    "message": "Jalankan server di Node, atau di edge pada Workers dengan Workers AI."
   }
 }
