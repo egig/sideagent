@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.13.0
 
 The interface is two things now: a React component that takes a publishable key, and one server call. This is a breaking release.
 
@@ -17,8 +17,16 @@ The interface is two things now: a React component that takes a publishable key,
 - New `POST /api/agents/:id/llm/check`: one tiny chat call and one embedding call on the saved settings, through the SSRF guard, answering with our own reason codes only. Saving a new API key retries sources that failed to index.
 - `pnpm test:e2e`: Playwright tests of the dashboard against an in-memory server with faked DNS and fetch, also run in CI (`.github/workflows/e2e.yml`).
 - **Overview numbers.** A live agent's Overview shows chat turns, the share answered without error, the median reply time and refused requests for the last 24 hours or 7 days, each against the window before. New `GET /api/agents/:id/stats?range=24h|7d`. `AdminStore` gains `audit.stats(agentId, range, now?)` (in the contract tests): a custom store must implement it. Preview events are not counted.
+- **Off-topic and unclear questions.** The relevance gate decides grounded, uncertain or off. A weak or follow-up message reaches the model with the scope rules and may get a clarifying question (new `scope.clarifyScore`); only a message with nothing close gets the fixed reply. Declined questions stay visible to the user but are hidden from the model. The reply is set under **Off-topic reply** on the **Knowledge** page (Markdown); left empty, the model writes a short decline in the user's language, falling back to "I can't help with that."
+- **Thread integrity.** A turn's slot is taken before anything is awaited; a second message to a running thread gets `409`; a turn the browser abandons stops and is audited as `client_aborted`. Tool calls left open by an interrupted turn are shown to the model as interrupted, so the thread keeps working.
+- **Anonymous visitors** continue a conversation by the id of its thread, kept in the database for an hour after its last message.
+- **Client.** Cut-off or failed streams show as errors; a lost thread (`404`) restarts as a new conversation once; the composer enforces the length limit.
+- **Traces** open from a turn in the **Audit log** (the Traces tab is gone) and include a `gate` span with its verdict and the number of passages found.
+- `npx sideagent` builds a `builtinModel` when `LLM_API_KEY`, `LLM_MODEL` and `EMBEDDING_MODEL` are set (optional `LLM_BASE_URL`, `BUILTIN_MONTHLY_LIMIT`, default 100 per owner per month, counted in memory).
+- Postgres migrations are recorded in `sideagent._migration` (was `sideagent._migrations`). A database set up by 0.12.0 or earlier does not upgrade: start on a new one.
+- Docs: an Indonesian translation, and a tested Workers AI `builtinModel` recipe for Cloudflare.
 
-### Earlier, unreleased
+## 0.10.0 to 0.12.0
 
 The admin dashboard and the server behind it move into the library. It is single-tenant by default; multi-tenancy is a `scope` hook.
 
